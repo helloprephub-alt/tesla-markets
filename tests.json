@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Visitor starts an enquiry and messages persist for the administrator",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "public enquiry creation",
+      "persistent visitor messages",
+      "admin inbox access",
+      "admin reply",
+      "private admin allowlist"
+    ],
+    "description": "Verifies a visitor message is stored and can be read and answered by the allowlisted administrator.",
+    "steps": [
+      "Open Enquiries and send a message",
+      "Sign in to the admin inbox as helloprephub@gmail.com",
+      "Open the new conversation and reply",
+      "Return to the visitor conversation"
+    ],
+    "expected": "The visitor message appears in the admin inbox and the admin reply appears in the visitor chat."
+  },
+  {
+    "name": "Visitor and administrator exchange an image attachment",
+    "viewport": "mobile",
+    "covers": [
+      "visitor image upload",
+      "admin image upload",
+      "message attachment rendering",
+      "mobile chat layout"
+    ],
+    "description": "Verifies both sides can attach an image and see the uploaded image in the conversation.",
+    "steps": [
+      "Open an enquiry on mobile and attach a JPG image",
+      "Send the image with a short message",
+      "Sign in as the administrator and open the conversation",
+      "Reply with a PNG image"
+    ],
+    "expected": "Both image attachments render in the correct conversation and the chat remains usable on mobile."
+  },
+  {
+    "name": "Unauthorised account cannot access private enquiries",
+    "viewport": "desktop",
+    "covers": [
+      "admin authentication",
+      "admin email allowlist",
+      "unauthorised access denial"
+    ],
+    "description": "Verifies the admin inbox rejects a signed-in account that is not the configured administrator.",
+    "steps": [
+      "Open the admin page",
+      "Sign in with a different email account",
+      "Attempt to load customer conversations"
+    ],
+    "expected": "The account is denied and no customer enquiry list or messages are disclosed."
+  },
+  {
+    "name": "Visitor can resume an enquiry after refreshing the page",
+    "viewport": "mobile",
+    "covers": [
+      "conversation identifier persistence",
+      "message history refresh",
+      "mobile enquiry continuity"
+    ],
+    "description": "Verifies a visitor's enquiry thread is retained across a browser refresh.",
+    "steps": [
+      "Start an enquiry and send a message",
+      "Refresh the browser page",
+      "Open Enquiries again"
+    ],
+    "expected": "The same conversation and its previous message are displayed after refresh."
+  }
+]
