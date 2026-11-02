@@ -1,24 +1,17 @@
 # Tesla Markets
 
-Original AppDeploy source snapshot prepared for the GitHub/Vercel migration.
-
-- Frontend: React 19 + Vite 6 + TypeScript
-- AppDeploy project: `tesla-invest-8jwn28`
-- Source version: `1793437639197`
+Independent Tesla Markets web application built with React, Vite, TypeScript, and Supabase. This repository is deployed through Vercel and does not call the legacy AppDeploy backend.
 
 ## Local development
 
-```bash
-npm install
-npm run dev
-```
+1. Install dependencies: `npm install`
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env.local`.
+3. Start the app: `npm run dev`
 
 ## Build
 
-```bash
-npm run build
-```
+`npm run build`
 
-## Migration warning
+## Backend
 
-The original backend imports `@appdeploy/sdk`. It is AppDeploy-specific and must be migrated to Vercel-compatible serverless functions and replacement database/storage/auth services before the Vercel deployment is fully functional. Keep the existing AppDeploy deployment and its data intact until the replacement has been tested.
+Supabase Auth handles customer sign-in and registration. `support_conversations` and `support_messages` store enquiries. Row-level security is expected to protect all customer records. Administrator access is granted in Supabase through `customer_profiles.is_admin`; do not expose a service-role key in frontend variables.
