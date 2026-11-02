@@ -820,7 +820,7 @@ function App() {
                     options: { data: { display_name: (form.first + ' ' + form.last).trim(), country: form.country, currency: form.currency } }
                   });
                   if (error) throw error;
-                  if (data.user) {
+                  if (data.user && data.session) {
                     const { error: profileError } = await supabase.from('customer_profiles').upsert({
                       id: data.user.id,
                       display_name: (form.first + ' ' + form.last).trim()
@@ -835,6 +835,14 @@ function App() {
                     password: form.password
                   });
                   if (error) throw error;
+                  const { data: current } = await supabase.auth.getUser();
+                  if (current.user) {
+                    const { error: profileError } = await supabase.from('customer_profiles').upsert({
+                      id: current.user.id,
+                      display_name: current.user.user_metadata?.display_name || current.user.email || 'Customer'
+                    }, { onConflict: 'id' });
+                    if (profileError) throw profileError;
+                  }
                   announce('Signed in successfully.');
                   go('dashboard');
                 }
