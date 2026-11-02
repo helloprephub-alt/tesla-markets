@@ -369,14 +369,14 @@ function App() {
       <section className="section vehicle-showcase-section">
         <div className="section-head"><div><div className="eyebrow dark">THE TESLA LINEUP</div><h2>Electric design.<br/><em>In full view.</em></h2></div><p>Browse the vehicle images supplied for this website. Exact trim and model identification should be confirmed before treating a pictured vehicle as a specific listing.</p></div>
         <div className="vehicle-photo-grid">
-          <figure><img src="/resources/tesla-hero.jpg" alt="Tesla vehicle hero image"/><figcaption>Tesla vehicle collection</figcaption></figure>
-          <figure><img src="/resources/tesla-city.jpg" alt="Tesla vehicle in city setting"/><figcaption>Urban electric mobility</figcaption></figure>
-          <figure><img src="/resources/tesla-rear.jpg" alt="Tesla vehicle rear view"/><figcaption>Exterior detail</figcaption></figure>
-          <figure><img src="/resources/tesla-road.jpg" alt="Tesla vehicle on the road"/><figcaption>On the road</figcaption></figure>
-          <figure><img src="/resources/tesla-silver.jpg" alt="Silver Tesla vehicle"/><figcaption>Silver performance finish</figcaption></figure>
-          <figure><img src="/resources/tesla-suv.jpg" alt="Tesla SUV"/><figcaption>Electric SUV</figcaption></figure>
+          <figure><img src="/tesla-hero.jpg" alt="Tesla vehicle hero image"/><figcaption>Tesla vehicle collection</figcaption></figure>
+          <figure><img src="/tesla-city.jpg" alt="Tesla vehicle in city setting"/><figcaption>Urban electric mobility</figcaption></figure>
+          <figure><img src="/tesla-rear.jpg" alt="Tesla vehicle rear view"/><figcaption>Exterior detail</figcaption></figure>
+          <figure><img src="/tesla-road.jpg" alt="Tesla vehicle on the road"/><figcaption>On the road</figcaption></figure>
+          <figure><img src="/tesla-silver.jpg" alt="Silver Tesla vehicle"/><figcaption>Silver performance finish</figcaption></figure>
+          <figure><img src="/tesla-suv.jpg" alt="Tesla SUV"/><figcaption>Electric SUV</figcaption></figure>
         </div>
-        <div className="video-showcase"><div><div className="eyebrow dark">CINEMATIC SHOWREEL</div><h3>See the movement.</h3><p className="muted">Video supplied for Tesla Markets.</p></div><video controls playsInline preload="metadata" poster="/resources/tesla-hero.jpg"><source src="/resources/tesla-showreel.mp4" type="video/mp4"/>Your browser does not support video playback.</video></div>
+        <div className="video-showcase"><div><div className="eyebrow dark">CINEMATIC SHOWREEL</div><h3>See the movement.</h3><p className="muted">Video supplied for Tesla Markets.</p></div><video controls playsInline preload="metadata" poster="/tesla-hero.jpg"><source src="/resources/tesla-showreel.mp4" type="video/mp4"/>Your browser does not support video playback.</video></div>
         <GeneratedGallery />
       </section>
       <section className="cta-band"><div><div className="eyebrow">QUESTIONS ABOUT BUYING SHARES?</div><h2>Start with a<br/><em>conversation.</em></h2></div><button className="btn btn-red" onClick={()=>go('chat')}>Open investment chat <ArrowUpRight size={16}/></button></section>
