@@ -6,11 +6,12 @@ type Message = { id: string; sender_id: string; body: string; created_at: string
 type Conversation = { id: string; customer_id: string; subject: string; status: string; updated_at: string };
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Something went wrong. Please try again.';
 
-export function ChatWorkspace({ onBack }: { onBack: () => void }) {
+export function ChatWorkspace({ onBack, initialMessage = '' }: { onBack: () => void; initialMessage?: string }) {
   const [userId,setUserId] = useState('');
   const [conversation,setConversation] = useState<Conversation|null>(null);
   const [messages,setMessages] = useState<Message[]>([]);
-  const [draft,setDraft] = useState('');
+  const [draft,setDraft] = useState(initialMessage);
+  useEffect(()=>{if(initialMessage)setDraft(initialMessage);},[initialMessage]);
   const [busy,setBusy] = useState(false);
   const [problem,setProblem] = useState('');
   useEffect(()=>{let active=true; if(!supabase){setProblem('Backend configuration is missing.');return;}
