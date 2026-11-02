@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import './markets-redesign.css';
 import { ArrowRight, ArrowUpRight, ChevronDown, Globe2, Menu, MessageCircle, ShieldCheck, ShoppingBag, X, Zap } from 'lucide-react';
 import { ChatWorkspace, AdminInbox } from './ChatWorkspace';
 import { supabase } from './supabaseClient';
