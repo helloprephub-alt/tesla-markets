@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ChatWorkspace, AdminInbox, GeneratedGallery } from './ChatWorkspace';
+import { supabase } from './supabaseClient';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -805,11 +806,41 @@ function App() {
               : 'Continue to your personal workspace.'}
           </p>
           <form
-            onSubmit={e => {
+            onSubmit={async e => {
               e.preventDefault();
-              announce(
-                'Account access is not connected in this visual preview.'
-              );
+              if (!supabase) {
+                announce('Account service is not configured. Please contact support.');
+                return;
+              }
+              try {
+                if (signup) {
+                  const { data, error } = await supabase.auth.signUp({
+                    email: form.email.trim().toLowerCase(),
+                    password: form.password,
+                    options: { data: { display_name: (form.first + ' ' + form.last).trim(), country: form.country, currency: form.currency } }
+                  });
+                  if (error) throw error;
+                  if (data.user) {
+                    const { error: profileError } = await supabase.from('customer_profiles').upsert({
+                      id: data.user.id,
+                      display_name: (form.first + ' ' + form.last).trim()
+                    }, { onConflict: 'id' });
+                    if (profileError) throw profileError;
+                  }
+                  announce(data.session ? 'Account created. Welcome to Tesla Markets.' : 'Account created. Check your email to confirm your address, then sign in.');
+                  if (data.session) go('dashboard');
+                } else {
+                  const { error } = await supabase.auth.signInWithPassword({
+                    email: form.email.trim().toLowerCase(),
+                    password: form.password
+                  });
+                  if (error) throw error;
+                  announce('Signed in successfully.');
+                  go('dashboard');
+                }
+              } catch (error) {
+                announce(error instanceof Error ? error.message : 'Unable to authenticate. Please try again.');
+              }
             }}
           >
             {signup && (
