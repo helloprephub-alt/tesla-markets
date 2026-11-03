@@ -54,7 +54,7 @@ export default function AdminApp() {
       if (!data?.token_hash) throw new Error(data?.error || 'Invalid access key.');
       const { error: verifyError } = await supabase.auth.verifyOtp({
         token_hash: data.token_hash,
-        type: 'magiclink',
+        type: 'email',
       });
       if (verifyError) throw verifyError;
       setPrivateKey('');
