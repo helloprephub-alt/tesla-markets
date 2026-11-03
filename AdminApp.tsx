@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { createRoot } from 'react-dom/client';
 import { ArrowLeft, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { AdminInbox } from './ChatWorkspace';
 import { supabase } from './supabaseClient';
 import './markets-redesign.css';
 import './index.css';
 
-function AdminApp() {
+export default function AdminApp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -41,5 +40,5 @@ function AdminApp() {
       {message&&<p className="admin-login-error">{message}</p>}<small>Admin privileges are verified against Supabase after authentication.</small>
     </section></main>
   </div>;
+
 }
-createRoot(document.getElementById('root')!).render(<AdminApp/>);
