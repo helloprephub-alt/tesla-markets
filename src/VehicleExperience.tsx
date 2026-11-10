@@ -1,3 +1,4 @@
+import { publicText, type PublicLanguage } from './public-i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronLeft, ChevronRight, Maximize2, Palette, SlidersHorizontal, X } from 'lucide-react';
 
@@ -40,7 +41,8 @@ const models: Model[] = [
     colors: ['Factory finish preference', 'Custom fleet finish enquiry'], wheels: ['Standard configuration enquiry'] },
 ];
 
-export function VehicleExperience({ modelId, onBack, onEnquire, onSelectModel }: { modelId?: string; onBack: () => void; onEnquire: (context: string) => void; onSelectModel: (id: string) => void; }) {
+export function VehicleExperience({ modelId, onBack, onEnquire, onSelectModel, language = 'en' }: { modelId?: string; onBack: () => void; onEnquire: (context: string) => void; onSelectModel: (id: string) => void; language?: PublicLanguage; }) {
+  const tr = (value: string) => publicText(value, language);
   const [color, setColor] = useState('Pearl White');
   const [wheel, setWheel] = useState('');
   const [payment, setPayment] = useState('Cash purchase enquiry');
@@ -74,7 +76,7 @@ export function VehicleExperience({ modelId, onBack, onEnquire, onSelectModel }:
 
   if (!selected) {
     return <main className="vehicle-store">
-      <section className="store-hero"><div className="eyebrow dark">TESLA MARKETS / VEHICLE COLLECTION</div><h1>Find your<br /><em>next electric drive.</em></h1><p>Explore each collection, compare versions and send a vehicle enquiry to management.</p><div className="store-count">{models.length} vehicle collections · USD catalogue display</div></section>
+      <section className="store-hero"><div className="eyebrow dark">TESLA MARKETS / VEHICLE COLLECTION</div><h1>{tr('Find your')}<br /><em>{tr('next electric drive.')}</em></h1><p>{tr('Explore each collection, compare versions and send a vehicle enquiry to management.')}</p><div className="store-count">{models.length} vehicle collections · USD catalogue display</div></section>
       <section className="store-grid">{models.map(model => <article className="store-card" key={model.id}>
         <button className="store-card-image" onClick={() => onSelectModel(model.id)} aria-label={'View ' + model.name + ' gallery'}><img src={model.gallery[0]} alt={model.name + ' vehicle'} loading="lazy" /><span>{model.gallery.length} PHOTOS · TESLA MARKETS COLLECTION</span></button>
         <div className="store-card-copy"><div className="eyebrow dark">{model.subtitle}</div><h2>{model.name}</h2><strong>{model.variants[0].price === 'Invite only' ? 'Invite only' : 'From ' + model.variants[0].price}</strong>{model.lease && <small>{model.lease}</small>}<small>{model.priceNote}</small><button className="btn btn-dark" onClick={() => onSelectModel(model.id)}>View gallery & details <ArrowUpRight size={16} /></button></div>
@@ -93,15 +95,15 @@ export function VehicleExperience({ modelId, onBack, onEnquire, onSelectModel }:
       </div>
       <div className="config-options">
         <div className="eyebrow dark">{selected.subtitle}</div><h1>{selected.name}</h1>
-        <div className="config-block"><div className="config-label">Choose your version</div><div className="config-choice-list">{selected.variants.map(item => <button key={item.name} className={(variant?.name === item.name ? 'chosen ' : '') + (item.inviteOnly ? 'invite-choice' : '')} onClick={() => setVariantName(item.name)}><span>{item.name}</span><b>{item.price}</b></button>)}</div></div>
+        <div className="config-block"><div className="config-label">{tr('Choose your version')}</div><div className="config-choice-list">{selected.variants.map(item => <button key={item.name} className={(variant?.name === item.name ? 'chosen ' : '') + (item.inviteOnly ? 'invite-choice' : '')} onClick={() => setVariantName(item.name)}><span>{item.name}</span><b>{item.price}</b></button>)}</div></div>
         <div className="config-price">{variant?.price === 'Invite only' ? 'Invite only' : variant?.price}</div>
         <small className="config-price-note">{selected.priceNote}</small>
         {selected.lease && <div className="config-lease-price">Lease pricing: <b>{selected.lease}</b></div>}
         <div className="config-block"><div className="config-label"><span><Palette size={16} /> Colour preference</span><b>{color}</b></div><div className="color-options">{selected.colors.map((choice, index) => <button key={choice} className={color === choice ? 'chosen' : ''} onClick={() => setColor(choice)} aria-label={choice}><i className={'swatch swatch-' + (index % 6)} /></button>)}</div><small>Preferences are requests only; confirm available finishes with management.</small></div>
         <div className="config-block"><div className="config-label"><span><SlidersHorizontal size={16} /> Wheel / configuration preference</span></div><div className="config-choice-list">{selected.wheels.map(option => <button key={option} className={wheel === option ? 'chosen' : ''} onClick={() => setWheel(option)}>{option}{wheel === option && <Check size={15} />}</button>)}</div></div>
-        <div className="config-block"><div className="config-label">Vehicle information</div><div className="config-specs"><div><small>Range</small><b>{selected.range}</b></div><div><small>Performance</small><b>{selected.performance}</b></div><div><small>Drivetrain</small><b>{selected.drivetrain}</b></div></div><ul className="config-features">{selected.features.map(feature => <li key={feature}><Check size={15} />{feature}</li>)}</ul></div>
-        <div className="config-block"><div className="config-label">Checkout preference</div><div className="config-choice-list"><button className={payment === 'Cash purchase enquiry' ? 'chosen' : ''} onClick={() => setPayment('Cash purchase enquiry')}>Cash</button><button className={payment === 'Lease enquiry' ? 'chosen' : ''} onClick={() => setPayment('Lease enquiry')}>Lease</button><button className={payment === 'Finance enquiry' ? 'chosen' : ''} onClick={() => setPayment('Finance enquiry')}>Finance</button></div></div>
-        <div className="config-checkout-summary"><span>Selected vehicle</span><b>{selected.name} · {variant?.name}</b><span>Vehicle price</span><strong>{variant?.price}</strong>{selected.lease && <small>{selected.lease}</small>}</div>
+        <div className="config-block"><div className="config-label">{tr('Vehicle information')}</div><div className="config-specs"><div><small>Range</small><b>{selected.range}</b></div><div><small>Performance</small><b>{selected.performance}</b></div><div><small>Drivetrain</small><b>{selected.drivetrain}</b></div></div><ul className="config-features">{selected.features.map(feature => <li key={feature}><Check size={15} />{feature}</li>)}</ul></div>
+        <div className="config-block"><div className="config-label">{tr('Checkout preference')}</div><div className="config-choice-list"><button className={payment === 'Cash purchase enquiry' ? 'chosen' : ''} onClick={() => setPayment('Cash purchase enquiry')}>Cash</button><button className={payment === 'Lease enquiry' ? 'chosen' : ''} onClick={() => setPayment('Lease enquiry')}>Lease</button><button className={payment === 'Finance enquiry' ? 'chosen' : ''} onClick={() => setPayment('Finance enquiry')}>Finance</button></div></div>
+        <div className="config-checkout-summary"><span>{tr('Selected vehicle')}</span><b>{selected.name} · {variant?.name}</b><span>{tr('Vehicle price')}</span><strong>{variant?.price}</strong>{selected.lease && <small>{selected.lease}</small>}</div>
         <button className="btn btn-dark config-submit" onClick={enquire}>Order now / Enquire <ArrowUpRight size={17} /></button>
       </div>
     </section>
