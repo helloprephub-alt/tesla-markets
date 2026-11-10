@@ -155,6 +155,23 @@ function App() {
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
   const [tab, setTab] = useState('Overview');
+  const [chatUnread,setChatUnread] = useState(0);
+  useEffect(() => {
+    let active=true;
+    const checkUnread=async()=>{
+      if(page==='chat'){localStorage.setItem('tesla-markets-chat-last-seen',new Date().toISOString());if(active)setChatUnread(0);return;}
+      const conversationId=localStorage.getItem('tesla-markets-enquiry-id');
+      if(!conversationId)return;
+      const {data:{user}}=await supabase.auth.getUser();
+      if(!active||!user)return;
+      const lastSeen=localStorage.getItem('tesla-markets-chat-last-seen')||'1970-01-01T00:00:00.000Z';
+      const {count,error}=await supabase.from('support_messages').select('id',{count:'exact',head:true}).eq('conversation_id',conversationId).neq('sender_id',user.id).gt('created_at',lastSeen);
+      if(active&&!error)setChatUnread(count||0);
+    };
+    void checkUnread();
+    const timer=window.setInterval(()=>void checkUnread(),7000);
+    return()=>{active=false;window.clearInterval(timer);};
+  },[page]);
   const [form, setForm] = useState({
     email: '',
     first: '',
@@ -1019,6 +1036,7 @@ function App() {
       {!hideSiteChrome && <Header />}
       {page !== 'home' && !hasOwnBack && <button type="button" className={'global-page-back '+(hideSiteChrome?'standalone':'')} onClick={goBack} aria-label="Go back to previous page"><ChevronLeft size={16}/><span>Back</span></button>}
       {content}
+      {!hideSiteChrome && page!=='chat' && <button type="button" className="site-chat-launcher" onClick={()=>go('chat')} aria-label="Open your Tesla Markets conversation" title="Chat with Tesla Markets Management"><MessageCircle size={19}/>{chatUnread>0&&<span className="site-chat-unread">{chatUnread>9?'9+':chatUnread}</span>}</button>}
       {!hideSiteChrome && <Footer />
       }{notice && (
         <div className="toast">
