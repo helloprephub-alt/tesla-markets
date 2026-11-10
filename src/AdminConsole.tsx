@@ -7,7 +7,7 @@ const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
 type Thread = { id: string; visitorName?: string; visitorEmail?: string; createdAt: number; updatedAt: number; lastMessage?: string; status?: string };
 type Visit = { id: string; page: string; createdAt: number };
 type Overview = { conversations: number; messages: number; generatedImages: number; visits: number; clicks: number; onlineNow: number; updatedAt: number };
-type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'messages' | 'operations' | 'settings';
+type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'settings';
 
 const catalogue = [
   { name: 'Model 3', count: 5, first: '/resources/model-3-1.jpg' },
@@ -29,6 +29,12 @@ export function AdminConsole() {
   const [profileUrl, setProfileUrl] = useState('');
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [siteContent,setSiteContent] = useState({homeHeadline:'Invest in the future in motion.',homeDescription:'Explore publicly traded shares in Tesla and SpaceX, review market information and send an enquiry about buying through an authorised brokerage.',investmentHeading:'Explore Tesla investment opportunities.',investmentDescription:'Speak directly with Tesla Markets Management for information about Tesla-related investment enquiries, available routes, eligibility and the next steps.',footerBlurb:'Independent information and enquiry access for Tesla and SpaceX market watchers.'});
+  const [contentDraft,setContentDraft] = useState(siteContent);
+  const [investmentImages,setInvestmentImages] = useState<string[]>(['/resources/investment-slide-1','/resources/investment-slide-2']);
+  const [investmentFiles,setInvestmentFiles] = useState<File[]>([]);
+  const [savingContent,setSavingContent] = useState(false);
+  const [savingInvestment,setSavingInvestment] = useState(false);
 
   const load = async () => {
     setRefreshing(true);
@@ -101,6 +107,22 @@ export function AdminConsole() {
 
   useEffect(() => {
     if (!user) return;
+    const loadSettings = async () => {
+      const { data, error: settingsError } = await supabase.from('site_settings').select('key,value').in('key',['public_site_content','investment_gallery']);
+      if(settingsError){setError(settingsError.message);return;}
+      const contentRow=data?.find(row=>row.key==='public_site_content');
+      const galleryRow=data?.find(row=>row.key==='investment_gallery');
+      if(contentRow?.value && typeof contentRow.value==='object'){
+        const next={...siteContent,...contentRow.value};
+        setSiteContent(next);setContentDraft(next);
+      }
+      if(Array.isArray(galleryRow?.value?.images))setInvestmentImages(galleryRow.value.images.filter((url:unknown)=>typeof url==='string'));
+    };
+    void loadSettings();
+  },[user?.email]);
+
+  useEffect(() => {
+    if (!user) return;
     void load();
     const timer = window.setInterval(() => { void load(); }, 20000);
     return () => window.clearInterval(timer);
@@ -164,6 +186,39 @@ export function AdminConsole() {
     }
   };
 
+  const saveContent = async () => {
+    setSavingContent(true);
+    try {
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Your administrator session has expired. Sign in again.');
+      const {error:saveError}=await supabase.from('site_settings').upsert({key:'public_site_content',value:contentDraft,updated_at:new Date().toISOString(),updated_by:current.id},{onConflict:'key'});
+      if(saveError)throw saveError;
+      setSiteContent(contentDraft);setError('');
+    } catch(e){setError(e instanceof Error?e.message:'Could not save website content.');}
+    finally{setSavingContent(false);}
+  };
+  const saveInvestmentImages = async () => {
+    setSavingInvestment(true);
+    try {
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Your administrator session has expired. Sign in again.');
+      const uploaded=await Promise.all(investmentFiles.map(async(file,index)=>{
+        if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Use JPG, PNG or WEBP images.');
+        if(file.size>3*1024*1024)throw new Error('Each investment image must be 3 MB or smaller.');
+        const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':'webp';
+        const path='investment/'+current.id+'/'+Date.now()+'-'+index+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'-');
+        const {error:uploadError}=await supabase.storage.from('site-media').upload(path,file,{contentType:file.type,cacheControl:'3600',upsert:false});
+        if(uploadError)throw uploadError;
+        return supabase.storage.from('site-media').getPublicUrl(path).data.publicUrl;
+      }));
+      const next=[...investmentImages,...uploaded];
+      const {error:saveError}=await supabase.from('site_settings').upsert({key:'investment_gallery',value:{images:next},updated_at:new Date().toISOString(),updated_by:current.id},{onConflict:'key'});
+      if(saveError)throw saveError;
+      setInvestmentImages(next);setInvestmentFiles([]);setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not save investment gallery.');}
+    finally{setSavingInvestment(false);}
+  };
+
   if (checking) return <div className="admin-auth-state"><ShieldCheck size={26} /> Checking administrator access…</div>;
   if (!user) return <div className="admin-auth-state admin-auth-full"><ShieldCheck size={30} /><h2>Private management access</h2><p>Sign in with the authorised Tesla Markets management account.</p>{error && <p className="chat-error">{error}</p>}<button className="btn btn-dark" onClick={signIn} disabled={!supabaseConfigured}>Administrator sign in</button><a href="#home">Return to public website</a></div>;
   
@@ -173,6 +228,9 @@ export function AdminConsole() {
     { id: 'visitors' as const, label: 'Visitors', icon: Eye },
     { id: 'customers' as const, label: 'Customers', icon: Users },
     { id: 'catalogue' as const, label: 'Vehicles', icon: CarFront },
+    { id: 'investment' as const, label: 'Investment content', icon: Activity },
+    { id: 'content' as const, label: 'Website content', icon: ClipboardList },
+    { id: 'media' as const, label: 'Media library', icon: Eye },
     { id: 'messages' as const, label: 'Chats & replies', icon: MessageCircle },
     { id: 'operations' as const, label: 'Enquiries & orders', icon: ClipboardList },
     { id: 'settings' as const, label: 'Settings', icon: Settings },
@@ -212,6 +270,9 @@ export function AdminConsole() {
         {section === 'visitors' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VISITOR ACTIVITY</div><h2>{visits.length} recent page views</h2><p>Page-level activity; this is not a count of unique people.</p></div></div>{visits.length ? <div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Page</th><th>Visited at</th><th>Record ID</th></tr></thead><tbody>{visits.map(visit => <tr key={visit.id}><td>{visit.page}</td><td>{new Date(visit.createdAt).toLocaleString()}</td><td>{visit.id.slice(0, 12)}</td></tr>)}</tbody></table></div> : <p className="admin-empty-note">No page views recorded yet.</p>}</section>}
         {section === 'customers' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER REGISTER</div><h2>{threads.length} enquiry contacts</h2><p>Records are based on saved website conversations.</p></div></div>{threads.length ? <div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Customer</th><th>Email</th><th>Last activity</th><th>Last message</th></tr></thead><tbody>{threads.map(thread => <tr key={thread.id}><td>{thread.visitorName || 'Website visitor'}</td><td>{thread.visitorEmail || 'Not provided'}</td><td>{new Date(thread.updatedAt).toLocaleString()}</td><td>{thread.lastMessage || '—'}</td></tr>)}</tbody></table></div> : <p className="admin-empty-note">New customer conversations will appear here.</p>}</section>}
         {section === 'catalogue' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE COLLECTION</div><h2>Attached image galleries</h2><p>Existing uploaded resources are retained.</p></div></div><div className="admin-catalogue-grid">{catalogue.map(item => <article key={item.name}><img src={item.first} alt={item.name} /><div><b>{item.name}</b><small>{item.count} attached images</small></div></article>)}</div></section>}
+        {section === 'investment' && <section className="admin-console-panel admin-content-editor"><div className="admin-console-panel-head"><div><div className="eyebrow dark">INVESTMENT PAGE</div><h2>Investment slideshow images</h2><p>Manage the images shown on the public investment page. Existing images remain until you remove them here.</p></div></div><div className="admin-investment-gallery">{investmentImages.map((src,index)=><article key={src}><img src={src} alt={'Investment slide '+(index+1)}/><div><span>Image {index+1}</span><button type="button" onClick={()=>setInvestmentImages(current=>current.filter((_,i)=>i!==index))}>Remove</button></div></article>)}</div><label className="admin-upload-label">Add multiple investment images<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={event=>{const picked=Array.from(event.target.files||[]);setInvestmentFiles(current=>[...current,...picked]);event.currentTarget.value='';}}/></label>{investmentFiles.length>0&&<p>{investmentFiles.length} new image(s) selected</p>}<small>JPG, PNG or WEBP · maximum 3 MB per image · uses existing site-media storage</small><button className="btn btn-dark" disabled={savingInvestment} onClick={()=>void saveInvestmentImages()}>{savingInvestment?'Saving images…':'Save investment gallery'}</button></section>}
+        {section === 'content' && <section className="admin-console-panel admin-content-editor"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PUBLIC WEBSITE CONTENT</div><h2>Text content editor</h2><p>Edit the supported homepage, investment page and footer text. Preview your wording before saving.</p></div></div><label>Homepage headline<input value={contentDraft.homeHeadline} onChange={e=>setContentDraft(current=>({...current,homeHeadline:e.target.value}))}/></label><label>Homepage description<textarea rows={3} value={contentDraft.homeDescription} onChange={e=>setContentDraft(current=>({...current,homeDescription:e.target.value}))}/></label><label>Investment heading<input value={contentDraft.investmentHeading} onChange={e=>setContentDraft(current=>({...current,investmentHeading:e.target.value}))}/></label><label>Investment description<textarea rows={3} value={contentDraft.investmentDescription} onChange={e=>setContentDraft(current=>({...current,investmentDescription:e.target.value}))}/></label><label>Footer description<textarea rows={2} value={contentDraft.footerBlurb} onChange={e=>setContentDraft(current=>({...current,footerBlurb:e.target.value}))}/></label><div className="admin-content-preview"><b>Preview</b><h3>{contentDraft.homeHeadline}</h3><p>{contentDraft.homeDescription}</p><h3>{contentDraft.investmentHeading}</h3><p>{contentDraft.investmentDescription}</p><small>{contentDraft.footerBlurb}</small></div><div className="admin-content-actions"><button className="btn btn-outline" onClick={()=>setContentDraft(siteContent)}>Cancel changes</button><button className="btn btn-dark" disabled={savingContent} onClick={()=>void saveContent()}>{savingContent?'Saving…':'Save website content'}</button></div></section>}
+        {section === 'media' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">MEDIA LIBRARY</div><h2>Managed website images</h2><p>Investment images are managed in Investment content. The management profile is managed in Settings. Existing vehicle images remain in the project's resources folder.</p></div></div><div className="admin-media-links"><button onClick={()=>setSection('investment')}>Manage investment images</button><button onClick={()=>setSection('catalogue')}>View vehicle galleries</button><button onClick={()=>setSection('settings')}>Manage profile image</button></div></section>}
         {section === 'messages' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER COMMUNICATIONS</div><h2>Chats & support replies</h2><p>Read conversations and reply with text or image attachments.</p></div></div><AdminInbox /></section>}
         {section === 'operations' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">ENQUIRY PIPELINE</div><h2>{threads.length} enquiries</h2><p>Track the current status of each customer enquiry.</p></div></div>{threads.length ? <div className="admin-pipeline">{threads.map(thread=><article key={thread.id}><div><b>{thread.visitorName || 'Website visitor'}</b><small>{thread.lastMessage || 'No message yet'} · {new Date(thread.updatedAt).toLocaleString()}</small></div><label>Status<select value={thread.status || 'new'} onChange={event=>void updateStatus(thread.id,event.target.value)}>{statusOptions.map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></label></article>)}</div> : <p className="admin-empty-note">New enquiries will appear here.</p>}</section>}
         {section === 'settings' && <section className="admin-console-panel admin-profile-settings"><div className="eyebrow dark">MANAGEMENT PROFILE</div><h2>Chat profile picture</h2><p>Upload or replace the picture displayed beside Tesla Markets Management in customer chat. The image is stored with the app and can be changed here later.</p><div className="admin-profile-preview">{profileUrl ? <img src={profileUrl} alt="Current management profile" /> : <CircleUserRound size={54} />}<span>{profileUrl ? 'Current profile picture' : 'No custom profile picture saved yet'}</span></div><label className="admin-upload-label">Choose a new profile picture<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event=>setProfileFile(event.target.files?.[0] || null)} /></label><small>JPG, PNG or WEBP · maximum 4 MB</small><button className="btn btn-dark" disabled={!profileFile || savingProfile} onClick={()=>void saveProfile()}>{savingProfile ? 'Saving…' : 'Save profile picture'}</button></section>}
