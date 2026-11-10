@@ -1469,3 +1469,118 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .admin-console-premium.admin-theme-dark .admin-compose{border-top-color:#303a44!important}
 .admin-console-premium.admin-theme-dark .admin-mobile-menu{background:#171f27!important;border-color:#303a44!important}
 .admin-console-premium.admin-theme-dark .admin-page-actions .btn-outline{color:#dce2e6!important;border-color:#424c55!important}
+
+
+/* Reference-matched Tesla Markets dashboard: blue/white default, red/black in dark theme */
+.admin-console-premium .tm-dashboard-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin:-6px 0 15px}
+.admin-console-premium .tm-global-search{height:42px;width:min(420px,100%);display:flex;align-items:center;gap:10px;padding:0 12px;border:1px solid #dce6ef;border-radius:10px;background:#fff;color:#7990a3}
+.admin-console-premium .tm-global-search input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:#1e3548;font:inherit;font-size:12px}
+.admin-console-premium .tm-global-search kbd{font:10px inherit;border:1px solid #e3eaf0;border-radius:5px;padding:4px 6px;color:#8b9baa;white-space:nowrap}
+.admin-console-premium .tm-notification-button{width:40px;height:40px;border:1px solid #dce6ef;border-radius:10px;background:#fff;color:#375d7d;position:relative}
+.admin-console-premium .tm-notification-button i{position:absolute;width:7px;height:7px;right:8px;top:7px;border-radius:50%;background:#df3947}
+.admin-console-premium .tm-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:0 0 14px}
+.admin-console-premium .tm-kpi-card{position:relative;min-width:0;min-height:105px;overflow:hidden;display:flex;align-items:flex-start;gap:12px;padding:15px;border:1px solid #dfe8f0;border-radius:12px;background:linear-gradient(135deg,#fff,#f5f9fd);box-shadow:0 3px 14px #173b5c08}
+.admin-console-premium .tm-kpi-card>div{display:grid;gap:5px;min-width:0;z-index:1}
+.admin-console-premium .tm-kpi-card small{font-size:10px;color:#6e8294}
+.admin-console-premium .tm-kpi-card strong{font-size:25px;line-height:1.1;letter-spacing:-.04em;color:#183c5c}
+.admin-console-premium .tm-kpi-card em{font-style:normal;font-size:9px;color:#90a0ad;line-height:1.35}
+.admin-console-premium .tm-kpi-icon{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:10px;background:#eaf3fb;color:#246a9e;z-index:1}
+.admin-console-premium .tm-kpi-watermark{position:absolute;right:8px;bottom:-8px;width:65px;height:65px;color:#d8e8f5;opacity:.5}
+.admin-console-premium .tm-dashboard-grid{display:grid;gap:13px;margin-bottom:13px;align-items:stretch}
+.admin-console-premium .tm-dashboard-grid-primary{grid-template-columns:minmax(0,2.1fr) minmax(210px,.9fr) minmax(230px,1fr)}
+.admin-console-premium .tm-dashboard-grid-secondary{grid-template-columns:minmax(0,1.1fr) minmax(0,1.2fr) minmax(0,1fr)}
+.admin-console-premium .tm-dashboard-card{min-width:0;overflow:hidden;border:1px solid #dfe7ee;border-radius:12px;background:#fff;padding:16px;box-shadow:0 3px 14px #173b5c08}
+.admin-console-premium .tm-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px}
+.admin-console-premium .tm-card-heading h2{font-size:14px;line-height:1.3;color:#1b3b57;margin:0 0 4px;font-weight:750;letter-spacing:-.02em}
+.admin-console-premium .tm-card-heading p{font-size:10px;color:#8798a6;margin:0;line-height:1.45}
+.admin-console-premium .tm-card-heading>button{display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:#2472aa;font-size:10px;font-weight:700;white-space:nowrap}
+.admin-console-premium .tm-card-chip{border:1px solid #e3ebf2;background:#f6f9fc;border-radius:20px;padding:5px 8px;color:#6e879b;font-size:9px;white-space:nowrap}
+.admin-console-premium .tm-chart-area{height:158px;display:flex;gap:10px;border-bottom:1px solid #e7edf2;border-left:1px solid #e7edf2;padding:8px 6px 0}
+.admin-console-premium .tm-chart-y{display:flex;flex-direction:column;justify-content:space-between;font-size:9px;color:#98a8b5;padding:0 0 5px}
+.admin-console-premium .tm-chart-bars{flex:1;min-width:0;display:flex;align-items:flex-end;gap:4px;background:repeating-linear-gradient(to bottom,transparent 0,transparent 38px,#edf2f6 39px,#edf2f6 40px)}
+.admin-console-premium .tm-chart-bars>div{flex:1;min-width:2px;max-width:14px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#64a8d8,#2475b3);opacity:.86}
+.admin-console-premium .tm-chart-bars>p{font-size:10px;color:#94a3af;margin:auto}
+.admin-console-premium .tm-chart-foot{display:flex;justify-content:space-between;gap:10px;padding-top:10px;color:#8b9ba8;font-size:9px}
+.admin-console-premium .tm-chart-foot b{color:#426c8c}
+.admin-console-premium .tm-action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.admin-console-premium .tm-action-grid button{min-height:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:1px solid #e1eaf1;border-radius:10px;background:#f8fbfe;color:#2b5e84;font-size:10px;font-weight:650;text-align:center;padding:9px}
+.admin-console-premium .tm-action-grid button svg{width:20px;height:20px}
+.admin-console-premium .tm-action-grid button:hover{background:#edf6fc;border-color:#bcd5e8}
+.admin-console-premium .tm-enquiry-row{width:100%;display:flex;align-items:center;gap:9px;text-align:left;padding:10px 0;border:0;border-bottom:1px solid #edf1f4;background:transparent}
+.admin-console-premium .tm-enquiry-row:last-child{border-bottom:0}
+.admin-console-premium .tm-enquiry-avatar{width:32px;height:32px;flex:0 0 32px;border-radius:50%;display:grid;place-items:center;background:#e8f1f8;color:#386b91;font-weight:750;font-size:12px}
+.admin-console-premium .tm-enquiry-row>span:nth-child(2){min-width:0;flex:1;display:grid;gap:4px}
+.admin-console-premium .tm-enquiry-row b{font-size:10px;color:#314f67}
+.admin-console-premium .tm-enquiry-row small{font-size:9px;color:#8a9aa6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-console-premium .tm-enquiry-row>svg{color:#9aabb7}
+.admin-console-premium .tm-finance-summary-content{display:flex;align-items:center;justify-content:center;gap:20px;padding:7px 0 12px}
+.admin-console-premium .tm-finance-ring{width:112px;height:112px;flex:0 0 112px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:radial-gradient(circle,#fff 57%,transparent 59%),conic-gradient(#2379b9 0 34%,#7a9bb5 34% 67%,#d9e7f1 67% 100%)}
+.admin-console-premium .tm-finance-ring strong{font-size:22px;color:#244f70}
+.admin-console-premium .tm-finance-ring small{font-size:8px;color:#7e92a2}
+.admin-console-premium .tm-finance-legend{display:grid;gap:10px;min-width:100px}
+.admin-console-premium .tm-finance-legend span{display:flex;align-items:center;gap:7px;color:#718697;font-size:9px}
+.admin-console-premium .tm-finance-legend i{width:7px;height:7px;border-radius:50%;background:#2478b6}
+.admin-console-premium .tm-finance-legend span:nth-child(2) i{background:#7c9db8}
+.admin-console-premium .tm-finance-legend span:nth-child(3) i{background:#c1d5e5}
+.admin-console-premium .tm-finance-legend b{margin-left:auto;color:#315c7c}
+.admin-console-premium .tm-finance-caveat{font-size:9px;line-height:1.5;color:#95a3ae;border-top:1px solid #edf1f4;padding-top:10px;margin:0}
+.admin-console-premium .tm-vehicle-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #eff2f5}
+.admin-console-premium .tm-vehicle-row:last-child{border-bottom:0}
+.admin-console-premium .tm-vehicle-row img{width:54px;height:34px;object-fit:contain;background:#f5f8fa;border-radius:6px}
+.admin-console-premium .tm-vehicle-row b{flex:1;font-size:10px;color:#425c70}
+.admin-console-premium .tm-vehicle-row span{font-size:9px;color:#94a2ad}
+.admin-console-premium .tm-activity-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid #edf1f4}
+.admin-console-premium .tm-activity-row>span{width:29px;height:29px;flex:0 0 29px;border-radius:50%;display:grid;place-items:center;background:#edf5fb;color:#3a7ba9}
+.admin-console-premium .tm-activity-row>div{flex:1;min-width:0;display:grid;gap:3px}
+.admin-console-premium .tm-activity-row b{font-size:9px;color:#405b70}
+.admin-console-premium .tm-activity-row small{font-size:9px;color:#91a0ac;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-console-premium .tm-activity-row time{font-size:8px;color:#9aa8b3}
+.admin-console-premium .tm-empty{font-size:10px;color:#93a2ad;padding:15px 0;text-align:center}
+.admin-console-premium .tm-chat-dashboard{margin-bottom:13px;padding:0}
+.admin-console-premium .tm-chat-dashboard>.tm-card-heading{padding:16px 16px 0}
+.admin-console-premium .tm-chat-dashboard .admin-inbox-layout{height:560px!important;min-height:480px!important;max-height:68vh!important;border:0!important;border-top:1px solid #e5edf3!important;border-radius:0 0 12px 12px!important}
+.admin-console-premium .tm-quick-links{margin-bottom:15px}
+.admin-console-premium.admin-theme-dark .tm-global-search,.admin-console-premium.admin-theme-dark .tm-notification-button{background:#151d25;border-color:#303b46;color:#e5edf3}
+.admin-console-premium.admin-theme-dark .tm-global-search input{color:#f0f3f5}
+.admin-console-premium.admin-theme-dark .tm-kpi-card,.admin-console-premium.admin-theme-dark .tm-dashboard-card{background:#111820;border-color:#29343e;box-shadow:0 3px 16px #0005}
+.admin-console-premium.admin-theme-dark .tm-kpi-card small,.admin-console-premium.admin-theme-dark .tm-card-heading p,.admin-console-premium.admin-theme-dark .tm-chart-y,.admin-console-premium.admin-theme-dark .tm-chart-foot,.admin-console-premium.admin-theme-dark .tm-enquiry-row small,.admin-console-premium.admin-theme-dark .tm-activity-row small,.admin-console-premium.admin-theme-dark .tm-activity-row time,.admin-console-premium.admin-theme-dark .tm-vehicle-row span{color:#93a1ad}
+.admin-console-premium.admin-theme-dark .tm-kpi-card strong,.admin-console-premium.admin-theme-dark .tm-card-heading h2,.admin-console-premium.admin-theme-dark .tm-enquiry-row b,.admin-console-premium.admin-theme-dark .tm-vehicle-row b,.admin-console-premium.admin-theme-dark .tm-activity-row b{color:#edf2f5}
+.admin-console-premium.admin-theme-dark .tm-kpi-icon,.admin-console-premium.admin-theme-dark .tm-enquiry-avatar,.admin-console-premium.admin-theme-dark .tm-activity-row>span{background:#202b35;color:#e1e8ed}
+.admin-console-premium.admin-theme-dark .tm-kpi-watermark{color:#35434f}
+.admin-console-premium.admin-theme-dark .tm-action-grid button{background:#171f27;border-color:#303a44;color:#dce6ed}
+.admin-console-premium.admin-theme-dark .tm-finance-ring{background:radial-gradient(circle,#111820 57%,transparent 59%),conic-gradient(#e82127 0 34%,#7c3035 34% 67%,#513136 67% 100%)}
+.admin-console-premium.admin-theme-dark .tm-finance-ring strong,.admin-console-premium.admin-theme-dark .tm-finance-legend b{color:#f3f5f6}
+.admin-console-premium.admin-theme-dark .tm-finance-legend span,.admin-console-premium.admin-theme-dark .tm-finance-caveat{color:#9aa5ad}
+.admin-console-premium.admin-theme-dark .tm-finance-legend i{background:#e82127}
+.admin-console-premium.admin-theme-dark .tm-finance-legend span:nth-child(2) i{background:#9b454a}
+.admin-console-premium.admin-theme-dark .tm-finance-legend span:nth-child(3) i{background:#694147}
+.admin-console-premium.admin-theme-dark .tm-vehicle-row img{background:#1b242c}
+.admin-console-premium.admin-theme-dark .tm-vehicle-row,.admin-console-premium.admin-theme-dark .tm-activity-row,.admin-console-premium.admin-theme-dark .tm-finance-caveat{border-color:#29343e}
+@media(max-width:1120px){
+ .admin-console-premium .tm-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .admin-console-premium .tm-dashboard-grid-primary{grid-template-columns:minmax(0,1.5fr) minmax(230px,1fr)}
+ .admin-console-premium .tm-recent-enquiries{grid-column:1/-1}
+ .admin-console-premium .tm-dashboard-grid-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-console-premium .tm-recent-activity{grid-column:1/-1}
+}
+@media(max-width:680px){
+ .admin-console-premium .tm-dashboard-toolbar{justify-content:stretch;margin:0 0 12px}
+ .admin-console-premium .tm-global-search{width:100%;height:42px}
+ .admin-console-premium .tm-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .admin-console-premium .tm-kpi-card{min-height:90px;padding:11px;gap:8px}
+ .admin-console-premium .tm-kpi-icon{width:30px;height:30px;flex-basis:30px}
+ .admin-console-premium .tm-kpi-icon svg{width:16px;height:16px}
+ .admin-console-premium .tm-kpi-card strong{font-size:20px}
+ .admin-console-premium .tm-kpi-card small{font-size:9px}
+ .admin-console-premium .tm-kpi-card em{font-size:8px}
+ .admin-console-premium .tm-dashboard-grid-primary,.admin-console-premium .tm-dashboard-grid-secondary{grid-template-columns:minmax(0,1fr);gap:10px}
+ .admin-console-premium .tm-recent-enquiries,.admin-console-premium .tm-recent-activity{grid-column:auto}
+ .admin-console-premium .tm-dashboard-card{padding:13px}
+ .admin-console-premium .tm-chart-area{height:120px}
+ .admin-console-premium .tm-action-grid button{min-height:65px}
+ .admin-console-premium .tm-chat-dashboard{padding:0}
+ .admin-console-premium .tm-chat-dashboard>.tm-card-heading{padding:13px 13px 0}
+ .admin-console-premium .tm-chat-dashboard .admin-inbox-layout{height:calc(100dvh - 245px)!important;min-height:450px!important;max-height:none!important}
+ .admin-console-premium .tm-finance-summary-content{gap:15px}
+ .admin-console-premium .tm-finance-ring{width:94px;height:94px;flex-basis:94px}
+}
