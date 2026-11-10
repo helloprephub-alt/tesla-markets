@@ -1215,3 +1215,113 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .admin-security-row small{font-size:11px;color:#78858c}
 .admin-security-status{font-size:11px;color:#23734c;font-weight:700}
 @media(max-width:600px){.admin-auth-full{padding:26px 16px}.admin-auth-input,.admin-auth-full .btn,.admin-auth-divider{width:100%}.admin-security-row{align-items:flex-start;flex-direction:column}.admin-security-row .btn{width:100%}}
+
+
+/* Tesla Markets premium management console refresh */
+.admin-console-premium{display:flex!important;flex-direction:column!important;min-height:100vh;background:#f4f6f7!important;color:#17232b}
+.admin-console-premium .admin-topbar{height:70px;min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 30px;background:#101a21;color:#f5f7f8;border-bottom:1px solid #26343b;position:sticky;top:0;z-index:80}
+.admin-console-premium .admin-console-brand{display:flex;align-items:center;gap:12px;padding:0;border:0;min-width:0}
+.admin-console-premium .admin-brand-mark{width:38px;height:38px;border:1px solid #60717a;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 17px Manrope}
+.admin-console-premium .admin-console-brand b{font:800 11px Manrope;letter-spacing:.16em;color:#fff}
+.admin-console-premium .admin-console-brand small{font-size:8px;letter-spacing:.16em;color:#9baab1;margin-top:4px}
+.admin-topbar-right{display:flex;align-items:center;gap:13px;font-size:11px;color:#d2dadd}
+.admin-secure-label{display:flex;align-items:center;gap:6px;color:#aebdc3;font-size:10px;padding-right:12px;border-right:1px solid #35434a}
+.admin-topbar-email{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-console-premium .admin-topbar .icon-btn{background:#24323a;border:1px solid #3a4850;color:#fff}
+.admin-console-premium .admin-live-dot{width:7px;height:7px;border-radius:50%;background:#36b58a;display:inline-block;box-shadow:0 0 0 3px #36b58a22}
+.admin-mobile-menu{display:none;border:1px solid #3a4850;background:#24323a;color:white;border-radius:8px;width:38px;height:38px;place-items:center}
+.admin-shell{display:grid;grid-template-columns:258px minmax(0,1fr);flex:1;min-height:calc(100vh - 70px)}
+.admin-console-premium .admin-console-side{position:sticky!important;top:70px!important;height:calc(100vh - 70px)!important;min-height:0!important;width:auto!important;padding:24px 15px!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:4px!important;overflow-y:auto!important;overflow-x:hidden!important;background:#fff!important;border-right:1px solid #e2e7e9!important;z-index:30}
+.admin-sidebar-heading{font:800 9px Manrope;letter-spacing:.16em;color:#9aa5aa;padding:5px 12px 15px}
+.admin-console-premium .admin-nav-group{display:grid;gap:4px;margin-bottom:13px}
+.admin-console-premium .admin-console-label{display:block!important;margin:8px 12px 5px!important;font:800 9px Manrope!important;letter-spacing:.13em!important;color:#9aa5aa!important}
+.admin-console-premium .admin-console-side>button{width:100%!important;min-width:0!important;white-space:normal!important;display:flex!important;align-items:center!important;gap:12px!important;padding:11px 12px!important;border:0!important;border-radius:8px!important;background:transparent!important;color:#56636a!important;font-size:12px!important;text-align:left!important}
+.admin-console-premium .admin-console-side>button span{flex:1}
+.admin-console-premium .admin-console-side>button i{width:6px;height:6px;border-radius:50%;background:#fff}
+.admin-console-premium .admin-console-side>button.active{background:#edf1f2!important;color:#14232b!important;font-weight:700!important}
+.admin-console-premium .admin-console-side>button.active i{background:#bd3439}
+.admin-console-premium .admin-console-side>button:hover{background:#f3f5f6!important;color:#14232b!important}
+.admin-console-premium .admin-console-side-foot{display:flex!important;margin-top:auto!important;border-top:1px solid #e7ebed!important;padding:17px 8px 3px!important;color:#8b989e!important;font-size:9px!important}
+.admin-console-premium .admin-console-main{width:100%!important;max-width:1500px!important;margin:0 auto!important;padding:34px clamp(20px,3vw,48px)!important;min-width:0!important}
+.admin-breadcrumb{display:flex;align-items:center;gap:8px;color:#9aa5aa;font:700 9px Manrope;letter-spacing:.1em;margin-bottom:16px}
+.admin-breadcrumb b{color:#59666d}
+.admin-console-premium .admin-console-header{display:flex!important;align-items:flex-end!important;justify-content:space-between!important;flex-direction:row!important;gap:20px!important;margin:0 0 24px!important}
+.admin-console-premium .admin-console-header h1{font:700 clamp(25px,2.2vw,34px) Manrope!important;letter-spacing:-.045em!important;margin:5px 0 7px!important;color:#18252d}
+.admin-console-premium .admin-console-header p{font-size:12px!important;color:#7b878d!important}
+.admin-page-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.admin-updated-label{display:flex;align-items:center;gap:8px;color:#75838a;font-size:10px}
+.admin-console-premium .admin-console-stats{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;margin:0 0 20px!important}
+.admin-console-premium .admin-console-stats article{border:1px solid #e4e9eb!important;border-radius:12px!important;padding:17px!important;gap:9px!important;box-shadow:0 2px 10px #17232b05}
+.admin-console-premium .admin-console-panel{border:1px solid #e3e8ea!important;border-radius:12px!important;padding:22px!important;margin:0 0 16px!important;box-shadow:0 2px 10px #17232b05}
+.admin-console-premium .admin-console-panel-head{margin-bottom:18px!important}
+.admin-console-premium .admin-console-panel-head h2{font-size:19px!important;letter-spacing:-.025em!important}
+.admin-console-premium .admin-record-list>button{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:13px 2px;border:0;border-bottom:1px solid #edf0f1;background:transparent;cursor:pointer}
+.admin-console-premium .admin-record-list>button:last-child{border-bottom:0}
+.admin-console-premium .admin-record-list>button>div{flex:1;min-width:0;display:grid;gap:4px}
+.admin-console-premium .admin-record-list>button b{font-size:12px;color:#26343b}
+.admin-console-premium .admin-record-list>button small{font-size:10px;color:#839097;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-console-premium .admin-record-list>button time{font-size:9px;color:#9aa5aa}
+.admin-console-premium .admin-quick-actions{display:flex;flex-wrap:wrap;gap:8px}
+.admin-console-premium .admin-quick-actions button,.admin-console-premium .admin-media-links button{border:1px solid #e0e6e8;background:#fff;border-radius:8px;padding:10px 13px;font-size:11px;color:#435159;cursor:pointer}
+.admin-console-premium .admin-quick-actions button:hover,.admin-console-premium .admin-media-links button:hover{border-color:#aebbc1;background:#f8fafb}
+.admin-console-premium .admin-catalogue-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))!important;gap:14px!important}
+.admin-console-premium .admin-catalogue-grid article{border:1px solid #e6eaec;border-radius:10px;overflow:hidden;background:#fff}
+.admin-console-premium .admin-catalogue-grid article img{width:100%;height:145px;object-fit:contain;background:#f8f9fa}
+.admin-console-premium .admin-catalogue-grid article>div{padding:12px;display:grid;gap:5px}
+.admin-console-premium .admin-investment-gallery{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px!important;margin-bottom:18px}
+.admin-console-premium .admin-investment-gallery article{min-width:0;border:1px solid #e6eaec;border-radius:10px;overflow:hidden}
+.admin-console-premium .admin-investment-gallery article img{width:100%;height:170px;object-fit:cover;display:block}
+.admin-console-premium .admin-investment-gallery article>div{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;font-size:11px}
+.admin-console-premium .admin-content-editor{display:grid;gap:14px}
+.admin-console-premium .admin-content-editor>label{display:grid;gap:7px;font-size:11px;font-weight:700;color:#526169}
+.admin-console-premium .admin-content-editor input,.admin-console-premium .admin-content-editor textarea{width:100%;border:1px solid #dfe5e7;border-radius:8px;padding:12px;font:inherit;color:#26343b;background:#fff}
+.admin-console-premium .admin-content-preview{border:1px solid #e4e9eb;background:#f8fafb;border-radius:10px;padding:16px}
+.admin-console-premium .admin-messages-panel{padding:18px!important}
+.admin-console-premium .admin-messages-panel>.admin-console-panel-head{margin:2px 2px 16px}
+.admin-console-premium .admin-inbox-layout{display:grid!important;grid-template-columns:minmax(240px,310px) minmax(0,1fr)!important;height:min(72vh,760px)!important;min-height:580px!important;position:relative!important;border-radius:12px!important;overflow:hidden!important}
+.admin-console-premium .admin-conversation{display:flex!important;flex-direction:column!important;min-height:0!important;position:relative!important;overflow:hidden!important;background:#fff}
+.admin-console-premium .admin-conversation-head{position:sticky!important;top:0!important;z-index:10!important;flex:0 0 auto!important;min-height:76px!important;background:#fff!important;border-bottom:1px solid #e6eaec!important;padding:12px 16px!important;box-shadow:0 2px 8px #17232b08}
+.admin-console-premium .admin-chat-messages{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;padding:18px!important}
+.admin-console-premium .admin-compose{position:sticky!important;bottom:0!important;z-index:10!important;flex:0 0 auto!important;background:#fff!important;border-top:1px solid #e6eaec!important;padding:11px!important}
+.admin-console-premium .admin-thread-list{min-height:0!important;overflow-y:auto!important;background:#fff!important;border-right:1px solid #e6eaec!important}
+.admin-console-premium .admin-thread{padding:13px!important}
+.admin-console-premium .admin-console-footer{font-size:10px!important;padding:20px 2px!important}
+.admin-console-premium .admin-mobile-back{display:none}
+.admin-console-premium .admin-mobile-menu{display:none}
+@media(max-width:900px){
+ .admin-shell{grid-template-columns:220px minmax(0,1fr)}
+ .admin-console-premium .admin-console-main{padding:26px 18px!important}
+ .admin-console-premium .admin-console-stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:680px){
+ .admin-console-premium .admin-topbar{height:62px;min-height:62px;padding:0 12px;gap:9px}
+ .admin-console-premium .admin-mobile-menu{display:grid;flex:0 0 36px}
+ .admin-console-premium .admin-console-brand{gap:8px;flex:1}
+ .admin-console-premium .admin-brand-mark{width:32px;height:32px;font-size:14px}
+ .admin-console-premium .admin-console-brand b{font-size:9px}
+ .admin-console-premium .admin-console-brand small{font-size:7px}
+ .admin-topbar-right{gap:7px}
+ .admin-secure-label,.admin-topbar-email,.admin-topbar-right>.admin-live-dot{display:none}
+ .admin-shell{display:block;min-height:calc(100vh - 62px)}
+ .admin-console-premium .admin-console-side{display:none!important;position:fixed!important;top:62px!important;left:0!important;bottom:0!important;width:min(82vw,300px)!important;height:auto!important;min-height:0!important;box-shadow:16px 0 35px #101a2130!important}
+ .admin-console-premium .admin-console-side.is-open{display:flex!important}
+ .admin-console-premium .admin-console-main{padding:20px 13px!important}
+ .admin-console-premium .admin-console-header{align-items:flex-start!important;flex-direction:column!important;gap:12px!important}
+ .admin-page-actions{width:100%;justify-content:space-between}
+ .admin-console-premium .admin-console-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+ .admin-console-premium .admin-console-stats article{padding:12px!important}
+ .admin-console-premium .admin-console-stats strong{font-size:22px!important}
+ .admin-console-premium .admin-console-panel{padding:14px!important}
+ .admin-console-premium .admin-inbox-layout{display:block!important;height:calc(100dvh - 250px)!important;min-height:460px!important}
+ .admin-console-premium .admin-thread-list{height:100%!important;display:block!important}
+ .admin-console-premium .admin-conversation{display:none!important;height:100%!important;position:absolute!important;inset:0!important;z-index:5!important}
+ .admin-console-premium .admin-inbox-layout.show-conversation .admin-thread-list{display:none!important}
+ .admin-console-premium .admin-inbox-layout.show-conversation .admin-conversation{display:flex!important}
+ .admin-console-premium .admin-mobile-back{display:flex!important;align-items:center;gap:5px;border:0;background:transparent;color:#69777e;font-size:10px;padding:0 8px 0 0}
+ .admin-console-premium .admin-conversation-head{position:sticky!important;top:0!important;min-height:72px!important;padding:9px!important}
+ .admin-console-premium .admin-chat-messages{padding:12px 9px!important}
+ .admin-console-premium .admin-compose{position:sticky!important;bottom:0!important;padding:8px!important}
+ .admin-console-premium .admin-record-list>button time{display:none}
+ .admin-console-premium .admin-investment-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-console-premium .admin-investment-gallery article img{height:125px}
+}
