@@ -22,7 +22,7 @@ export function AdminConsole() {
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [checking, setChecking] = useState(true);
   const [authStep,setAuthStep]=useState<'setup'|'login'|'enroll'|'verify'|'ready'>('setup');
-  const [setupToken,setSetupToken]=useState('');
+  const [setupToken,setSetupToken]=useState(()=>new URLSearchParams(window.location.search).get('admin_setup')||'');
   const [loginPassword,setLoginPassword]=useState('');
   const [confirmPassword,setConfirmPassword]=useState('');
   const [authCode,setAuthCode]=useState('');
@@ -145,6 +145,7 @@ export function AdminConsole() {
       const {error:verifyError}=await supabase.auth.verifyOtp({token_hash:data.token_hash,type:'magiclink'});
       if(verifyError) throw verifyError;
       setSetupToken('');setLoginPassword('');setConfirmPassword('');
+      if(action==='setup'){const cleanUrl=new URL(window.location.href);cleanUrl.searchParams.delete('admin_setup');window.history.replaceState({},'',cleanUrl.toString());}
       await evaluateAdminSession();
     } catch(e){setError(e instanceof Error?e.message:'Could not complete administrator access.');}
     finally{setAuthBusy(false);}
