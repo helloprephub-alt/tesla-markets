@@ -137,7 +137,7 @@ const plans = [
 const money = (n: string) => n;
 const supportedLanguages=[['en','English'],['fr','Français'],['de','Deutsch'],['es','Español']];
 const translations:Record<string,Record<string,string>>={
-en:{home:'Home',vehicles:'Vehicles / Shop',investments:'Investments',about:'About',faqs:'FAQs',contact:'Contact',support:'Support / Chat',language:'Choose your language',languageHint:'Select your preferred website language.',heroEyebrow:'{t("heroEyebrow")}',heroTitle:'Invest in the',heroItalic:'future in motion.',heroDescription:'{t("heroDescription")}',explore:'Explore Tesla & SpaceX',chat:'Chat with us',independent:'Independent information',broker:'Trade execution is handled by authorised brokers.',intro:'{t("intro")}',investNow:'Invest now',shop:'Shop vehicles',collection:'VEHICLE COLLECTION',choose:'Choose your',next:'next Tesla.',viewAll:'View all models',search:'Search languages…'},
+en:{home:'Home',vehicles:'Vehicles / Shop',investments:'Investments',about:'About',faqs:'FAQs',contact:'Contact',support:'Support / Chat',language:'Choose your language',languageHint:'Select your preferred website language.',heroEyebrow:'ELECTRIC MOBILITY & INVESTMENT ENQUIRIES',heroTitle:'Invest in the',heroItalic:'future in motion.',heroDescription:'Explore publicly traded shares in Tesla and SpaceX, review market information and send an enquiry about buying through an authorised brokerage.',explore:'Explore Tesla & SpaceX',chat:'Chat with us',independent:'Independent information',broker:'Trade execution is handled by authorised brokers.',intro:'TESLA MARKETS / INTRODUCTION',investNow:'Invest now',shop:'Shop vehicles',collection:'VEHICLE COLLECTION',choose:'Choose your',next:'next Tesla.',viewAll:'View all models',search:'Search languages…'},
 fr:{home:'Accueil',vehicles:'Véhicules / Boutique',investments:'Investissements',about:'À propos',faqs:'FAQ',contact:'Contact',support:'Assistance / Chat',language:'Choisir votre langue',languageHint:'Choisissez la langue du site que vous préférez.',heroEyebrow:'MOBILITÉ ÉLECTRIQUE ET DEMANDES D’INVESTISSEMENT',heroTitle:'Investissez dans le',heroItalic:'mouvement de demain.',heroDescription:'Découvrez les actions cotées de Tesla et SpaceX, consultez les informations de marché et envoyez une demande d’achat par l’intermédiaire d’un courtier agréé.',explore:'Découvrir Tesla et SpaceX',chat:'Discuter avec nous',independent:'Informations indépendantes',broker:'Les transactions sont effectuées par des courtiers agréés.',intro:'TESLA MARKETS / PRÉSENTATION',investNow:'Investir',shop:'Voir les véhicules',collection:'COLLECTION DE VÉHICULES',choose:'Choisissez votre',next:'prochaine Tesla.',viewAll:'Voir tous les modèles',search:'Rechercher une langue…'},
 de:{home:'Startseite',vehicles:'Fahrzeuge / Shop',investments:'Investitionen',about:'Über uns',faqs:'Häufige Fragen',contact:'Kontakt',support:'Support / Chat',language:'Sprache auswählen',languageHint:'Wählen Sie Ihre bevorzugte Website-Sprache.',heroEyebrow:'ELEKTROMOBILITÄT & INVESTITIONSANFRAGEN',heroTitle:'Investieren Sie in die',heroItalic:'Zukunft in Bewegung.',heroDescription:'Informieren Sie sich über börsennotierte Aktien von Tesla und SpaceX, prüfen Sie Marktinformationen und senden Sie eine Kaufanfrage über einen autorisierten Broker.',explore:'Tesla & SpaceX entdecken',chat:'Mit uns chatten',independent:'Unabhängige Informationen',broker:'Die Handelsausführung erfolgt durch autorisierte Broker.',intro:'TESLA MARKETS / EINFÜHRUNG',investNow:'Jetzt investieren',shop:'Fahrzeuge ansehen',collection:'FAHRZEUGSAMMLUNG',choose:'Wählen Sie Ihren',next:'nächsten Tesla.',viewAll:'Alle Modelle ansehen',search:'Sprachen suchen…'},
 es:{home:'Inicio',vehicles:'Vehículos / Tienda',investments:'Inversiones',about:'Acerca de',faqs:'Preguntas frecuentes',contact:'Contacto',support:'Soporte / Chat',language:'Elige tu idioma',languageHint:'Selecciona el idioma que prefieres para el sitio.',heroEyebrow:'MOVILIDAD ELÉCTRICA Y CONSULTAS DE INVERSIÓN',heroTitle:'Invierte en el',heroItalic:'futuro en movimiento.',heroDescription:'Consulta acciones cotizadas de Tesla y SpaceX, revisa información del mercado y envía una consulta de compra a través de una agencia de corretaje autorizada.',explore:'Explorar Tesla y SpaceX',chat:'Chatea con nosotros',independent:'Información independiente',broker:'Las operaciones se realizan a través de agentes autorizados.',intro:'TESLA MARKETS / INTRODUCCIÓN',investNow:'Invertir ahora',shop:'Ver vehículos',collection:'COLECCIÓN DE VEHÍCULOS',choose:'Elige tu',next:'próximo Tesla.',viewAll:'Ver todos los modelos',search:'Buscar idiomas…'}
@@ -293,7 +293,7 @@ function App() {
               className={page === item.page ? 'active' : ''}
               onClick={() => go(item.page)}
             >
-              {item.label}
+              {t(({home:'home',shop:'vehicles',markets:'investments',about:'about',faq:'faqs',contact:'contact',chat:'support'} as Record<string,string>)[item.page]||item.label)}
             </button>
           ))}
         </nav>
@@ -417,14 +417,14 @@ function App() {
     <section className="hero">
       <div className="hero-copy">
         <div className="eyebrow">
-          <span /> ELECTRIC MOBILITY & INVESTMENT ENQUIRIES
+          <span /> {t("heroEyebrow")}
         </div>
         <h1>
-          Invest in the<br />
-          <em>future in motion.</em>
+          {t("heroTitle")}<br />
+          <em>{t("heroItalic")}</em>
         </h1>
         <p>
-          Explore publicly traded shares in Tesla and SpaceX, review market information and send an enquiry about buying through an authorised brokerage.
+          {t("heroDescription")}
         </p>
         <div className="hero-buttons">
           <button className="btn btn-red" onClick={() => go('markets')}>
@@ -464,7 +464,7 @@ function App() {
     <>
       <Hero />
       <section className="home-intro">
-        <div className="eyebrow dark">TESLA MARKETS / INTRODUCTION</div>
+        <div className="eyebrow dark">{t("intro")}</div>
         <h2>{publicContent.homeHeadline}</h2>
         <p>{publicContent.homeDescription}</p>
         <div className="home-intro-actions"><button className="btn btn-dark" onClick={()=>go('markets')}>{t("investNow")} <ArrowUpRight size={16}/></button><button className="btn btn-outline" onClick={()=>go('shop')}>{t("shop")} <ArrowUpRight size={16}/></button></div>
@@ -479,7 +479,7 @@ function App() {
           <button onClick={()=>go('semi')}><img src="/resources/semi-1.jpg" alt="Tesla Semi vehicle preview" loading="lazy"/><span>Tesla Semi <ArrowUpRight size={14}/></span></button>
         </div>
       </section>
-              <section className="home-investment-strip"><div><div className="eyebrow">INVESTMENT ENQUIRIES</div><h2>Explore Tesla<br/><em>investment information.</em></h2><p>Contact Tesla Markets Management directly with your investment questions.</p></div><button className="btn btn-light" onClick={() => { sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'})); go('chat'); }}>Invest now <ArrowUpRight size={16}/></button></section>
+              <section className="home-investment-strip"><div><div className="eyebrow">INVESTMENT ENQUIRIES</div><h2>Explore Tesla<br/><em>investment information.</em></h2><p>Contact Tesla Markets Management directly with your investment questions.</p></div><button className="btn btn-light" onClick={() => { sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'})); go('chat'); }}>{t("investNow")} <ArrowUpRight size={16}/></button></section>
     </>
   );
   const How = () => (
