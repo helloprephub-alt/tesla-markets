@@ -57,11 +57,12 @@ type Page =
   | 'semi';
 const navItems: { label: string; page: Page }[] = [
   { label: 'Home', page: 'home' },
-  { label: 'Vehicles', page: 'shop' },
+  { label: 'Vehicles / Shop', page: 'shop' },
   { label: 'Investments', page: 'markets' },
   { label: 'About', page: 'about' },
   { label: 'FAQs', page: 'faq' },
-  { label: 'Contact / Chat', page: 'chat' },
+  { label: 'Contact', page: 'contact' },
+  { label: 'Support / Chat', page: 'chat' },
 ];
 const projects = [
   {
@@ -171,6 +172,9 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const goParent = (next: Page) => {
+    // Parent navigation (vehicle detail -> collection -> home) must not
+    // retain stale checkout or gallery entries in the in-app back stack.
+    setPageHistory([]);
     setPage(next);
     location.hash = next;
     setMenuOpen(false);
