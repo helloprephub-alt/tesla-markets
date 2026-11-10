@@ -1843,3 +1843,11 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
  .topbar .language-trigger>svg:first-child{width:16px;height:16px}
  .topbar .mobile-menu{flex:0 0 36px;width:36px;height:36px}
 }
+
+/* User-supplied globe mark: clean, compact language control */
+.language-globe-icon{display:block;width:19px;height:19px;object-fit:contain;flex:0 0 19px}
+.language-trigger{gap:8px;background:#fff;border-color:#d9e0e3;box-shadow:0 2px 8px #17232b0a}
+.language-trigger>svg:first-child{display:none}
+.language-trigger .language-globe-icon{width:19px;height:19px;flex-basis:19px}
+.mobile-nav-language .language-globe-icon{width:18px;height:18px;flex-basis:18px;margin-right:2px}
+@media(max-width:760px){.topbar .language-trigger{width:32px;min-width:32px;height:32px;min-height:32px;padding:0;display:grid!important;place-items:center;gap:0;border-radius:50%;background:#fff;border-color:#d9e0e3}.topbar .language-trigger .language-globe-icon{width:18px;height:18px;flex-basis:18px}.topbar .language-trigger-name,.topbar .language-trigger>svg:last-child{display:none!important}}
