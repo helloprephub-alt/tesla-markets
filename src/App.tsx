@@ -142,6 +142,8 @@ function App() {
   );
   const [pageHistory, setPageHistory] = useState<Page[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [detectedLanguage,setDetectedLanguage] = useState(()=>{const supported=['en','fr','de','es','pt','ar','ha'];const candidates=[...(typeof navigator!=='undefined'?navigator.languages:[]),...(typeof navigator!=='undefined'?[navigator.language]:[])];return candidates.map(value=>value.toLowerCase().split('-')[0]).find(value=>supported.includes(value))||'en';});
+  const translateSite = (lang:string) => {setDetectedLanguage(lang);if(lang!=='en')window.location.href='https://translate.google.com/translate?sl=en&tl='+lang+'&u='+encodeURIComponent(window.location.href);};
   const [videoMuted, setVideoMuted] = useState(true);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const toggleHeroVideoSound = () => {
@@ -283,11 +285,12 @@ function App() {
           ))}
         </nav>
         <div className="nav-actions">
-          <label className="language-select" aria-label="Translate website"><Globe2 size={15}/><select defaultValue="en" onChange={e=>{const lang=e.target.value;if(lang!=='en')window.location.href='https://translate.google.com/translate?sl=en&tl='+lang+'&u='+encodeURIComponent(window.location.href);}}><option value="en">EN</option><option value="fr">FR</option><option value="es">ES</option><option value="de">DE</option><option value="pt">PT</option><option value="ar">AR</option><option value="ha">HA</option></select></label>
+          <label className="language-select" aria-label="Choose website language"><Globe2 size={16}/><select aria-label="Website language" value={detectedLanguage} onChange={e=>translateSite(e.target.value)}><option value="en">English</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="ha">Hausa</option></select></label>
           <button className="btn btn-outline btn-small" onClick={() => go('shop')}>
             Browse vehicles <ArrowUpRight size={15} />
           </button>
         </div>
+        <label className="language-select mobile-language-select" aria-label="Choose website language"><Globe2 size={17}/><select aria-label="Website language" value={detectedLanguage} onChange={e=>translateSite(e.target.value)}><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="pt">PT</option><option value="ar">AR</option><option value="ha">HA</option></select></label>
         <button
           className="mobile-menu"
           onClick={() => setMenuOpen(!menuOpen)}
