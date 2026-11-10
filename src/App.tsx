@@ -1046,8 +1046,9 @@ function App() {
   ].includes(page);
   const hideSiteChrome = dashboardPage || page === 'admin' || page === 'signup' || page === 'login' || page === 'chat';
   const hasOwnBack = page === 'chat' || ['model-y','model-3','cybertruck','roadster','semi'].includes(page);
+  const isAdminOrWorkspace = dashboardPage || page === 'admin';
   return (
-    <div className="app-shell">
+    <div className="app-shell" lang={detectedLanguage} dir={!isAdminOrWorkspace && detectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
       <LanguageDialog/>
       {!hideSiteChrome && <Header />}
       {page !== 'home' && !hasOwnBack && <button type="button" className={'global-page-back '+(hideSiteChrome?'standalone':'')} onClick={goBack} aria-label="Go back to previous page"><ChevronLeft size={16}/><span>Back</span></button>}
