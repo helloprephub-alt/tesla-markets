@@ -166,7 +166,7 @@ function App() {
       const {data:{user}}=await supabase.auth.getUser();
       if(!active||!user)return;
       const lastSeen=localStorage.getItem('tesla-markets-chat-last-seen')||'1970-01-01T00:00:00.000Z';
-      const {count,error}=await supabase.from('support_messages').select('id',{count:'exact',head:true}).eq('conversation_id',conversationId).neq('sender_id',user.id).gt('created_at',lastSeen);
+      const {count,error}=await supabase.from('support_messages').select('id',{count:'exact',head:true}).eq('conversation_id',conversationId).eq('sender_role','management').gt('created_at',lastSeen);
       if(active&&!error)setChatUnread(count||0);
     };
     void checkUnread();
