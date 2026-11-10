@@ -83,8 +83,9 @@ export function AdminConsole() {
   };
 
   const evaluateAdminSession = async () => {
-    const {data:{user:current},error:authError}=await supabase.auth.getUser();
+    const {data:{session},error:authError}=await supabase.auth.getSession();
     if(authError)throw authError;
+    const current=session?.user ?? null;
     if(!current){setUser(null);const {data:status,error:statusError}=await supabase.functions.invoke('admin-key-login',{body:{action:'status'}});if(statusError)throw statusError;if(status?.error)throw new Error(status.error);setAuthStep(setupToken || !status?.setupComplete ? 'setup' : 'login');return;}
     const {isAdmin}=await isCurrentUserAdmin();
     if(!isAdmin){setUser(null);setAuthStep('login');setError('This account is not authorised for Tesla Markets management.');await supabase.auth.signOut();return;}
