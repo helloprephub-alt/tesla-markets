@@ -1036,7 +1036,7 @@ function App() {
       {!hideSiteChrome && <Header />}
       {page !== 'home' && !hasOwnBack && <button type="button" className={'global-page-back '+(hideSiteChrome?'standalone':'')} onClick={goBack} aria-label="Go back to previous page"><ChevronLeft size={16}/><span>Back</span></button>}
       {content}
-      {!hideSiteChrome && page!=='chat' && <button type="button" className="site-chat-launcher" onClick={()=>go('chat')} aria-label="Open your Tesla Markets conversation" title="Chat with Tesla Markets Management"><MessageCircle size={19}/>{chatUnread>0&&<span className="site-chat-unread">{chatUnread>9?'9+':chatUnread}</span>}</button>}
+      {!['chat','admin','signup','login'].includes(page) && <button type="button" className="site-chat-launcher" onClick={()=>go('chat')} aria-label="Open your Tesla Markets conversation" title="Chat with Tesla Markets Management"><MessageCircle size={19}/>{chatUnread>0&&<span className="site-chat-unread">{chatUnread>9?'9+':chatUnread}</span>}</button>}
       {!hideSiteChrome && <Footer />
       }{notice && (
         <div className="toast">
