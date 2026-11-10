@@ -1826,3 +1826,20 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 
 /* Keep the language picker visible in the mobile landing-page header. */
 @media(max-width:760px){.topbar .nav-actions{display:flex!important;align-items:center;gap:7px;margin-left:auto}.topbar .nav-actions>.btn{display:none!important}.topbar .language-trigger{display:inline-flex!important;visibility:visible!important;opacity:1!important;min-width:44px;min-height:34px;height:34px;padding:0 9px}.topbar .mobile-menu{display:grid;flex:0 0 40px}}
+
+/* Premium compact language control: standalone, never crowds the wordmark on phones. */
+.language-trigger{min-height:36px;height:36px;padding:0 11px;gap:8px;border:1px solid #d9e0e3;border-radius:999px;background:#fff;color:#17232b;box-shadow:0 2px 8px #17232b0a}
+.language-trigger>svg:first-child{width:17px;height:17px;color:#bd343b;stroke-width:1.9}
+.language-trigger-name{font-size:11px;font-weight:700;white-space:nowrap}
+.language-trigger>svg:last-child{width:12px;height:12px;color:#7b878e}
+@media(max-width:760px){
+ .topbar .nav-wrap{display:flex;gap:7px;padding-left:12px;padding-right:10px}
+ .topbar .brand{flex:1 1 auto;min-width:0;max-width:calc(100% - 88px);gap:5px}
+ .topbar .brand-logo{flex:0 0 31px;width:31px;height:31px}
+ .topbar .brand-word{font-size:clamp(10px,3vw,13px);letter-spacing:.09em;white-space:nowrap}
+ .topbar .nav-actions{flex:0 0 32px;width:32px;margin:0;display:flex!important}
+ .topbar .language-trigger{width:30px;min-width:30px;height:30px;min-height:30px;padding:0;display:grid!important;place-items:center;gap:0;border-radius:50%;background:#fff;border-color:#d9e0e3}
+ .topbar .language-trigger-name,.topbar .language-trigger>svg:last-child{display:none!important}
+ .topbar .language-trigger>svg:first-child{width:16px;height:16px}
+ .topbar .mobile-menu{flex:0 0 36px;width:36px;height:36px}
+}
