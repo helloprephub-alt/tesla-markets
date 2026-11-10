@@ -1,0 +1,16 @@
+create table if not exists public.site_visits (id uuid primary key default gen_random_uuid(), page text not null, visitor_id text, created_at timestamptz not null default now());
+create table if not exists public.site_clicks (id uuid primary key default gen_random_uuid(), page text not null, target text not null, created_at timestamptz not null default now());
+create table if not exists public.site_presence (visitor_id text primary key, page text not null, last_seen_at timestamptz not null default now());
+alter table public.site_visits enable row level security;
+alter table public.site_clicks enable row level security;
+alter table public.site_presence enable row level security;
+create policy "Public can record page visits" on public.site_visits for insert to anon, authenticated with check (length(page) <= 120 and (visitor_id is null or length(visitor_id) <= 100));
+create policy "Admins read page visits" on public.site_visits for select to authenticated using (exists(select 1 from public.customer_profiles p where p.id=auth.uid() and p.is_admin=true));
+create policy "Public can record clicks" on public.site_clicks for insert to anon, authenticated with check (length(page) <= 120 and length(target) <= 120);
+create policy "Admins read clicks" on public.site_clicks for select to authenticated using (exists(select 1 from public.customer_profiles p where p.id=auth.uid() and p.is_admin=true));
+create policy "Public can update visitor presence" on public.site_presence for insert to anon, authenticated with check (length(visitor_id) <= 100 and length(page) <= 120);
+create policy "Public can refresh visitor presence" on public.site_presence for update to anon, authenticated using (true) with check (length(visitor_id) <= 100 and length(page) <= 120);
+create policy "Admins read visitor presence" on public.site_presence for select to authenticated using (exists(select 1 from public.customer_profiles p where p.id=auth.uid() and p.is_admin=true));
+insert into storage.buckets (id,name,public,file_size_limit,allowed_mime_types) values ('support-attachments','support-attachments',false,3145728,array['image/jpeg','image/png','image/webp','image/gif']) on conflict (id) do update set public=false,file_size_limit=3145728,allowed_mime_types=excluded.allowed_mime_types;
+create policy "Customers upload their support attachments" on storage.objects for insert to authenticated with check (bucket_id='support-attachments' and (storage.foldername(name))[1]=auth.uid()::text and exists(select 1 from public.support_conversations c where c.id=((storage.foldername(name))[2])::uuid and (c.customer_id=auth.uid() or exists(select 1 from public.customer_profiles p where p.id=auth.uid() and p.is_admin=true))));
+create policy "Customers and admins read support attachments" on storage.objects for select to authenticated using (bucket_id='support-attachments' and exists(select 1 from public.support_conversations c where c.id=((storage.foldername(name))[2])::uuid and (c.customer_id=auth.uid() or exists(select 1 from public.customer_profiles p where p.id=auth.uid() and p.is_admin=true))));

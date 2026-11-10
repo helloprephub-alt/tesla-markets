@@ -1,0 +1,95 @@
+[
+  {
+    "name": "Vehicle versions and checkout prices update together",
+    "sanity": true,
+    "viewport": "mobile",
+    "covers": [
+      "Model 3, Model Y, Cybertruck, Roadster and Semi variant selection",
+      "lease price display",
+      "selected version and price shown in checkout",
+      "invite-only Roadster Rocket"
+    ],
+    "description": "Select multiple vehicle versions and confirm the selected version and exact management-provided price are shown in the checkout summary and enquiry.",
+    "steps": [
+      "Open Shop and select Model Y",
+      "Choose Model Y Performance",
+      "Confirm $57,990 appears as the selected vehicle price and in checkout",
+      "Choose Roadster Rocket and confirm Invite only is shown",
+      "Open Cybertruck and select Cyberbeast; confirm $102,490 is shown"
+    ],
+    "expected": "Each selected version updates the preview and checkout price; lease pricing appears where supplied and Roadster Rocket is marked Invite only."
+  },
+  {
+    "name": "Customer chat has one management identity and a compact readable layout",
+    "viewport": "mobile",
+    "covers": [
+      "single Tesla Markets Management chat header",
+      "verified badge and replaceable profile picture",
+      "normal message font size",
+      "chat message send and scroll behavior"
+    ],
+    "description": "Open the customer chat and verify the management identity is shown once with the verified badge and profile image, and message text is readable.",
+    "steps": [
+      "Open Contact / customer chat",
+      "Check that only one Tesla Markets Management identity is displayed with the verified badge",
+      "Send a short message",
+      "Scroll up to read the earlier welcome message without being pulled to the bottom"
+    ],
+    "expected": "The chat shows one compact management header, normal-sized message text, and lets the visitor browse message history."
+  },
+  {
+    "name": "Admin dashboard shows activity and allows profile picture replacement",
+    "viewport": "desktop",
+    "covers": [
+      "admin overview total page views",
+      "online-now presence heartbeat",
+      "recent customer chats and replies",
+      "admin profile picture upload and persistence",
+      "private admin access"
+    ],
+    "description": "Sign in as the authorised administrator and use the management workspace.",
+    "steps": [
+      "Sign in with the authorised management account",
+      "Open Overview and inspect page views, online now, chats and messages",
+      "Open Settings and upload a valid profile picture",
+      "Save it and confirm the preview shows the newly saved picture",
+      "Open Chats & replies and open a recent customer conversation"
+    ],
+    "expected": "The private admin dashboard shows current activity metrics and recent chats, and the saved management picture is returned by the persistent profile endpoint."
+  },
+  {
+    "name": "Investment enquiry opens chat without a portfolio",
+    "viewport": "mobile",
+    "covers": [
+      "investment page has no portfolio balances or gains",
+      "Broker connected status",
+      "Invest Now opens internal management chat"
+    ],
+    "description": "Verify the revised investment enquiry journey.",
+    "steps": [
+      "Open Investments",
+      "Confirm the page shows Tesla investment information and Broker connected",
+      "Confirm there are no portfolio values, gains or rate panels",
+      "Tap Invest Now"
+    ],
+    "expected": "The investment page contains no portfolio display and Invest Now opens the internal Tesla Markets Management chat."
+  },
+  {
+    "name": "Navigation back button returns to previous page or home",
+    "viewport": "desktop",
+    "covers": [
+      "previous-page navigation",
+      "direct-entry home fallback",
+      "no back-button navigation loop"
+    ],
+    "description": "Move through several site pages and use back navigation.",
+    "steps": [
+      "Open Investments from the homepage",
+      "Open Shop",
+      "Use the page Back control",
+      "Open a vehicle page and use All vehicles",
+      "Open a page directly with no in-app history and use Back"
+    ],
+    "expected": "Back returns to the actual previous page, and direct-entry navigation falls back to the homepage without looping."
+  }
+]
