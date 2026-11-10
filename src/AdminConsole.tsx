@@ -20,6 +20,16 @@ const statusOptions = ['open', 'pending', 'closed'];
 export function AdminConsole() {
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [checking, setChecking] = useState(true);
+  const [authStep,setAuthStep]=useState<'login'|'enroll'|'verify'|'ready'>('login');
+  const [loginEmail,setLoginEmail]=useState(ADMIN_EMAIL);
+  const [loginPassword,setLoginPassword]=useState('');
+  const [authCode,setAuthCode]=useState('');
+  const [factorId,setFactorId]=useState('');
+  const [challengeId,setChallengeId]=useState('');
+  const [totpQr,setTotpQr]=useState('');
+  const [totpSecret,setTotpSecret]=useState('');
+  const [authBusy,setAuthBusy]=useState(false);
+  const [passkeys,setPasskeys]=useState<Array<{id:string;friendly_name?:string;created_at?:string;last_used_at?:string}>>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -70,29 +80,36 @@ export function AdminConsole() {
     }
   };
 
-  useEffect(() => {
-    let active = true;
-    if (!supabaseConfigured) {
-      setError('Supabase is not configured. Add the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
-      setChecking(false);
-      return () => { active = false; };
+  const evaluateAdminSession = async () => {
+    const {data:{user:current},error:authError}=await supabase.auth.getUser();
+    if(authError)throw authError;
+    if(!current){setUser(null);setAuthStep('login');return;}
+    const {isAdmin}=await isCurrentUserAdmin();
+    if(!isAdmin){setUser(null);setAuthStep('login');setError('This account is not authorised for Tesla Markets management.');await supabase.auth.signOut();return;}
+    const {data:factors,error:factorError}=await supabase.auth.mfa.listFactors();
+    if(factorError)throw factorError;
+    const verified=factors.totp.find(factor=>factor.status==='verified');
+    if(!verified){setUser(null);setAuthStep('enroll');return;}
+    const {data:assurance,error:assuranceError}=await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if(assuranceError)throw assuranceError;
+    if(assurance.currentLevel!=='aal2'){
+      const challenge=await supabase.auth.mfa.challenge({factorId:verified.id});
+      if(challenge.error)throw challenge.error;
+      setFactorId(verified.id);setChallengeId(challenge.data.id);setUser(null);setAuthStep('verify');return;
     }
-    isCurrentUserAdmin()
-      .then(({ user: current, isAdmin }) => {
-        if (!active) return;
-        setUser(current && isAdmin ? { email: current.email || '' } : null);
-        if (current && !isAdmin) setError('This account is not authorised for management access.');
-      })
-      .catch(e => { if (active) setError(e instanceof Error ? e.message : 'Sign-in check failed.'); })
-      .finally(() => { if (active) setChecking(false); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      if (!session?.user) { setUser(null); return; }
-      void isCurrentUserAdmin().then(({ user: current, isAdmin }) => {
-        if (active) setUser(current && isAdmin ? { email: current.email || '' } : null);
-      }).catch(e => setError(e instanceof Error ? e.message : 'Could not verify administrator access.'));
+    setUser({email:current.email||''});setAuthStep('ready');setError('');
+    const keys=await supabase.auth.passkey.list();if(!keys.error)setPasskeys(keys.data||[]);
+  };
+  useEffect(() => {
+    let active=true;
+    if(!supabaseConfigured){setError('Supabase is not configured.');setChecking(false);return()=>{active=false;};}
+    void evaluateAdminSession().catch(e=>{if(active){setUser(null);setAuthStep('login');setError(e instanceof Error?e.message:'Sign-in check failed.');}}).finally(()=>{if(active)setChecking(false);});
+    const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{
+      if(!active)return;
+      if(!session?.user){setUser(null);setAuthStep('login');return;}
+      window.setTimeout(()=>{if(active)void evaluateAdminSession().catch(e=>setError(e instanceof Error?e.message:'Could not verify administrator security.'));},0);
     });
-    return () => { active = false; listener.subscription.unsubscribe(); };
+    return()=>{active=false;listener.subscription.unsubscribe();};
   }, []);
 
   useEffect(() => {
@@ -129,15 +146,15 @@ export function AdminConsole() {
   }, [user?.email]);
 
   const signIn = async () => {
-    try {
-      const { error: signInError } = await supabase.auth.signInWithOtp({
-        email: ADMIN_EMAIL,
-        options: { emailRedirectTo: window.location.origin + '/#admin' },
-      });
-      if (signInError) throw signInError;
-      setError('A secure sign-in link has been sent to the authorised administrator email. Open it on this device to continue.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not start administrator sign-in.'); }
+    setAuthBusy(true);setError('');
+    try { if(loginEmail.trim().toLowerCase()!==ADMIN_EMAIL.toLowerCase())throw new Error('This email is not on the authorised administrator allowlist.');const {error:signInError}=await supabase.auth.signInWithPassword({email:ADMIN_EMAIL,password:loginPassword});if(signInError)throw signInError;await evaluateAdminSession(); }
+    catch(e){setError(e instanceof Error?e.message:'Could not sign in.');}finally{setAuthBusy(false);}
   };
+  const resetAdminPassword=async()=>{setAuthBusy(true);setError('');try{const {error:resetError}=await supabase.auth.resetPasswordForEmail(ADMIN_EMAIL,{redirectTo:window.location.origin+'/#admin'});if(resetError)throw resetError;setError('Password reset email sent. The live Vercel URL must be allowed in Supabase Auth URL settings.');}catch(e){setError(e instanceof Error?e.message:'Could not send password reset email.');}finally{setAuthBusy(false);}};
+  const signInWithPasskey=async()=>{setAuthBusy(true);setError('');try{const {error:passkeyError}=await supabase.auth.signInWithPasskey();if(passkeyError)throw passkeyError;await evaluateAdminSession();}catch(e){setError(e instanceof Error?e.message:'Passkey sign-in failed.');}finally{setAuthBusy(false);}};
+  const beginTotpEnrollment=async()=>{setAuthBusy(true);setError('');try{const {data,error:enrollError}=await supabase.auth.mfa.enroll({factorType:'totp',friendlyName:'Tesla Markets Management'});if(enrollError)throw enrollError;setFactorId(data.id);setTotpQr(data.totp.qr_code);setTotpSecret(data.totp.secret);}catch(e){setError(e instanceof Error?e.message:'Could not start authenticator setup.');}finally{setAuthBusy(false);}};
+  const verifyTotp=async()=>{if(!factorId||authCode.trim().length!==6)return;setAuthBusy(true);setError('');try{let activeChallenge=challengeId;if(!activeChallenge){const challenge=await supabase.auth.mfa.challenge({factorId});if(challenge.error)throw challenge.error;activeChallenge=challenge.data.id;}const {error:verifyError}=await supabase.auth.mfa.verify({factorId,challengeId:activeChallenge,code:authCode.trim()});if(verifyError)throw verifyError;setAuthCode('');setChallengeId('');setTotpQr('');setTotpSecret('');await evaluateAdminSession();}catch(e){setError(e instanceof Error?e.message:'Authenticator verification failed. Check the current six-digit code.');}finally{setAuthBusy(false);}};
+  const addPasskey=async()=>{setAuthBusy(true);setError('');try{const {error:registerError}=await supabase.auth.registerPasskey();if(registerError)throw registerError;const keys=await supabase.auth.passkey.list();if(keys.error)throw keys.error;setPasskeys(keys.data||[]);setError('Passkey registered successfully on this device.');}catch(e){setError(e instanceof Error?e.message:'Could not register a passkey.');}finally{setAuthBusy(false);}};
   const updateStatus = async (threadId: string, status: string) => {
     try {
       const {error}=await supabase.from('support_conversations').update({status,updated_at:new Date().toISOString()}).eq('id',threadId);
@@ -219,8 +236,12 @@ export function AdminConsole() {
     finally{setSavingInvestment(false);}
   };
 
-  if (checking) return <div className="admin-auth-state"><ShieldCheck size={26} /> Checking administrator access…</div>;
-  if (!user) return <div className="admin-auth-state admin-auth-full"><ShieldCheck size={30} /><h2>Private management access</h2><p>Sign in with the authorised Tesla Markets management account.</p>{error && <p className="chat-error">{error}</p>}<button className="btn btn-dark" onClick={signIn} disabled={!supabaseConfigured}>Administrator sign in</button><a href="#home">Return to public website</a></div>;
+  if(checking)return <div className="admin-auth-state"><ShieldCheck size={26}/> Checking administrator security…</div>;
+  if(!user)return <div className="admin-auth-state admin-auth-full"><ShieldCheck size={30}/><h2>Private management access</h2>
+    {authStep==='login'&&<><p>Use the authorised administrator account. Authenticator verification is required.</p><input className="admin-auth-input" type="email" autoComplete="username" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="Administrator email"/><input className="admin-auth-input" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Password"/><button className="btn btn-dark" onClick={signIn} disabled={!supabaseConfigured||authBusy||!loginPassword}>{authBusy?'Signing in…':'Continue securely'}</button><button className="admin-auth-link" onClick={resetAdminPassword} disabled={authBusy}>Forgot password?</button><div className="admin-auth-divider">OR</div><button className="btn btn-outline" onClick={signInWithPasskey} disabled={!supabaseConfigured||authBusy}>Sign in with passkey</button></>}
+    {authStep==='enroll'&&<><p>Set up an authenticator app before entering management. Scan this QR code with Google Authenticator, Microsoft Authenticator or another TOTP app.</p>{totpQr?<><img className="admin-auth-qr" src={totpQr.startsWith('data:')?totpQr:'data:image/svg+xml;utf8,'+encodeURIComponent(totpQr)} alt="Authenticator setup QR code"/><p className="admin-auth-secret">Manual setup key: <b>{totpSecret}</b></p><input className="admin-auth-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={authCode} onChange={e=>setAuthCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6-digit authenticator code"/><button className="btn btn-dark" onClick={verifyTotp} disabled={authBusy||authCode.length!==6}>{authBusy?'Verifying…':'Verify and secure account'}</button></>:<button className="btn btn-dark" onClick={beginTotpEnrollment} disabled={authBusy}>{authBusy?'Preparing…':'Set up authenticator app'}</button>}</>}
+    {authStep==='verify'&&<><p>Enter the current six-digit code from your registered authenticator app.</p><input className="admin-auth-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={authCode} onChange={e=>setAuthCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6-digit authenticator code"/><button className="btn btn-dark" onClick={verifyTotp} disabled={authBusy||authCode.length!==6}>{authBusy?'Verifying…':'Verify and continue'}</button></>}
+    {error&&<p className="chat-error">{error}</p>}<a href="#home">Return to public website</a></div>;
   
 
   const nav = [
@@ -275,6 +296,7 @@ export function AdminConsole() {
         {section === 'media' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">MEDIA LIBRARY</div><h2>Managed website images</h2><p>Investment images are managed in Investment content. The management profile is managed in Settings. Existing vehicle images remain in the project's resources folder.</p></div></div><div className="admin-media-links"><button onClick={()=>setSection('investment')}>Manage investment images</button><button onClick={()=>setSection('catalogue')}>View vehicle galleries</button><button onClick={()=>setSection('settings')}>Manage profile image</button></div></section>}
         {section === 'messages' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER COMMUNICATIONS</div><h2>Chats & support replies</h2><p>Read conversations and reply with text or image attachments.</p></div></div><AdminInbox /></section>}
         {section === 'operations' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">ENQUIRY PIPELINE</div><h2>{threads.length} enquiries</h2><p>Track the current status of each customer enquiry.</p></div></div>{threads.length ? <div className="admin-pipeline">{threads.map(thread=><article key={thread.id}><div><b>{thread.visitorName || 'Website visitor'}</b><small>{thread.lastMessage || 'No message yet'} · {new Date(thread.updatedAt).toLocaleString()}</small></div><label>Status<select value={thread.status || 'new'} onChange={event=>void updateStatus(thread.id,event.target.value)}>{statusOptions.map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></label></article>)}</div> : <p className="admin-empty-note">New enquiries will appear here.</p>}</section>}
+        {section === 'settings' && <section className="admin-console-panel"><div className="eyebrow dark">ACCOUNT SECURITY</div><h2>Administrator sign-in protection</h2><p>Authenticator verification is required for every management login. Register a passkey on this trusted device for phishing-resistant sign-in.</p><div className="admin-security-row"><div><b>Authenticator app</b><small>Time-based six-digit code · required</small></div><span className="admin-security-status">Verified</span></div><div className="admin-security-row"><div><b>Passkeys</b><small>{passkeys.length} registered</small></div><button className="btn btn-dark" onClick={addPasskey} disabled={authBusy}>{authBusy?'Working…':'Add this device passkey'}</button></div>{passkeys.map(key=><div className="admin-security-row" key={key.id}><div><b>{key.friendly_name||'Passkey'}</b><small>Added {key.created_at?new Date(key.created_at).toLocaleDateString():'date unavailable'}</small></div></div>)}</section>}
         {section === 'settings' && <section className="admin-console-panel admin-profile-settings"><div className="eyebrow dark">MANAGEMENT PROFILE</div><h2>Chat profile picture</h2><p>Upload or replace the picture displayed beside Tesla Markets Management in customer chat. The image is stored with the app and can be changed here later.</p><div className="admin-profile-preview">{profileUrl ? <img src={profileUrl} alt="Current management profile" /> : <CircleUserRound size={54} />}<span>{profileUrl ? 'Current profile picture' : 'No custom profile picture saved yet'}</span></div><label className="admin-upload-label">Choose a new profile picture<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event=>setProfileFile(event.target.files?.[0] || null)} /></label><small>JPG, PNG or WEBP · maximum 4 MB</small><button className="btn btn-dark" disabled={!profileFile || savingProfile} onClick={()=>void saveProfile()}>{savingProfile ? 'Saving…' : 'Save profile picture'}</button></section>}
         <footer className="admin-console-footer">Signed in as {user.email} · Private management session · <a href="#home">Open public website</a></footer>
       </main>
