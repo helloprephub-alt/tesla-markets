@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { isCurrentUserAdmin, supabase, supabaseConfigured } from './lib/supabase';
-import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, SlidersHorizontal } from 'lucide-react';
+import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, SlidersHorizontal, Sun, Moon } from 'lucide-react';
 import { AdminInbox } from './ChatWorkspace';
 
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
@@ -41,6 +41,8 @@ export function AdminConsole() {
   const [financePayments,setFinancePayments]=useState<FinancePayment[]>([]);
   const [section, setSection] = useState<Section>('overview');
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
+  const [adminTheme,setAdminTheme]=useState<'light'|'dark'>(()=>(localStorage.getItem('tesla-admin-theme')==='dark'?'dark':'light'));
+  const toggleAdminTheme=()=>setAdminTheme(current=>{const next=current==='light'?'dark':'light';localStorage.setItem('tesla-admin-theme',next);return next;});
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [profileUrl, setProfileUrl] = useState('');
@@ -264,11 +266,11 @@ export function AdminConsole() {
   ];
 
   return (
-    <div className="admin-console admin-console-standalone admin-console-premium">
+    <div className={`admin-console admin-console-standalone admin-console-premium admin-theme-${adminTheme}`}>
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
         <div className="admin-console-brand"><span className="admin-brand-mark admin-tesla-mark">T</span><div><b>TESLA MARKETS</b><small>MANAGEMENT CONSOLE</small></div></div>
-        <div className="admin-topbar-right"><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
+        <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={adminTheme==='light'?'Switch to dark mode':'Switch to light mode'} title={adminTheme==='light'?'Dark mode':'Light mode'}>{adminTheme==='light'?<Moon size={16}/>:<Sun size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
       </header>
       <div className="admin-shell">
         <aside className={'admin-console-side '+(mobileNavOpen?'is-open':'')}>
