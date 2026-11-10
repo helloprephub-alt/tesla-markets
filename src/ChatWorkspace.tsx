@@ -37,6 +37,11 @@ async function ensureCustomerSession() {
     user = data.user;
   }
   if (!user) throw new Error('Could not establish a secure customer session.');
+  // Never let an authenticated management account become the owner of a public customer conversation.
+  // This prevents management replies sent from the public chat route being stored as customer messages.
+  const { data: currentProfile, error: roleError } = await supabase.from('customer_profiles').select('is_admin').eq('id',user.id).maybeSingle();
+  if (roleError) throw roleError;
+  if (currentProfile?.is_admin) throw new Error('You are signed in with the management account. Sign out of management or open the public website in a private browser window to test customer chat.');
   const { error: profileError } = await supabase.from('customer_profiles').upsert({ id:user.id, display_name:'Website visitor', is_admin:false }, { onConflict:'id', ignoreDuplicates:true });
   if (profileError) throw profileError;
   return user;
