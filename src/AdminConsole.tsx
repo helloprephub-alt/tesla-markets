@@ -16,7 +16,7 @@ const catalogue = [
   { name: 'Roadster', count: 6, first: '/resources/roadster-1.jpg' },
   { name: 'Tesla Semi', count: 10, first: '/resources/semi-1.jpg' },
 ];
-const statusOptions = ['new', 'reviewing', 'awaiting_customer', 'broker_referred', 'closed'];
+const statusOptions = ['open', 'pending', 'closed'];
 export function AdminConsole() {
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [checking, setChecking] = useState(true);
