@@ -291,7 +291,7 @@ function App() {
           ))}
         </nav>
         <div className="nav-actions">
-          <button className="language-trigger" type="button" onClick={()=>{setLanguageOpen(true);setMenuOpen(false);}} aria-label="Change language"><Globe2 size={19}/><span>Language</span><b>{currentLanguageName}</b><ChevronDown size={14}/></button>
+          <button className="language-trigger" type="button" onClick={()=>{setLanguageOpen(true);setMenuOpen(false);}} aria-label="Change language"><Globe2 size={19}/><span className="language-trigger-code">{detectedLanguage.toUpperCase()}</span><ChevronDown size={13}/></button>
           <button className="btn btn-outline btn-small" onClick={() => go('shop')}>Browse vehicles <ArrowUpRight size={15} /></button>
         </div>
         <button
