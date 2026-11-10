@@ -14,7 +14,7 @@ de: {
 },
 es: {
 'Find your':'Encuentra tu','next electric drive.':'próximo vehículo eléctrico.','Explore each collection, compare versions and send a vehicle enquiry to management.':'Explora cada colección, compara versiones y envía una consulta sobre vehículos al equipo.','View gallery & details':'Ver galería y detalles','All vehicles':'Todos los vehículos','View full image':'Ver imagen completa','Choose your version':'Elige tu versión','Colour preference':'Preferencia de color','Vehicle information':'Información del vehículo','Checkout preference':'Preferencia de compra','Selected vehicle':'Vehículo seleccionado','Vehicle price':'Precio del vehículo','Order now / Enquire':'Solicitar información','Let’s get you to the right conversation.':'Te pondremos en contacto con la persona adecuada.','Share your contact details so our team can identify your enquiry and respond with the right context.':'Comparte tus datos para que nuestro equipo identifique tu consulta y pueda responderte.','Full name':'Nombre completo','Email address':'Correo electrónico','Phone number':'Número de teléfono','Continue to management chat':'Continuar al chat del equipo','Back to website':'Volver al sitio web','Conversation started':'Conversación iniciada','Welcome. How can our management team help you today?':'Bienvenido. ¿Cómo puede ayudarte hoy nuestro equipo?','About your enquiry':'Sobre tu consulta','Choose images':'Elegir imágenes','Type a message…':'Escribe un mensaje…','Back':'Volver','Your language preference is saved on this device.':'Tu preferencia de idioma se guarda en este dispositivo.'
-}
+},
 pt: {
 "Find your": "Encontre seu",
 "next electric drive.": "próximo veículo elétrico.",
