@@ -157,6 +157,9 @@ function App() {
   const [faq, setFaq] = useState<number | null>(0);
   const [tab, setTab] = useState('Overview');
   const [chatUnread,setChatUnread] = useState(0);
+  const [publicContent,setPublicContent] = useState({homeHeadline:'One destination. Two ways to explore.',homeDescription:'Explore the vehicle collection and contact Tesla Markets management through one connected experience.',investmentHeading:'Explore Tesla investment opportunities.',investmentDescription:'Speak directly with Tesla Markets Management for information about Tesla-related investment enquiries, available routes, eligibility and the next steps.',footerBlurb:'Independent information and enquiry access for Tesla and SpaceX market watchers.'});
+  const [publicInvestmentImages,setPublicInvestmentImages] = useState(['/resources/investment-slide-1','/resources/investment-slide-2']);
+  useEffect(()=>{let active=true;(async()=>{const {data,error}=await supabase.from('site_settings').select('key,value').in('key',['public_site_content','investment_gallery']);if(error||!active)return;const content=data?.find(row=>row.key==='public_site_content')?.value;const gallery=data?.find(row=>row.key==='investment_gallery')?.value;if(content&&typeof content==='object')setPublicContent(current=>({...current,...content}));if(Array.isArray(gallery?.images)&&gallery.images.length)setPublicInvestmentImages(gallery.images.filter((url:unknown)=>typeof url==='string'));})();return()=>{active=false;};},[]);
   useEffect(() => {
     let active=true;
     const checkUnread=async()=>{
@@ -300,9 +303,7 @@ function App() {
       <div className="footer-top">
         <div>
           <Brand />
-          <p className="muted footer-blurb">
-            Independent information and enquiry access for Tesla and SpaceX market watchers.
-          </p>
+          <p className="muted footer-blurb">{publicContent.footerBlurb}</p>
         </div>
         <div>
           <b>Investments</b>
@@ -450,8 +451,8 @@ function App() {
       <Hero />
       <section className="home-intro">
         <div className="eyebrow dark">TESLA MARKETS / INTRODUCTION</div>
-        <h2>One destination.<br/><em>Two ways to explore.</em></h2>
-        <p>Explore the vehicle collection and contact Tesla Markets management through one connected experience.</p>
+        <h2>{publicContent.homeHeadline}</h2>
+        <p>{publicContent.homeDescription}</p>
         <div className="home-intro-actions"><button className="btn btn-dark" onClick={()=>go('markets')}>Invest now <ArrowUpRight size={16}/></button><button className="btn btn-outline" onClick={()=>go('shop')}>Shop vehicles <ArrowUpRight size={16}/></button></div>
       </section>
       <section className="home-model-preview">
@@ -566,20 +567,19 @@ function App() {
     <main className="investment-page">
       <section className="investment-hero investment-enquiry-only">
         <div className="investment-slideshow" aria-label="Tesla investment information">
-          <img className="investment-slide investment-slide-one" src="/resources/investment-slide-1" alt="Tesla electric vehicle investment information" />
-          <img className="investment-slide investment-slide-two" src="/resources/investment-slide-2" alt="Tesla mobility and technology" />
+          {publicInvestmentImages.map((src,index)=><img key={src} className="investment-slide" style={{animationDelay:(index*(12/Math.max(publicInvestmentImages.length,1)))+'s'}} src={src} alt={'Tesla investment display '+(index+1)}/>) }
           <div className="investment-slide-shade" />
           <div className="investment-slide-caption"><span>TESLA MARKETS</span><b>Tesla investment enquiries</b></div>
         </div>
         <div className="investment-panel">
           <div className="investment-panel-heading"><div className="eyebrow dark">TESLA INVESTMENT INFORMATION</div><span className="portfolio-status-pill broker-connected"><i/> Broker connected</span></div>
-          <h1>Explore Tesla investment opportunities.</h1>
-          <p className="investment-description">Speak directly with Tesla Markets Management for information about Tesla-related investment enquiries, available routes, eligibility and the next steps.</p>
+          <h1>{publicContent.investmentHeading}</h1>
+          <p className="investment-description">{publicContent.investmentDescription}</p>
           <div className="investment-info-grid"><article><b>Tesla, Inc.</b><span>NASDAQ: TSLA</span><small>Publicly traded company information</small></article><article><b>Direct management contact</b><span>Enquiry support</span><small>Discuss your questions with management</small></article></div>
           <button className="btn btn-dark investment-cta" onClick={()=>{sessionStorage.setItem('tesla-markets-chat-context','Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.');go('chat')}}>INVEST NOW <ArrowUpRight size={17}/></button>
         </div>
       </section>
-      <section className="investment-trust-note"><span>Broker connected. Contact management to discuss your Tesla investment enquiry and the available next steps.</span><small>Tesla Markets is independent and is not affiliated with or endorsed by Tesla, Inc.</small></section>
+      <section className="investment-trust-note"><span>Broker connected. Contact management to discuss your Tesla investment enquiry and the available next steps.</span></section>
     </main>
   );
   const AI = () => (
