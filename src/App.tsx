@@ -135,7 +135,13 @@ const plans = [
   },
 ];
 const money = (n: string) => n;
-const supportedLanguages=[['en','English'],['fr','Français'],['de','Deutsch'],['es','Español'],['pt','Português'],['it','Italiano'],['nl','Nederlands'],['ga','Gaeilge'],['el','Ελληνικά'],['fi','Suomi'],['sv','Svenska'],['da','Dansk'],['no','Norsk'],['pl','Polski'],['cs','Čeština'],['ro','Română'],['hu','Magyar'],['sk','Slovenčina'],['sl','Slovenščina'],['hr','Hrvatski'],['bg','Български'],['et','Eesti'],['lv','Latviešu'],['lt','Lietuvių'],['mt','Malti']];
+const supportedLanguages=[['en','English'],['fr','Français'],['de','Deutsch'],['es','Español']];
+const translations:Record<string,Record<string,string>>={
+en:{home:'Home',vehicles:'Vehicles / Shop',investments:'Investments',about:'About',faqs:'FAQs',contact:'Contact',support:'Support / Chat',language:'Choose your language',languageHint:'Select your preferred website language.',heroEyebrow:'{t("heroEyebrow")}',heroTitle:'Invest in the',heroItalic:'future in motion.',heroDescription:'{t("heroDescription")}',explore:'Explore Tesla & SpaceX',chat:'Chat with us',independent:'Independent information',broker:'Trade execution is handled by authorised brokers.',intro:'{t("intro")}',investNow:'Invest now',shop:'Shop vehicles',collection:'VEHICLE COLLECTION',choose:'Choose your',next:'next Tesla.',viewAll:'View all models',search:'Search languages…'},
+fr:{home:'Accueil',vehicles:'Véhicules / Boutique',investments:'Investissements',about:'À propos',faqs:'FAQ',contact:'Contact',support:'Assistance / Chat',language:'Choisir votre langue',languageHint:'Choisissez la langue du site que vous préférez.',heroEyebrow:'MOBILITÉ ÉLECTRIQUE ET DEMANDES D’INVESTISSEMENT',heroTitle:'Investissez dans le',heroItalic:'mouvement de demain.',heroDescription:'Découvrez les actions cotées de Tesla et SpaceX, consultez les informations de marché et envoyez une demande d’achat par l’intermédiaire d’un courtier agréé.',explore:'Découvrir Tesla et SpaceX',chat:'Discuter avec nous',independent:'Informations indépendantes',broker:'Les transactions sont effectuées par des courtiers agréés.',intro:'TESLA MARKETS / PRÉSENTATION',investNow:'Investir',shop:'Voir les véhicules',collection:'COLLECTION DE VÉHICULES',choose:'Choisissez votre',next:'prochaine Tesla.',viewAll:'Voir tous les modèles',search:'Rechercher une langue…'},
+de:{home:'Startseite',vehicles:'Fahrzeuge / Shop',investments:'Investitionen',about:'Über uns',faqs:'Häufige Fragen',contact:'Kontakt',support:'Support / Chat',language:'Sprache auswählen',languageHint:'Wählen Sie Ihre bevorzugte Website-Sprache.',heroEyebrow:'ELEKTROMOBILITÄT & INVESTITIONSANFRAGEN',heroTitle:'Investieren Sie in die',heroItalic:'Zukunft in Bewegung.',heroDescription:'Informieren Sie sich über börsennotierte Aktien von Tesla und SpaceX, prüfen Sie Marktinformationen und senden Sie eine Kaufanfrage über einen autorisierten Broker.',explore:'Tesla & SpaceX entdecken',chat:'Mit uns chatten',independent:'Unabhängige Informationen',broker:'Die Handelsausführung erfolgt durch autorisierte Broker.',intro:'TESLA MARKETS / EINFÜHRUNG',investNow:'Jetzt investieren',shop:'Fahrzeuge ansehen',collection:'FAHRZEUGSAMMLUNG',choose:'Wählen Sie Ihren',next:'nächsten Tesla.',viewAll:'Alle Modelle ansehen',search:'Sprachen suchen…'},
+es:{home:'Inicio',vehicles:'Vehículos / Tienda',investments:'Inversiones',about:'Acerca de',faqs:'Preguntas frecuentes',contact:'Contacto',support:'Soporte / Chat',language:'Elige tu idioma',languageHint:'Selecciona el idioma que prefieres para el sitio.',heroEyebrow:'MOVILIDAD ELÉCTRICA Y CONSULTAS DE INVERSIÓN',heroTitle:'Invierte en el',heroItalic:'futuro en movimiento.',heroDescription:'Consulta acciones cotizadas de Tesla y SpaceX, revisa información del mercado y envía una consulta de compra a través de una agencia de corretaje autorizada.',explore:'Explorar Tesla y SpaceX',chat:'Chatea con nosotros',independent:'Información independiente',broker:'Las operaciones se realizan a través de agentes autorizados.',intro:'TESLA MARKETS / INTRODUCCIÓN',investNow:'Invertir ahora',shop:'Ver vehículos',collection:'COLECCIÓN DE VEHÍCULOS',choose:'Elige tu',next:'próximo Tesla.',viewAll:'Ver todos los modelos',search:'Buscar idiomas…'}
+};
 
 
 function App() {
@@ -146,9 +152,10 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen,setLanguageOpen]=useState(false);
   const [languageSearch,setLanguageSearch]=useState('');
-  const [detectedLanguage,setDetectedLanguage] = useState(()=>{const candidates=[...(typeof navigator!=='undefined'?navigator.languages:[]),...(typeof navigator!=='undefined'?[navigator.language]:[])];return candidates.map(value=>value.toLowerCase().split('-')[0]).find(value=>supportedLanguages.some(([code])=>code===value))||'en';});
+  const [detectedLanguage,setDetectedLanguage] = useState(()=>{try{return localStorage.getItem('tesla-markets-language')||'en';}catch{return 'en';}});
   const currentLanguageName=String(supportedLanguages.find(([code])=>code===detectedLanguage)?.[1]||'English');
-  const translateSite = (lang:string) => {setDetectedLanguage(lang);setLanguageOpen(false);setLanguageSearch('');if(lang==='en'){window.location.href=window.location.href.split('#')[0];return;}window.location.href='https://translate.google.com/translate?sl=en&tl='+lang+'&u='+encodeURIComponent(window.location.href);};
+  const t=(key:string)=>translations[detectedLanguage]?.[key]||translations.en[key]||key;
+  const translateSite = (lang:string) => {setDetectedLanguage(lang);try{localStorage.setItem('tesla-markets-language',lang);}catch{}setLanguageOpen(false);setLanguageSearch('');};
   const [videoMuted, setVideoMuted] = useState(true);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const toggleHeroVideoSound = () => {
@@ -291,7 +298,7 @@ function App() {
           ))}
         </nav>
         <div className="nav-actions">
-          <button className="language-trigger" type="button" onClick={()=>{setLanguageOpen(true);setMenuOpen(false);}} aria-label="Change language"><Globe2 size={19}/><span className="language-trigger-code">{detectedLanguage.toUpperCase()}</span><ChevronDown size={13}/></button>
+          <button className="language-trigger" type="button" onClick={()=>{setLanguageOpen(true);setMenuOpen(false);}} aria-label="Change language"><Globe2 size={19}/><span className="language-trigger-name">{currentLanguageName}</span><ChevronDown size={13}/></button>
           <button className="btn btn-outline btn-small" onClick={() => go('shop')}>Browse vehicles <ArrowUpRight size={15} /></button>
         </div>
         <button
@@ -304,7 +311,7 @@ function App() {
       </div>
     </header>
   );
-  const LanguageDialog=()=>languageOpen?<div className="language-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLanguageOpen(false);}}><section className="language-dialog" role="dialog" aria-modal="true" aria-labelledby="language-title"><div className="language-dialog-head"><div><span className="language-dialog-kicker">TESLA MARKETS</span><h2 id="language-title">Choose your language</h2><p>Select the language you’re most comfortable using.</p></div><button type="button" className="language-close" onClick={()=>setLanguageOpen(false)} aria-label="Close language selector"><X size={21}/></button></div><label className="language-search"><Search size={18}/><input autoFocus value={languageSearch} onChange={e=>setLanguageSearch(e.target.value)} placeholder="Search languages…" /></label><div className="language-grid">{supportedLanguages.filter(([code,name])=>(name+' '+code).toLowerCase().includes(languageSearch.toLowerCase())).map(([code,name])=><button type="button" key={code} className={detectedLanguage===code?'selected':''} onClick={()=>translateSite(code)}><span>{name}</span><small>{code.toUpperCase()}</small>{detectedLanguage===code&&<Check size={16}/>}</button>)}</div><p className="language-note">25 European and international market language options · Your choice can be changed anytime</p></section></div>:null;
+  const LanguageDialog=()=>languageOpen?<div className="language-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLanguageOpen(false);}}><section className="language-dialog" role="dialog" aria-modal="true" aria-labelledby="language-title"><div className="language-dialog-head"><div><span className="language-dialog-kicker">TESLA MARKETS</span><h2 id="language-title">{t("language")}</h2><p>{t("languageHint")}</p></div><button type="button" className="language-close" onClick={()=>setLanguageOpen(false)} aria-label="Close language selector"><X size={21}/></button></div><label className="language-search"><Search size={18}/><input autoFocus value={languageSearch} onChange={e=>setLanguageSearch(e.target.value)} placeholder={t("search")} /></label><div className="language-grid">{supportedLanguages.filter(([code,name])=>(name+' '+code).toLowerCase().includes(languageSearch.toLowerCase())).map(([code,name])=><button type="button" key={code} className={detectedLanguage===code?'selected':''} onClick={()=>translateSite(code)}><span>{name}</span><small>{code.toUpperCase()}</small>{detectedLanguage===code&&<Check size={16}/>}</button>)}</div><p className="language-note">Your language preference is saved on this device.</p></section></div>:null;
   const Footer = () => (
     <footer className="footer">
       <div className="footer-top">
@@ -421,10 +428,10 @@ function App() {
         </p>
         <div className="hero-buttons">
           <button className="btn btn-red" onClick={() => go('markets')}>
-            Explore Tesla & SpaceX <ArrowUpRight size={17} />
+            {t("explore")} <ArrowUpRight size={17} />
           </button>
           <button className="btn btn-ghost" onClick={() => go('chat')}>
-            Chat with us <ArrowRight size={16} />
+            {t("chat")} <ArrowRight size={16} />
           </button>
         </div>
         <div className="hero-proof">
@@ -432,8 +439,8 @@ function App() {
             <ShieldCheck size={18} />
           </div>
           <span>
-            <b>Independent information</b>
-            <small>Trade execution is handled by authorised brokers.</small>
+            <b>{t("independent")}</b>
+            <small>{t("broker")}</small>
           </span>
         </div>
       </div>
@@ -460,10 +467,10 @@ function App() {
         <div className="eyebrow dark">TESLA MARKETS / INTRODUCTION</div>
         <h2>{publicContent.homeHeadline}</h2>
         <p>{publicContent.homeDescription}</p>
-        <div className="home-intro-actions"><button className="btn btn-dark" onClick={()=>go('markets')}>Invest now <ArrowUpRight size={16}/></button><button className="btn btn-outline" onClick={()=>go('shop')}>Shop vehicles <ArrowUpRight size={16}/></button></div>
+        <div className="home-intro-actions"><button className="btn btn-dark" onClick={()=>go('markets')}>{t("investNow")} <ArrowUpRight size={16}/></button><button className="btn btn-outline" onClick={()=>go('shop')}>{t("shop")} <ArrowUpRight size={16}/></button></div>
       </section>
       <section className="home-model-preview">
-        <div className="section-head"><div><div className="eyebrow dark">VEHICLE COLLECTION</div><h2>Choose your<br/><em>next Tesla.</em></h2></div><button className="text-link" onClick={()=>go('shop')}>View all models <ArrowUpRight size={15}/></button></div>
+        <div className="section-head"><div><div className="eyebrow dark">{t("collection")}</div><h2>{t("choose")}<br/><em>{t("next")}</em></h2></div><button className="text-link" onClick={()=>go('shop')}>{t("viewAll")} <ArrowUpRight size={15}/></button></div>
         <div className="home-model-grid">
           <button onClick={()=>go('model-3')}><img src="/resources/model-3-1.jpg" alt="Model 3 vehicle preview" loading="lazy"/><span>Model 3 <ArrowUpRight size={14}/></span></button>
           <button onClick={()=>go('model-y')}><img src="/resources/model-y-1.jpg" alt="Model Y vehicle preview" loading="lazy"/><span>Model Y <ArrowUpRight size={14}/></span></button>
