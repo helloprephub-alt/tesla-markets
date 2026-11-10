@@ -7,7 +7,7 @@ export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-anon-key',
-  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
+  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, experimental: { passkey: true } } },
 );
 
 export async function isCurrentUserAdmin() {
