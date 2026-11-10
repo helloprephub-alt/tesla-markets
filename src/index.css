@@ -910,3 +910,64 @@ body{overflow-x:clip}
  .customer-chat-screen .chat-plus-button,.customer-chat-screen .chat-send-button{width:36px;height:36px;min-width:36px}
  .customer-chat-screen .live-chat-compose textarea{font-size:13px}
 }
+
+
+/* Final customer-chat viewport correction: true edge-to-edge full-screen chat */
+.customer-chat-screen.chat-fullscreen{
+  position:fixed!important;inset:0!important;z-index:100!important;
+  width:100vw!important;height:100dvh!important;min-height:0!important;max-height:none!important;
+  margin:0!important;padding:0!important;overflow:hidden!important;
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:stretch!important;
+  background:#f1f3f4!important;border-radius:0!important;box-shadow:none!important;
+}
+.customer-chat-screen.chat-fullscreen>.chat-appbar{
+  position:relative!important;top:auto!important;left:auto!important;right:auto!important;
+  width:100%!important;max-width:none!important;flex:0 0 60px!important;height:60px!important;min-height:60px!important;
+  margin:0!important;padding:0 13px!important;border:0!important;border-bottom:1px solid #e4e8ea!important;
+  border-radius:0!important;box-shadow:none!important;background:#fff!important;
+}
+.customer-chat-screen.chat-fullscreen>.chat-full-body{
+  width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;max-height:none!important;
+  flex:1 1 0!important;display:flex!important;margin:0!important;padding:0!important;overflow:hidden!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;background:#f1f3f4!important;
+}
+.customer-chat-screen.chat-fullscreen .chat-conversation-shell,
+.customer-chat-screen.chat-fullscreen .live-chat-panel{
+  width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;max-height:none!important;
+  flex:1 1 0!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+}
+.customer-chat-screen.chat-fullscreen .live-chat-messages{
+  flex:1 1 0!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
+  padding:12px 12px 16px!important;gap:7px!important;font-size:13px!important;
+  overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;
+}
+.customer-chat-screen.chat-fullscreen .chat-bubble{max-width:min(84%,560px)!important;padding:8px 10px!important;border-radius:12px!important;font-size:13px!important;line-height:1.38!important}
+.customer-chat-screen.chat-fullscreen .chat-bubble p{margin:0!important;font-size:13px!important;line-height:1.4!important;overflow-wrap:anywhere}
+.customer-chat-screen.chat-fullscreen .chat-bubble small{font-size:9px!important;line-height:1.2!important;margin-top:4px!important}
+.customer-chat-screen.chat-fullscreen .chat-day-divider{font-size:10px!important;margin:2px auto 6px!important}
+.customer-chat-screen.chat-fullscreen .chat-context-card{font-size:11.5px!important;line-height:1.4!important;padding:8px 10px!important;margin:4px auto 8px!important}
+.customer-chat-screen.chat-fullscreen .chat-context-card b{font-size:9px!important;letter-spacing:.06em}
+.customer-chat-screen.chat-fullscreen .chat-compose{position:relative!important;bottom:auto!important;flex:0 0 auto!important;width:100%!important;gap:7px!important;padding:7px 9px calc(7px + env(safe-area-inset-bottom))!important;border:0!important;border-top:1px solid #e3e7e9!important;border-radius:0!important;background:#fff!important}
+.customer-chat-screen.chat-fullscreen .chat-plus-button,
+.customer-chat-screen.chat-fullscreen .chat-send-button{width:38px!important;height:38px!important;min-width:38px!important;flex:0 0 38px!important}
+.customer-chat-screen.chat-fullscreen .live-chat-compose textarea{min-height:38px!important;max-height:96px!important;padding:10px 13px!important;font-size:13px!important;line-height:1.35!important;border-radius:20px!important}
+.customer-chat-screen.chat-fullscreen .live-chat-compose textarea::placeholder{font-size:13px!important}
+.customer-chat-screen.chat-fullscreen .chat-image-previews{flex:0 0 auto;max-height:92px;overflow:hidden;padding:5px 10px;background:#fff;border-top:1px solid #edf0f1}
+.customer-chat-screen.chat-fullscreen .chat-image-preview-heading{font-size:10px;color:#69767d;margin-bottom:4px}
+.customer-chat-screen.chat-fullscreen .chat-image-preview-list{display:flex;gap:5px;overflow-x:auto;overflow-y:hidden;padding-bottom:3px}
+.customer-chat-screen.chat-fullscreen .chat-image-preview-item{display:flex;align-items:center;gap:5px;flex:0 0 auto;max-width:180px;padding:5px 7px;border-radius:8px;background:#f0f3f4;font-size:10px;color:#46535a}
+.customer-chat-screen.chat-fullscreen .chat-image-preview-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.customer-chat-screen.chat-fullscreen .chat-image-preview-item button{display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:#64727a;padding:1px}
+.customer-chat-screen.chat-fullscreen .chat-error{font-size:10px!important;padding:5px 10px!important}
+@media(max-width:480px){
+ .customer-chat-screen.chat-fullscreen>.chat-appbar{flex-basis:58px!important;height:58px!important;min-height:58px!important;padding:0 10px!important}
+ .customer-chat-screen.chat-fullscreen .chat-brand-avatar{width:38px!important;height:38px!important;flex-basis:38px!important}
+ .customer-chat-screen.chat-fullscreen .chat-appbar-brand b{font-size:14px!important}
+ .customer-chat-screen.chat-fullscreen .live-chat-messages{padding:10px 9px 14px!important}
+}
+@media(max-width:360px){
+ .customer-chat-screen.chat-fullscreen .chat-appbar-brand b{font-size:12.5px!important}
+ .customer-chat-screen.chat-fullscreen .chat-brand-avatar{width:34px!important;height:34px!important;flex-basis:34px!important}
+ .customer-chat-screen.chat-fullscreen .chat-compose{gap:5px!important;padding-left:7px!important;padding-right:7px!important}
+ .customer-chat-screen.chat-fullscreen .chat-plus-button,.customer-chat-screen.chat-fullscreen .chat-send-button{width:35px!important;height:35px!important;min-width:35px!important;flex-basis:35px!important}
+}
