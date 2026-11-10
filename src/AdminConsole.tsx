@@ -99,7 +99,7 @@ export function AdminConsole() {
     void evaluateAdminSession().catch(e=>{if(active){setUser(null);setAuthStep('login');setError(e instanceof Error?e.message:'Sign-in check failed.');}}).finally(()=>{if(active)setChecking(false);});
     const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{
       if(!active)return;
-      if(!session?.user){setUser(null);setAuthStep('login');return;}
+      if(!session?.user){window.setTimeout(()=>{if(active)void evaluateAdminSession().catch(e=>setError(e instanceof Error?e.message:'Could not check administrator setup.'));},0);return;}
       if(_event==='SIGNED_IN')window.setTimeout(()=>{if(active)void evaluateAdminSession().catch(e=>setError(e instanceof Error?e.message:'Could not verify administrator security.'));},0);
     });
     return()=>{active=false;listener.subscription.unsubscribe();};
