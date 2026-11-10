@@ -309,7 +309,7 @@ function App() {
           <b>Investments</b>
           <button onClick={() => go('markets')}>Tesla (TSLA)</button>
           <button onClick={() => go('markets')}>SpaceX information</button>
-          <button onClick={() => go('chat')}>Investment enquiries</button>
+          <button onClick={() => { sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Footer investment enquiry',type:'investment',context:'Tesla investment enquiry'})); go('chat'); }}>Investment enquiries</button>
         </div>
         <div>
           <b>Company</b>
@@ -576,7 +576,7 @@ function App() {
           <h1>{publicContent.investmentHeading}</h1>
           <p className="investment-description">{publicContent.investmentDescription}</p>
           <div className="investment-info-grid"><article><b>Tesla, Inc.</b><span>NASDAQ: TSLA</span><small>Publicly traded company information</small></article><article><b>Direct management contact</b><span>Enquiry support</span><small>Discuss your questions with management</small></article></div>
-          <button className="btn btn-dark investment-cta" onClick={()=>{sessionStorage.setItem('tesla-markets-chat-context','Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.');go('chat')}}>INVEST NOW <ArrowUpRight size={17}/></button>
+          <button className="btn btn-dark investment-cta" onClick={()=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'}));go('chat')}}>INVEST NOW <ArrowUpRight size={17}/></button>
         </div>
       </section>
       <section className="investment-trust-note"><span>Broker connected. Contact management to discuss your Tesla investment enquiry and the available next steps.</span></section>
