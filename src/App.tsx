@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   LockKeyhole,
   Menu,
+  MessageCircle,
   Search,
   ShieldCheck,
   ShoppingBag,
