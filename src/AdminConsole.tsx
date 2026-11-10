@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { isCurrentUserAdmin, supabase, supabaseConfigured } from './lib/supabase';
-import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, SlidersHorizontal, Sun, Moon } from 'lucide-react';
+import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, SlidersHorizontal, Sun, Moon, Search, Bell, TrendingUp, Wallet, Plus, Upload, Pencil, ArrowUpRight, BarChart3, ChevronRight } from 'lucide-react';
 import { AdminInbox } from './ChatWorkspace';
 
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
@@ -35,6 +35,8 @@ export function AdminConsole() {
   const [authBusy,setAuthBusy]=useState(false);
   const [passkeys,setPasskeys]=useState<Array<{id:string;friendly_name?:string;created_at?:string;last_used_at?:string}>>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [registeredCustomerCount,setRegisteredCustomerCount]=useState<number|null>(null);
+  const [dashboardSearch,setDashboardSearch]=useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [financeOrders,setFinanceOrders]=useState<FinanceOrder[]>([]);
@@ -58,7 +60,7 @@ export function AdminConsole() {
   const load = async () => {
     setRefreshing(true);
     try {
-      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, orderRows, paymentRows] = await Promise.all([
+      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, orderRows, paymentRows, customerCount] = await Promise.all([
         supabase.from('site_visits').select('id', { count:'exact', head:true }),
         supabase.from('site_clicks').select('id', { count:'exact', head:true }),
         supabase.from('support_conversations').select('id', { count:'exact', head:true }),
@@ -68,8 +70,9 @@ export function AdminConsole() {
         supabase.from('support_conversations').select('id,customer_id,subject,status,updated_at').order('updated_at',{ascending:false}).limit(100),
         supabase.from('business_orders').select('id,order_reference,item_description,agreed_amount,currency,status,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,status,method,created_at').order('created_at',{ascending:false}).limit(100),
+        supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
       ]);
-      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,orderRows,paymentRows]) if (result.error) throw result.error;
+      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,orderRows,paymentRows,customerCount]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
       const ids=rows.map(row=>row.customer_id);
       const {data:profiles,error:profilesError}=ids.length?await supabase.from('customer_profiles').select('id,display_name').in('id',ids):{data:[],error:null};
@@ -286,19 +289,31 @@ export function AdminConsole() {
           </header>
           {error && <div className="admin-console-error">{error}</div>}
           {section === 'overview' && <>
-            <section className="admin-console-stats">
-              <article><span><Eye size={18}/></span><small>Total page views</small><strong>{overview?.visits??'—'}</strong><em>Recorded website visits</em></article>
-              <article><span><Activity size={18}/></span><small>Total clicks</small><strong>{overview?.clicks??'—'}</strong><em>Clicks on buttons and links</em></article>
-              <article><span><Users size={18}/></span><small>Online now</small><strong>{overview?.onlineNow??'—'}</strong><em>Active browser sessions</em></article>
-              <article><span><MessageCircle size={18}/></span><small>Customer chats</small><strong>{overview?.conversations??'—'}</strong><em>Saved enquiry conversations</em></article>
-              <article><span><Inbox size={18}/></span><small>Messages</small><strong>{overview?.messages??'—'}</strong><em>Messages received and sent</em></article>
-              <article><span><Activity size={18}/></span><small>Recorded sales</small><strong>{financeOrders.length}</strong><em>Orders recorded in the system</em></article>
+            <div className="tm-dashboard-toolbar">
+              <label className="tm-global-search"><Search size={17}/><input value={dashboardSearch} onChange={e=>setDashboardSearch(e.target.value)} placeholder="Search customers, orders, vehicles…"/><kbd>Ctrl K</kbd></label>
+              <button className="tm-notification-button" aria-label="Notifications"><Bell size={18}/><i/></button>
+            </div>
+            <section className="tm-kpi-grid">
+              <article className="tm-kpi-card"><span className="tm-kpi-icon"><Users size={20}/></span><div><small>Total Customers</small><strong>{registeredCustomerCount??'—'}</strong><em>Registered customer profiles</em></div><Users className="tm-kpi-watermark"/></article>
+              <article className="tm-kpi-card"><span className="tm-kpi-icon"><Eye size={20}/></span><div><small>Website Visitors</small><strong>{overview?.visits??'—'}</strong><em>Recorded page visits</em></div><Eye className="tm-kpi-watermark"/></article>
+              <article className="tm-kpi-card"><span className="tm-kpi-icon"><MessageCircle size={20}/></span><div><small>Active Chats</small><strong>{overview?.onlineNow??'—'}</strong><em>Visitors active in last 90 seconds</em></div><MessageCircle className="tm-kpi-watermark"/></article>
+              <article className="tm-kpi-card"><span className="tm-kpi-icon"><CarFront size={20}/></span><div><small>Customer Enquiries</small><strong>{overview?.conversations??'—'}</strong><em>Saved customer conversations</em></div><CarFront className="tm-kpi-watermark"/></article>
+              <article className="tm-kpi-card"><span className="tm-kpi-icon"><Wallet size={20}/></span><div><small>Recorded Orders</small><strong>{financeOrders.length}</strong><em>Order records · no estimated value</em></div><Wallet className="tm-kpi-watermark"/></article>
             </section>
-            <section className="admin-console-panel admin-finance-overview"><div className="admin-console-panel-head"><div><div className="eyebrow dark">SALES & FINANCE</div><h2>Transaction snapshot</h2><p>Figures are based on recorded orders and payment records only.</p></div><button className="btn btn-outline" onClick={()=>setSection('finance')}>Open finance <Activity size={15}/></button></div><div className="admin-finance-kpis"><article><small>Orders recorded</small><b>{financeOrders.length}</b></article><article><small>Payments recorded</small><b>{financePayments.length}</b></article><article><small>Verified payments</small><b>{financePayments.filter(p=>p.status.toLowerCase()==='verified'||p.status.toLowerCase()==='completed'||p.status.toLowerCase()==='paid').length}</b></article><article><small>Pending payments</small><b>{financePayments.filter(p=>['pending','submitted','processing'].includes(p.status.toLowerCase())).length}</b></article></div><p className="admin-finance-note">No revenue or portfolio return is estimated. Currency totals are shown separately in Sales & Finance.</p></section>
-            <section className="admin-console-panel admin-overview-activity"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER ACTIVITY</div><h2>Recently active conversations</h2><p>Latest customer messages and management replies.</p></div><button className="btn btn-dark" onClick={()=>setSection('messages')}>Open inbox <MessageCircle size={15}/></button></div>
-              {threads.length? <div className="admin-record-list">{threads.slice(0,8).map(thread=><button key={thread.id} onClick={()=>setSection('messages')}><span className="admin-record-avatar">{(thread.visitorName||'V').slice(0,1).toUpperCase()}</span><div><b>{thread.visitorName||'Website visitor'}</b><small>{thread.visitorEmail||'Email not provided'} · {thread.lastMessage||'Conversation opened'}</small></div><time>{new Date(thread.updatedAt).toLocaleString()}</time></button>)}</div>:<p className="admin-empty-note">No customer conversations have been recorded yet.</p>}
-            </section>
-            <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">QUICK ACCESS</div><h2>Management shortcuts</h2><p>Jump directly to a control area.</p></div></div><div className="admin-quick-actions">{nav.filter(item=>item.id!=='overview').map(item=><button key={item.id} onClick={()=>setSection(item.id)}>{item.label}</button>)}</div></section>
+            <div className="tm-dashboard-grid tm-dashboard-grid-primary">
+              <section className="tm-dashboard-card tm-activity-chart"><div className="tm-card-heading"><div><h2>Website Activity</h2><p>Recent visitor activity from recorded page views.</p></div><span className="tm-card-chip">Latest {visits.length} records</span></div>
+                <div className="tm-chart-area"><div className="tm-chart-y"><span>Recent</span><span>Earlier</span></div><div className="tm-chart-bars">{[...visits].slice(0,28).reverse().map((v,i)=><div key={v.id} title={v.page+' · '+new Date(v.createdAt).toLocaleString()} style={{height:(22+((v.createdAt%997)/997)*72)+'%'}}/>)}{visits.length===0&&<p>No visit records yet.</p>}</div></div><div className="tm-chart-foot"><span>Latest tracked visits</span><b>{overview?.visits??0} total page views</b></div>
+              </section>
+              <section className="tm-dashboard-card tm-quick-actions-card"><div className="tm-card-heading"><div><h2>Quick Actions</h2><p>Common management tasks.</p></div></div><div className="tm-action-grid"><button onClick={()=>setSection('catalogue')}><CarFront/><span>Add / manage vehicle</span></button><button onClick={()=>setSection('media')}><Upload/><span>Upload media</span></button><button onClick={()=>setSection('investment')}><TrendingUp/><span>Update investment</span></button><button onClick={()=>setSection('content')}><Pencil/><span>Edit website content</span></button></div></section>
+              <section className="tm-dashboard-card tm-recent-enquiries"><div className="tm-card-heading"><div><h2>Recent Enquiries</h2><p>Latest customer conversations.</p></div><button onClick={()=>setSection('operations')}>View all <ArrowUpRight size={13}/></button></div>{threads.filter(t=>!dashboardSearch||[t.visitorName,t.visitorEmail,t.lastMessage].join(' ').toLowerCase().includes(dashboardSearch.toLowerCase())).slice(0,5).map(t=><button className="tm-enquiry-row" key={t.id} onClick={()=>setSection('messages')}><span className="tm-enquiry-avatar">{(t.visitorName||'V').slice(0,1).toUpperCase()}</span><span><b>{t.visitorName||'Website visitor'}</b><small>{t.lastMessage||'Customer enquiry'}</small></span><ChevronRight size={15}/></button>)}{threads.length===0&&<p className="tm-empty">No enquiries recorded yet.</p>}</section>
+            </div>
+            <div className="tm-dashboard-grid tm-dashboard-grid-secondary">
+              <section className="tm-dashboard-card tm-sales-summary"><div className="tm-card-heading"><div><h2>Sales & Finance Summary</h2><p>Verified receipts and orders only.</p></div><button onClick={()=>setSection('finance')}>Finance <ArrowUpRight size={13}/></button></div><div className="tm-finance-summary-content"><div className="tm-finance-ring"><strong>{financePayments.filter(p=>['verified','completed','paid'].includes(p.status.toLowerCase())).length}</strong><small>Verified payments</small></div><div className="tm-finance-legend"><span><i/>Orders <b>{financeOrders.length}</b></span><span><i/>Payments <b>{financePayments.length}</b></span><span><i/>Pending <b>{financePayments.filter(p=>['pending','submitted','processing'].includes(p.status.toLowerCase())).length}</b></span></div></div><p className="tm-finance-caveat">Portfolio valuation and sales revenue are not displayed until supported by verified financial records.</p></section>
+              <section className="tm-dashboard-card tm-vehicle-interest"><div className="tm-card-heading"><div><h2>Vehicle Interest</h2><p>Available vehicle collections.</p></div><button onClick={()=>setSection('catalogue')}>Vehicles <ArrowUpRight size={13}/></button></div>{catalogue.map(item=><div className="tm-vehicle-row" key={item.name}><img src={item.first} alt=""/><b>{item.name}</b><span>{item.count} images</span></div>)}</section>
+              <section className="tm-dashboard-card tm-recent-activity"><div className="tm-card-heading"><div><h2>Recent Activity</h2><p>Latest recorded website events.</p></div><button onClick={()=>setSection('visitors')}>View all <ArrowUpRight size={13}/></button></div>{visits.slice(0,5).map(v=><div className="tm-activity-row" key={v.id}><span><Activity size={15}/></span><div><b>Page visit recorded</b><small>{v.page}</small></div><time>{new Date(v.createdAt).toLocaleTimeString()}</time></div>)}{visits.length===0&&<p className="tm-empty">No recent activity.</p>}</section>
+            </div>
+            <section className="tm-dashboard-card tm-chat-dashboard"><div className="tm-card-heading"><div><h2>Customer Conversations</h2><p>Inbox, live replies and customer details.</p></div><button onClick={()=>setSection('messages')}>Open full inbox <ArrowUpRight size={13}/></button></div><AdminInbox/></section>
+            <section className="tm-dashboard-card tm-quick-links"><div className="tm-card-heading"><div><h2>Management Sections</h2><p>All website controls in one organized place.</p></div></div><div className="admin-quick-actions">{nav.filter(item=>item.id!=='overview').map(item=><button key={item.id} onClick={()=>setSection(item.id)}>{item.label}</button>)}</div></section>
           </>}
           {section === 'visitors' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VISITOR ACTIVITY</div><h2>{visits.length} recent page views</h2><p>Page-level activity; this is not a count of unique people.</p></div></div>{visits.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Page</th><th>Visited at</th><th>Record ID</th></tr></thead><tbody>{visits.map(visit=><tr key={visit.id}><td>{visit.page}</td><td>{new Date(visit.createdAt).toLocaleString()}</td><td>{visit.id.slice(0,12)}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No page views recorded yet.</p>}</section>}
           {section === 'customers' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER DIRECTORY</div><h2>{threads.length} enquiry contacts</h2><p>Customer records based on saved website conversations.</p></div></div>{threads.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Customer</th><th>Email</th><th>Last activity</th><th>Last message</th></tr></thead><tbody>{threads.map(thread=><tr key={thread.id}><td>{thread.visitorName||'Website visitor'}</td><td>{thread.visitorEmail||'Not provided'}</td><td>{new Date(thread.updatedAt).toLocaleString()}</td><td>{thread.lastMessage||'—'}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">New customer conversations will appear here.</p>}</section>}
