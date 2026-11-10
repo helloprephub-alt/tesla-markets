@@ -135,6 +135,8 @@ const plans = [
   },
 ];
 const money = (n: string) => n;
+const supportedLanguages=[['en','English'],['ar','العربية'],['bn','বাংলা'],['zh-CN','简体中文'],['nl','Nederlands'],['fr','Français'],['de','Deutsch'],['ha','Hausa'],['hi','हिन्दी'],['id','Bahasa Indonesia'],['it','Italiano'],['ja','日本語'],['ko','한국어'],['pl','Polski'],['pt','Português'],['ru','Русский'],['es','Español'],['sw','Kiswahili'],['sv','Svenska'],['th','ไทย'],['tr','Türkçe'],['uk','Українська'],['ur','اردو'],['vi','Tiếng Việt'],['yo','Yorùbá']];
+
 
 function App() {
   const [page, setPage] = useState<Page>(
@@ -142,8 +144,11 @@ function App() {
   );
   const [pageHistory, setPageHistory] = useState<Page[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [detectedLanguage,setDetectedLanguage] = useState(()=>{const supported=['en','fr','de','es','pt','ar','ha'];const candidates=[...(typeof navigator!=='undefined'?navigator.languages:[]),...(typeof navigator!=='undefined'?[navigator.language]:[])];return candidates.map(value=>value.toLowerCase().split('-')[0]).find(value=>supported.includes(value))||'en';});
-  const translateSite = (lang:string) => {setDetectedLanguage(lang);if(lang!=='en')window.location.href='https://translate.google.com/translate?sl=en&tl='+lang+'&u='+encodeURIComponent(window.location.href);};
+  const [languageOpen,setLanguageOpen]=useState(false);
+  const [languageSearch,setLanguageSearch]=useState('');
+  const [detectedLanguage,setDetectedLanguage] = useState(()=>{const candidates=[...(typeof navigator!=='undefined'?navigator.languages:[]),...(typeof navigator!=='undefined'?[navigator.language]:[])];return candidates.map(value=>value.toLowerCase().split('-')[0]).find(value=>supportedLanguages.some(([code])=>code===value))||'en';});
+  const currentLanguageName=String(supportedLanguages.find(([code])=>code===detectedLanguage)?.[1]||'English');
+  const translateSite = (lang:string) => {setDetectedLanguage(lang);setLanguageOpen(false);setLanguageSearch('');if(lang==='en'){window.location.href=window.location.href.split('#')[0];return;}window.location.href='https://translate.google.com/translate?sl=en&tl='+lang+'&u='+encodeURIComponent(window.location.href);};
   const [videoMuted, setVideoMuted] = useState(true);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const toggleHeroVideoSound = () => {
@@ -285,12 +290,10 @@ function App() {
           ))}
         </nav>
         <div className="nav-actions">
-          <label className="language-select" aria-label="Choose website language"><Globe2 size={16}/><select aria-label="Website language" value={detectedLanguage} onChange={e=>translateSite(e.target.value)}><option value="en">English</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="ha">Hausa</option></select></label>
-          <button className="btn btn-outline btn-small" onClick={() => go('shop')}>
-            Browse vehicles <ArrowUpRight size={15} />
-          </button>
+          <button className="language-trigger" type="button" onClick={()=>{setLanguageOpen(true);setMenuOpen(false);}} aria-label="Change language"><Globe2 size={19}/><span>Language</span><b>{currentLanguageName}</b><ChevronDown size={14}/></button>
+          <button className="btn btn-outline btn-small" onClick={() => go('shop')}>Browse vehicles <ArrowUpRight size={15} /></button>
         </div>
-        <label className="language-select mobile-language-select" aria-label="Choose website language"><Globe2 size={17}/><select aria-label="Website language" value={detectedLanguage} onChange={e=>translateSite(e.target.value)}><option value="en">EN</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="pt">PT</option><option value="ar">AR</option><option value="ha">HA</option></select></label>
+        <button className="language-trigger mobile-language-trigger" type="button" onClick={()=>setLanguageOpen(true)} aria-label="Change language"><Globe2 size={19}/><span>Language</span></button>
         <button
           className="mobile-menu"
           onClick={() => setMenuOpen(!menuOpen)}
@@ -301,6 +304,7 @@ function App() {
       </div>
     </header>
   );
+  const LanguageDialog=()=>languageOpen?<div className="language-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setLanguageOpen(false);}}><section className="language-dialog" role="dialog" aria-modal="true" aria-labelledby="language-title"><div className="language-dialog-head"><div><span className="language-dialog-kicker">TESLA MARKETS</span><h2 id="language-title">Choose your language</h2><p>Select the language you’re most comfortable using.</p></div><button type="button" className="language-close" onClick={()=>setLanguageOpen(false)} aria-label="Close language selector"><X size={21}/></button></div><label className="language-search"><Search size={18}/><input autoFocus value={languageSearch} onChange={e=>setLanguageSearch(e.target.value)} placeholder="Search languages…" /></label><div className="language-grid">{supportedLanguages.filter(([code,name])=>(name+' '+code).toLowerCase().includes(languageSearch.toLowerCase())).map(([code,name])=><button type="button" key={code} className={detectedLanguage===code?'selected':''} onClick={()=>translateSite(code)}><span>{name}</span><small>{code.toUpperCase()}</small>{detectedLanguage===code&&<Check size={16}/>}</button>)}</div><p className="language-note">25 language options · Your choice can be changed anytime</p></section></div>:null;
   const Footer = () => (
     <footer className="footer">
       <div className="footer-top">
@@ -1037,6 +1041,7 @@ function App() {
   const hasOwnBack = page === 'chat' || ['model-y','model-3','cybertruck','roadster','semi'].includes(page);
   return (
     <div className="app-shell">
+      <LanguageDialog/>
       {!hideSiteChrome && <Header />}
       {page !== 'home' && !hasOwnBack && <button type="button" className={'global-page-back '+(hideSiteChrome?'standalone':'')} onClick={goBack} aria-label="Go back to previous page"><ChevronLeft size={16}/><span>Back</span></button>}
       {content}
