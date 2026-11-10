@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { ChatWorkspace, GeneratedGallery } from './ChatWorkspace';
 import { AdminConsole } from './AdminConsole';
@@ -26,6 +26,8 @@ import {
   Sparkles,
   TrendingUp,
   UserRound,
+  Volume2,
+  VolumeX,
   Wallet,
   X,
   Zap,
@@ -135,6 +137,16 @@ function App() {
   );
   const [pageHistory, setPageHistory] = useState<Page[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [videoMuted, setVideoMuted] = useState(true);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
+  const toggleHeroVideoSound = () => {
+    const video = heroVideoRef.current;
+    if (!video) return;
+    const nextMuted = !videoMuted;
+    video.muted = nextMuted;
+    if (!nextMuted) void video.play().catch(() => setVideoMuted(true));
+    setVideoMuted(nextMuted);
+  };
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
@@ -205,12 +217,10 @@ function App() {
     <button
       className="brand"
       onClick={() => go('home')}
-      aria-label="Tesla Invest home"
+      aria-label="Tesla Markets home"
     >
       <img className="brand-logo" src="data:image/webp;base64,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" alt="Tesla wordmark" />
-      <span>
-        TESLA<span className="brand-light"> MARKETS</span>
-      </span>
+      <span className="brand-word">MARKETS</span>
     </button>
   );
   const Header = () => (
@@ -379,9 +389,13 @@ function App() {
         </div>
       </div>
       <div className="hero-video-stage" aria-label="Tesla Markets cinematic vehicle showcase">
-        <video autoPlay muted loop playsInline preload="auto" poster="/resources/tesla-hero.jpg">
+        <video ref={heroVideoRef} autoPlay muted={videoMuted} loop playsInline preload="auto" poster="/resources/tesla-hero.jpg">
           <source src="/resources/tesla-showreel.mp4" type="video/mp4"/>
         </video>
+        <button type="button" className="hero-video-sound" onClick={toggleHeroVideoSound} aria-label={videoMuted ? "Unmute video sound" : "Mute video sound"} title={videoMuted ? "Turn sound on" : "Mute sound"}>
+          {videoMuted ? <VolumeX size={19} /> : <Volume2 size={19} />}
+          <span>{videoMuted ? "Sound off" : "Sound on"}</span>
+        </button>
         <div className="hero-video-caption"><span>TESLA MARKETS / ELECTRIC MOBILITY</span><strong>Explore the road ahead.</strong></div>
       </div>
       <div className="hero-index">
