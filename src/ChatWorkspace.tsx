@@ -10,6 +10,7 @@ const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
 
 function ManagementAvatar({className='chat-avatar'}:{className?:string}) {
   const [profileUrl,setProfileUrl] = useState('');
+  const [fallbackFailed,setFallbackFailed] = useState(false);
   useEffect(()=>{
     let active=true;
     const load=async()=>{
@@ -25,7 +26,7 @@ function ManagementAvatar({className='chat-avatar'}:{className?:string}) {
       }).subscribe();
     return ()=>{active=false;void supabase.removeChannel(channel);};
   },[]);
-  return <span className={'management-avatar '+className}>{profileUrl ? <img src={profileUrl} alt="Tesla Markets Management profile" loading="eager" decoding="async" onError={()=>setProfileUrl('')}/> : <span className="management-avatar-fallback">TM</span>}</span>;
+  return <span className={'management-avatar '+className}>{profileUrl || !fallbackFailed ? <img src={profileUrl || '/resources/tesla-management-profile'} alt="Tesla Markets Management profile" loading="eager" decoding="async" onError={()=>{if(profileUrl)setProfileUrl('');else setFallbackFailed(true);}}/> : <span className="management-avatar-fallback">TM</span>}</span>;
 }
 
 async function ensureCustomerSession() {
