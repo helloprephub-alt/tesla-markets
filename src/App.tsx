@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
-import type { PublicLanguage } from './public-i18n';
+import { publicText, supportedPublicLanguages, type PublicLanguage } from './public-i18n';
 import { ChatWorkspace, GeneratedGallery } from './ChatWorkspace';
 import { AdminConsole } from './AdminConsole';
 import { VehicleExperience } from './VehicleExperience';
@@ -135,7 +135,7 @@ const plans = [
   },
 ];
 const money = (n: string) => n;
-const supportedLanguages=[['en','English'],['fr','Français'],['de','Deutsch'],['es','Español']];
+const supportedLanguages=supportedPublicLanguages;
 const translations:Record<string,Record<string,string>>={
 en:{home:'Home',vehicles:'Vehicles / Shop',investments:'Investments',about:'About',faqs:'FAQs',contact:'Contact',support:'Support / Chat',language:'Choose your language',languageHint:'Select your preferred website language.',heroEyebrow:'ELECTRIC MOBILITY & INVESTMENT ENQUIRIES',heroTitle:'Invest in the',heroItalic:'future in motion.',heroDescription:'Explore publicly traded shares in Tesla and SpaceX, review market information and send an enquiry about buying through an authorised brokerage.',explore:'Explore Tesla & SpaceX',chat:'Chat with us',independent:'Independent information',broker:'Trade execution is handled by authorised brokers.',intro:'TESLA MARKETS / INTRODUCTION',investNow:'Invest now',shop:'Shop vehicles',collection:'VEHICLE COLLECTION',choose:'Choose your',next:'next Tesla.',viewAll:'View all models',search:'Search languages…'},
 fr:{home:'Accueil',vehicles:'Véhicules / Boutique',investments:'Investissements',about:'À propos',faqs:'FAQ',contact:'Contact',support:'Assistance / Chat',language:'Choisir votre langue',languageHint:'Choisissez la langue du site que vous préférez.',heroEyebrow:'MOBILITÉ ÉLECTRIQUE ET DEMANDES D’INVESTISSEMENT',heroTitle:'Investissez dans le',heroItalic:'mouvement de demain.',heroDescription:'Découvrez les actions cotées de Tesla et SpaceX, consultez les informations de marché et envoyez une demande d’achat par l’intermédiaire d’un courtier agréé.',explore:'Découvrir Tesla et SpaceX',chat:'Discuter avec nous',independent:'Informations indépendantes',broker:'Les transactions sont effectuées par des courtiers agréés.',intro:'TESLA MARKETS / PRÉSENTATION',investNow:'Investir',shop:'Voir les véhicules',collection:'COLLECTION DE VÉHICULES',choose:'Choisissez votre',next:'prochaine Tesla.',viewAll:'Voir tous les modèles',search:'Rechercher une langue…'},
@@ -154,7 +154,7 @@ function App() {
   const [languageSearch,setLanguageSearch]=useState('');
   const [detectedLanguage,setDetectedLanguage] = useState(()=>{try{return localStorage.getItem('tesla-markets-language')||'en';}catch{return 'en';}});
   const currentLanguageName=String(supportedLanguages.find(([code])=>code===detectedLanguage)?.[1]||'English');
-  const t=(key:string)=>translations[detectedLanguage]?.[key]||translations.en[key]||key;
+  const t=(key:string)=>publicText(translations.en[key]||key, detectedLanguage as PublicLanguage);
   const translateSite = (lang:string) => {setDetectedLanguage(lang);try{localStorage.setItem('tesla-markets-language',lang);}catch{}setLanguageOpen(false);setLanguageSearch('');};
   const [videoMuted, setVideoMuted] = useState(true);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
