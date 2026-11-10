@@ -1823,3 +1823,6 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .language-trigger>svg:last-child{color:#9c3a40;width:13px;height:13px}
 .language-trigger:hover{border-color:#bd343b;background:#fff0f0;box-shadow:0 3px 12px #bd343b1c}
 @media(max-width:760px){.language-trigger{min-height:33px;height:33px;padding:0 9px;gap:6px}.language-trigger>svg:first-child{width:16px;height:16px}}
+
+/* Keep the language picker visible in the mobile landing-page header. */
+@media(max-width:760px){.topbar .nav-actions{display:flex!important;align-items:center;gap:7px;margin-left:auto}.topbar .nav-actions>.btn{display:none!important}.topbar .language-trigger{display:inline-flex!important;visibility:visible!important;opacity:1!important;min-width:44px;min-height:34px;height:34px;padding:0 9px}.topbar .mobile-menu{display:grid;flex:0 0 40px}}
