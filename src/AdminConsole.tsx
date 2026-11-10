@@ -5,7 +5,7 @@ import { AdminInbox } from './ChatWorkspace';
 
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
 const ADMIN_AUTH_REDIRECT = 'https://tesla-markets.vercel.app/#admin';
-type Thread = { id: string; visitorName?: string; visitorEmail?: string; createdAt: number; updatedAt: number; lastMessage?: string; status?: string };
+type Thread = { id: string; visitorName?: string; visitorEmail?: string; enquiryType?:string; enquirySource?:string; vehicleModel?:string; phone?:string; createdAt: number; updatedAt: number; lastMessage?: string; status?: string };
 type Visit = { id: string; page: string; createdAt: number };
 type FinanceOrder = {id:string;reference:string;item:string;amount:number;currency:string;status:string;createdAt:number};
 type FinancePayment = {id:string;reference:string;orderId:string|null;amount:number;currency:string;status:string;method:string;createdAt:number};
@@ -68,7 +68,7 @@ export function AdminConsole() {
         supabase.from('support_messages').select('id', { count:'exact', head:true }),
         supabase.from('site_presence').select('visitor_id', { count:'exact', head:true }).gte('last_seen_at', new Date(Date.now()-90000).toISOString()),
         supabase.from('site_visits').select('id,page,created_at').order('created_at',{ascending:false}).limit(100),
-        supabase.from('support_conversations').select('id,customer_id,subject,status,updated_at').order('updated_at',{ascending:false}).limit(100),
+        supabase.from('support_conversations').select('id,customer_id,subject,status,updated_at,visitor_email,enquiry_type,enquiry_source,vehicle_model,contact_phone').order('updated_at',{ascending:false}).limit(100),
         supabase.from('business_orders').select('id,order_reference,item_description,agreed_amount,currency,status,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,status,method,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
@@ -76,13 +76,13 @@ export function AdminConsole() {
       for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,orderRows,paymentRows,customerCount]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
       const ids=rows.map(row=>row.customer_id);
-      const {data:profiles,error:profilesError}=ids.length?await supabase.from('customer_profiles').select('id,display_name').in('id',ids):{data:[],error:null};
+      const {data:profiles,error:profilesError}=ids.length?await supabase.from('customer_profiles').select('id,display_name,email,phone').in('id',ids):{data:[],error:null};
       if(profilesError) throw profilesError;
-      const names=new Map((profiles||[]).map(profile=>[profile.id,profile.display_name]));
+      const names=new Map((profiles||[]).map(profile=>[profile.id,profile]));
       const mapped=await Promise.all(rows.map(async row=>{
         const {data:last,error:lastError}=await supabase.from('support_messages').select('body,created_at').eq('conversation_id',row.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
         if(lastError) throw lastError;
-        return {id:row.id,visitorName:names.get(row.customer_id)||'Website visitor',visitorEmail:'',createdAt:new Date(row.updated_at).getTime(),updatedAt:new Date(row.updated_at).getTime(),lastMessage:last?.body||row.subject||'Conversation opened',status:row.status};
+        const profile=names.get(row.customer_id);return {id:row.id,visitorName:profile?.display_name||'Website visitor',visitorEmail:row.visitor_email||profile?.email||'',phone:row.contact_phone||profile?.phone||'',enquiryType:row.enquiry_type||'general',enquirySource:row.enquiry_source||'Website chat',vehicleModel:row.vehicle_model||'',createdAt:new Date(row.updated_at).getTime(),updatedAt:new Date(row.updated_at).getTime(),lastMessage:last?.body||row.subject||'Conversation opened',status:row.status};
       }));
       setOverview({visits:visitCount.count||0,clicks:clickCount.count||0,conversations:conversationCount.count||0,messages:messageCount.count||0,generatedImages:0,onlineNow:presenceCount.count||0,updatedAt:Date.now()});
       setThreads(mapped);
