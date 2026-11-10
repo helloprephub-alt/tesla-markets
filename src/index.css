@@ -863,3 +863,50 @@ body{overflow-x:clip}
  .brand-word{font-size:10px;letter-spacing:.1em}
  .hero-video-sound{width:30px;height:30px;min-height:30px}
 }
+
+
+/* Customer chat: compact WhatsApp-like layout, fixed identity bar and composer */
+.customer-chat-screen{height:100dvh;min-height:0;width:100%;display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:none;background:#f2f4f5}
+.customer-chat-screen .chat-appbar{position:sticky;top:0;z-index:30;flex:0 0 62px;height:62px;min-height:62px;padding:0 14px;background:#fff;border-bottom:1px solid #e5e9eb;justify-content:flex-start;gap:12px}
+.customer-chat-screen .chat-appbar>button{width:34px;height:38px;flex:0 0 34px;justify-content:center;padding:0;border-radius:50%;font-size:0;color:#24323a}
+.customer-chat-screen .chat-appbar>button svg{width:20px;height:20px}
+.customer-chat-screen .chat-appbar-brand{min-width:0;flex:1;gap:9px}
+.customer-chat-screen .chat-brand-avatar{width:40px;height:40px;flex:0 0 40px}
+.customer-chat-screen .chat-appbar-brand b{font:600 15px/1.25 'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.customer-chat-screen .chat-appbar-brand small{font-size:10px;color:#7c878d;margin-top:2px}
+.customer-chat-screen .chat-header-spacer{width:5px;flex:0 0 5px}
+.customer-chat-screen .chat-full-body{flex:1 1 auto;min-height:0;padding:0;display:flex;overflow:hidden}
+.customer-chat-screen .chat-conversation-shell{width:100%;max-width:900px;margin:0 auto;min-height:0;display:flex;flex:1;flex-direction:column}
+.customer-chat-screen .live-chat-panel{height:auto;min-height:0;flex:1 1 auto;display:flex;flex-direction:column;overflow:hidden;border:0;border-radius:0;background:#f1f4f3;box-shadow:none}
+.customer-chat-screen .live-chat-messages{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px 12px 18px;gap:9px;font-size:14px}
+.customer-chat-screen .chat-day-divider{font-size:10px;margin:3px auto 7px}
+.customer-chat-screen .chat-day-divider span{padding:5px 10px}
+.customer-chat-screen .chat-bubble{max-width:min(84%,560px);padding:9px 11px;border-radius:12px;font-size:14px;line-height:1.42}
+.customer-chat-screen .chat-bubble p{font-size:14px;line-height:1.42}
+.customer-chat-screen .chat-bubble small{font-size:9px;margin-top:5px}
+.customer-chat-screen .chat-context-card{max-width:88%;margin:5px auto 10px;padding:9px 11px;gap:4px;font-size:12px;line-height:1.4}
+.customer-chat-screen .chat-context-card b{font-size:9px}
+.customer-chat-screen .chat-image-preview{flex:0 0 auto}
+.customer-chat-screen .chat-error{flex:0 0 auto;padding:6px 12px;background:#fff8f8;font-size:11px;line-height:1.35}
+.customer-chat-screen .live-chat-compose{position:relative;z-index:20;flex:0 0 auto;display:flex;align-items:flex-end;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid #e5e9eb;background:#fff}
+.customer-chat-screen .chat-plus-button,.customer-chat-screen .chat-send-button{width:40px;height:40px;min-width:40px}
+.customer-chat-screen .live-chat-compose textarea{flex:1;min-width:0;min-height:40px;max-height:104px;resize:none;border:0;border-radius:21px;background:#f0f3f4;padding:11px 14px;font:400 14px/1.3 'DM Sans',sans-serif;color:#25333a;outline:none;box-shadow:none}
+.customer-chat-screen .live-chat-compose textarea:focus{outline:1px solid #d5dde1}
+.customer-chat-screen .live-chat-compose textarea::placeholder{font-size:14px;color:#879198}
+.customer-chat-screen .chat-attach-menu{bottom:48px}
+.customer-chat-screen .chat-verified-badge{width:16px;height:16px;vertical-align:-2px;flex:0 0 auto}
+@media(min-width:761px){
+ .customer-chat-screen{background:#edf0f1}
+ .customer-chat-screen .chat-full-body{padding:14px 20px}
+ .customer-chat-screen .chat-conversation-shell{max-width:900px}
+ .customer-chat-screen .live-chat-panel{border:1px solid #e0e5e7;border-radius:12px}
+ .customer-chat-screen .live-chat-messages{padding:20px 24px}
+ .customer-chat-screen .live-chat-compose{border-radius:0 0 12px 12px}
+}
+@media(max-width:380px){
+ .customer-chat-screen .chat-appbar-brand b{font-size:13px}
+ .customer-chat-screen .chat-brand-avatar{width:36px;height:36px;flex-basis:36px}
+ .customer-chat-screen .live-chat-compose{gap:6px;padding-left:8px;padding-right:8px}
+ .customer-chat-screen .chat-plus-button,.customer-chat-screen .chat-send-button{width:36px;height:36px;min-width:36px}
+ .customer-chat-screen .live-chat-compose textarea{font-size:13px}
+}
