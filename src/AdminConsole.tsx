@@ -85,7 +85,7 @@ export function AdminConsole() {
   const evaluateAdminSession = async () => {
     const {data:{user:current},error:authError}=await supabase.auth.getUser();
     if(authError)throw authError;
-    if(!current){setUser(null);const {data:status,error:statusError}=await supabase.functions.invoke('admin-key-login',{body:{action:'status'}});if(statusError)throw statusError;if(status?.error)throw new Error(status.error);setAuthStep(status?.setupComplete?'login':'setup');return;}
+    if(!current){setUser(null);const {data:status,error:statusError}=await supabase.functions.invoke('admin-key-login',{body:{action:'status'}});if(statusError)throw statusError;if(status?.error)throw new Error(status.error);setAuthStep(setupToken || !status?.setupComplete ? 'setup' : 'login');return;}
     const {isAdmin}=await isCurrentUserAdmin();
     if(!isAdmin){setUser(null);setAuthStep('login');setError('This account is not authorised for Tesla Markets management.');await supabase.auth.signOut();return;}
     setUser({email:current.email||''});setAuthStep('ready');setError('');
@@ -140,7 +140,7 @@ export function AdminConsole() {
     try {
       if(action==='setup' && (loginPassword.length<14 || loginPassword!==confirmPassword)) throw new Error('Enter matching passwords with at least 14 characters.');
       const {data,error:invokeError}=await supabase.functions.invoke('admin-key-login',{body:action==='setup'?{action,setupToken,password:loginPassword}:{action,password:loginPassword}});
-      if(invokeError) throw invokeError;
+      if(invokeError){let detail='';try{detail=(await invokeError.context?.json())?.error||'';}catch{}throw new Error(detail||invokeError.message||'Administrator access request failed.');}
       if(data?.error) throw new Error(data.error);
       const {error:verifyError}=await supabase.auth.verifyOtp({token_hash:data.token_hash,type:'magiclink'});
       if(verifyError) throw verifyError;
