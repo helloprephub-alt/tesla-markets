@@ -1065,3 +1065,66 @@ button.site-chat-launcher .site-chat-unread{position:absolute!important;top:-4px
 @media(max-width:600px){
  button.site-chat-launcher{right:12px!important;bottom:14px!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important}
 }
+
+
+/* Edge-to-edge chat correction: remove inherited/container width constraints */
+html,body,#root,.app-shell{width:100%!important;max-width:none!important;min-width:0!important}
+html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
+.customer-chat-screen.chat-fullscreen{
+  position:fixed!important;
+  inset:0!important;
+  left:0!important;right:0!important;top:0!important;bottom:0!important;
+  width:100%!important;max-width:none!important;min-width:0!important;
+  height:100vh!important;height:100dvh!important;
+  margin:0!important;padding:0!important;
+  box-sizing:border-box!important;
+}
+.customer-chat-screen.chat-fullscreen>.chat-appbar,
+.customer-chat-screen.chat-fullscreen>.chat-full-body{
+  left:0!important;right:0!important;width:100%!important;max-width:none!important;min-width:0!important;
+  box-sizing:border-box!important;
+}
+.customer-chat-screen.chat-fullscreen>.chat-appbar{
+  display:flex!important;gap:8px!important;padding-left:max(10px,env(safe-area-inset-left))!important;
+  padding-right:max(10px,env(safe-area-inset-right))!important;overflow:visible!important;
+}
+.customer-chat-screen.chat-fullscreen>.chat-appbar>button{
+  flex:0 0 38px!important;width:38px!important;min-width:38px!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  padding:0!important;margin:0!important;white-space:nowrap!important;
+}
+.customer-chat-screen.chat-fullscreen .chat-appbar-brand{
+  flex:1 1 auto!important;min-width:0!important;width:auto!important;max-width:none!important;
+  display:flex!important;align-items:center!important;gap:9px!important;overflow:visible!important;
+}
+.customer-chat-screen.chat-fullscreen .chat-appbar-brand>div{
+  flex:1 1 auto!important;min-width:0!important;overflow:visible!important;
+}
+.customer-chat-screen.chat-fullscreen .chat-appbar-brand b{
+  display:flex!important;align-items:center!important;gap:5px!important;
+  min-width:0!important;white-space:nowrap!important;overflow:visible!important;
+  font-size:clamp(12px,3.4vw,15px)!important;line-height:1.2!important;
+}
+.customer-chat-screen.chat-fullscreen .chat-appbar-brand .chat-verified-badge{
+  display:inline-block!important;visibility:visible!important;opacity:1!important;
+  position:static!important;flex:0 0 18px!important;width:18px!important;height:18px!important;
+  min-width:18px!important;min-height:18px!important;margin:0!important;overflow:visible!important;
+}
+.customer-chat-screen.chat-fullscreen .chat-brand-avatar{
+  flex:0 0 38px!important;width:38px!important;height:38px!important;min-width:38px!important;
+}
+.customer-chat-screen.chat-fullscreen>.chat-full-body{
+  overflow:hidden!important;min-width:0!important;
+}
+.customer-chat-screen.chat-fullscreen .chat-conversation-shell,
+.customer-chat-screen.chat-fullscreen .live-chat-panel{
+  width:100%!important;max-width:none!important;min-width:0!important;
+}
+.customer-chat-screen.chat-fullscreen .live-chat-compose textarea{
+  min-width:0!important;flex:1 1 auto!important;
+}
+@media(max-width:380px){
+ .customer-chat-screen.chat-fullscreen .chat-appbar-brand b{font-size:12px!important}
+ .customer-chat-screen.chat-fullscreen .chat-brand-avatar{flex-basis:34px!important;width:34px!important;height:34px!important;min-width:34px!important}
+ .customer-chat-screen.chat-fullscreen>.chat-appbar>button{flex-basis:32px!important;width:32px!important;min-width:32px!important}
+}
