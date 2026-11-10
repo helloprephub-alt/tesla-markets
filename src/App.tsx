@@ -154,7 +154,7 @@ function App() {
   const [languageSearch,setLanguageSearch]=useState('');
   const [detectedLanguage,setDetectedLanguage] = useState(()=>{try{return localStorage.getItem('tesla-markets-language')||'en';}catch{return 'en';}});
   const currentLanguageName=String(supportedLanguages.find(([code])=>code===detectedLanguage)?.[1]||'English');
-  const t=(key:string)=>publicText(translations.en[key]||key, detectedLanguage as PublicLanguage);
+  const t=(key:string)=>translations[detectedLanguage]?.[key]||publicText(translations.en[key]||key, detectedLanguage as PublicLanguage);
   const translateSite = (lang:string) => {setDetectedLanguage(lang);try{localStorage.setItem('tesla-markets-language',lang);}catch{}setLanguageOpen(false);setLanguageSearch('');};
   const [videoMuted, setVideoMuted] = useState(true);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
