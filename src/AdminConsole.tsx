@@ -21,9 +21,10 @@ const statusOptions = ['open', 'pending', 'closed'];
 export function AdminConsole() {
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [checking, setChecking] = useState(true);
-  const [authStep,setAuthStep]=useState<'login'|'enroll'|'verify'|'ready'>('login');
-  const [loginEmail,setLoginEmail]=useState(ADMIN_EMAIL);
+  const [authStep,setAuthStep]=useState<'setup'|'login'|'enroll'|'verify'|'ready'>('setup');
+  const [setupToken,setSetupToken]=useState('');
   const [loginPassword,setLoginPassword]=useState('');
+  const [confirmPassword,setConfirmPassword]=useState('');
   const [passwordRecovery,setPasswordRecovery]=useState(false);
   const [newPassword,setNewPassword]=useState('');
   const [authCode,setAuthCode]=useState('');
@@ -86,12 +87,13 @@ export function AdminConsole() {
   const evaluateAdminSession = async () => {
     const {data:{user:current},error:authError}=await supabase.auth.getUser();
     if(authError)throw authError;
-    if(!current){setUser(null);setAuthStep('login');return;}
+    if(!current){setUser(null);const {data:factors}=await supabase.auth.mfa.listFactors();setAuthStep(factors?.totp?.some(f=>f.status==='verified')?'login':'setup');return;}
     const {isAdmin}=await isCurrentUserAdmin();
     if(!isAdmin){setUser(null);setAuthStep('login');setError('This account is not authorised for Tesla Markets management.');await supabase.auth.signOut();return;}
-    // Temporary simplified administrator access: keep Supabase password sign-in
-    // and the server-side is_admin profile check, but do not require TOTP/passkeys.
-    setUser({email:current.email||''});setAuthStep('ready');setError('');
+    const {data:factors,error:factorError}=await supabase.auth.mfa.listFactors();
+    if(factorError)throw factorError;
+    const verified=factors.totp.find(f=>f.status==='verified');
+    setUser(null);setAuthStep(verified?'verify':'enroll');setFactorId(verified?.id||'');setError('');
   };
   useEffect(() => {
     let active=true;
@@ -139,13 +141,22 @@ export function AdminConsole() {
     return () => window.clearInterval(timer);
   }, [user?.email]);
 
-  const signIn = async () => {
+  const completeKeyAuth = async (action: 'setup'|'login') => {
     setAuthBusy(true);setError('');
-    try { if(!loginEmail.trim())throw new Error('Enter your administrator email.');const {error:signInError}=await supabase.auth.signInWithPassword({email:loginEmail.trim(),password:loginPassword});if(signInError)throw signInError; }
-    catch(e){setError(e instanceof Error?e.message:'Could not sign in.');}finally{setAuthBusy(false);}
+    try {
+      if(action==='setup' && (loginPassword.length<14 || loginPassword!==confirmPassword)) throw new Error('Enter matching passwords with at least 14 characters.');
+      const {data,error:invokeError}=await supabase.functions.invoke('admin-key-login',{body:action==='setup'?{action,setupToken,password:loginPassword}:{action,password:loginPassword}});
+      if(invokeError) throw invokeError;
+      if(data?.error) throw new Error(data.error);
+      const {error:verifyError}=await supabase.auth.verifyOtp({token_hash:data.token_hash,type:'magiclink'});
+      if(verifyError) throw verifyError;
+      setSetupToken('');setLoginPassword('');setConfirmPassword('');
+      await evaluateAdminSession();
+    } catch(e){setError(e instanceof Error?e.message:'Could not complete administrator access.');}
+    finally{setAuthBusy(false);}
   };
-  const resetAdminPassword=async()=>{setAuthBusy(true);setError('');try{const {error:resetError}=await supabase.auth.resetPasswordForEmail(loginEmail.trim()||ADMIN_EMAIL,{redirectTo:ADMIN_AUTH_REDIRECT});if(resetError)throw resetError;setError('Password reset email sent. The live Vercel URL must be allowed in Supabase Auth URL settings.');}catch(e){setError(e instanceof Error?e.message:'Could not send password reset email.');}finally{setAuthBusy(false);}};
-  const saveRecoveredPassword=async()=>{if(newPassword.length<14){setError('Use at least 14 characters for the new administrator password.');return;}setAuthBusy(true);setError('');try{const {error:updateError}=await supabase.auth.updateUser({password:newPassword});if(updateError)throw updateError;setNewPassword('');setPasswordRecovery(false);setError('Password updated. Now complete authenticator setup or verification.');await evaluateAdminSession();}catch(e){setError(e instanceof Error?e.message:'Could not update the administrator password.');}finally{setAuthBusy(false);}};
+  const signIn = async () => completeKeyAuth('login');
+  const saveInitialPassword = async () => completeKeyAuth('setup');
   const signInWithPasskey=async()=>{setAuthBusy(true);setError('');try{const {error:passkeyError}=await supabase.auth.signInWithPasskey();if(passkeyError)throw passkeyError;}catch(e){setError(e instanceof Error?e.message:'Passkey sign-in failed.');}finally{setAuthBusy(false);}};
   const beginTotpEnrollment=async()=>{setAuthBusy(true);setError('');try{const existing=await supabase.auth.mfa.listFactors();if(existing.error)throw existing.error;for(const pending of existing.data.totp.filter(factor=>factor.status!=='verified')){const cleanup=await supabase.auth.mfa.unenroll({factorId:pending.id});if(cleanup.error)throw cleanup.error;}const {data,error:enrollError}=await supabase.auth.mfa.enroll({factorType:'totp',friendlyName:'Tesla Markets Management'});if(enrollError)throw enrollError;setFactorId(data.id);setTotpQr(data.totp.qr_code);setTotpSecret(data.totp.secret);}catch(e){setError(e instanceof Error?e.message:'Could not start authenticator setup.');}finally{setAuthBusy(false);}};
   const verifyTotp=async()=>{if(!factorId||authCode.trim().length!==6)return;setAuthBusy(true);setError('');try{let activeChallenge=challengeId;if(!activeChallenge){const challenge=await supabase.auth.mfa.challenge({factorId});if(challenge.error)throw challenge.error;activeChallenge=challenge.data.id;}const {error:verifyError}=await supabase.auth.mfa.verify({factorId,challengeId:activeChallenge,code:authCode.trim()});if(verifyError)throw verifyError;setAuthCode('');setChallengeId('');setTotpQr('');setTotpSecret('');await evaluateAdminSession();}catch(e){setError(e instanceof Error?e.message:'Authenticator verification failed. Check the current six-digit code.');}finally{setAuthBusy(false);}};
@@ -233,7 +244,8 @@ export function AdminConsole() {
 
   if(checking)return <div className="admin-auth-state"><ShieldCheck size={26}/> Checking administrator security…</div>;
   if(!user)return <div className="admin-auth-state admin-auth-full"><ShieldCheck size={30}/><h2>Private management access</h2>
-    {authStep==='login'&&<>{passwordRecovery?<><p>Set a new, unique administrator password. Use at least 14 characters.</p><input className="admin-auth-input" type="password" autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="New administrator password"/><button className="btn btn-dark" onClick={saveRecoveredPassword} disabled={authBusy||newPassword.length<14}>{authBusy?'Updating…':'Save new password'}</button></>:<><p>Sign in with the authorised administrator email and password.</p><input className="admin-auth-input" type="email" autoComplete="username" value={loginEmail} onChange={e=>setLoginEmail(e.target.value)} placeholder="Administrator email"/><input className="admin-auth-input" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Password"/><button className="btn btn-dark" onClick={signIn} disabled={!supabaseConfigured||authBusy||!loginPassword}>{authBusy?'Signing in…':'Continue securely'}</button><button className="admin-auth-link" onClick={resetAdminPassword} disabled={authBusy}>Forgot password?</button></>}</>}
+    {authStep==='setup'&&<><p>Create your private administrator password to activate this upgraded management console. This is a one-time setup. No email is required.</p><input className="admin-auth-input" type="password" autoComplete="off" value={setupToken} onChange={e=>setSetupToken(e.target.value)} placeholder="One-time setup code"/><input className="admin-auth-input" type="password" autoComplete="new-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Create administrator password (14+ characters)"/><input className="admin-auth-input" type="password" autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Confirm administrator password"/><button className="btn btn-dark" onClick={saveInitialPassword} disabled={!supabaseConfigured||authBusy||!setupToken||loginPassword.length<14||loginPassword!==confirmPassword}>{authBusy?'Setting up…':'Create secure admin access'}</button></>}
+    {authStep==='login'&&<><p>Enter your administrator password. Your authenticator code will be requested next.</p><input className="admin-auth-input" type="password" autoComplete="current-password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} placeholder="Administrator password"/><button className="btn btn-dark" onClick={signIn} disabled={!supabaseConfigured||authBusy||!loginPassword}>{authBusy?'Signing in…':'Continue securely'}</button></>}
     {authStep==='enroll'&&<><p>Set up an authenticator app before entering management. Scan this QR code with Google Authenticator, Microsoft Authenticator or another TOTP app.</p>{totpQr?<><img className="admin-auth-qr" src={totpQr.startsWith('data:')?totpQr:'data:image/svg+xml;utf8,'+encodeURIComponent(totpQr)} alt="Authenticator setup QR code"/><p className="admin-auth-secret">Manual setup key: <b>{totpSecret}</b></p><input className="admin-auth-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={authCode} onChange={e=>setAuthCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6-digit authenticator code"/><button className="btn btn-dark" onClick={verifyTotp} disabled={authBusy||authCode.length!==6}>{authBusy?'Verifying…':'Verify and secure account'}</button></>:<button className="btn btn-dark" onClick={beginTotpEnrollment} disabled={authBusy}>{authBusy?'Preparing…':'Set up authenticator app'}</button>}</>}
     {authStep==='verify'&&<><p>Enter the current six-digit code from your registered authenticator app.</p><input className="admin-auth-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={authCode} onChange={e=>setAuthCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6-digit authenticator code"/><button className="btn btn-dark" onClick={verifyTotp} disabled={authBusy||authCode.length!==6}>{authBusy?'Verifying…':'Verify and continue'}</button></>}
     {error&&<p className="chat-error">{error}</p>}<a href="#home">Return to public website</a></div>;
