@@ -1851,3 +1851,16 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .language-trigger .language-globe-icon{width:19px;height:19px;flex-basis:19px}
 .mobile-nav-language .language-globe-icon{width:18px;height:18px;flex-basis:18px;margin-right:2px}
 @media(max-width:760px){.topbar .language-trigger{width:32px;min-width:32px;height:32px;min-height:32px;padding:0;display:grid!important;place-items:center;gap:0;border-radius:50%;background:#fff;border-color:#d9e0e3}.topbar .language-trigger .language-globe-icon{width:18px;height:18px;flex-basis:18px}.topbar .language-trigger-name,.topbar .language-trigger>svg:last-child{display:none!important}}
+
+/* Final mobile header correction: restore the full Tesla wordmark and use a compact globe control. */
+@media(max-width:680px){
+ .topbar .brand{max-width:calc(100% - 88px);gap:7px}
+ .topbar .brand-logo{width:104px;height:44px;flex:0 0 104px;object-fit:contain;display:block}
+ .topbar .brand-word{font-size:clamp(10px,3vw,13px);letter-spacing:.09em;white-space:nowrap}
+ .topbar .language-trigger{width:34px;min-width:34px;height:34px;min-height:34px;padding:0;display:grid!important;place-items:center;border-radius:50%;background:#fff;border:1px solid #d9e0e3}
+ .topbar .language-trigger .language-globe-icon{width:19px;height:19px;display:block;flex:0 0 19px;color:#17232b}
+ .topbar .language-trigger-name,.topbar .language-trigger>svg:last-child{display:none!important}
+}
+@media(max-width:380px){
+ .topbar .brand-logo{width:92px;height:40px;flex-basis:92px}
+}
