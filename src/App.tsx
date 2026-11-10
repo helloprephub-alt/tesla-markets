@@ -465,7 +465,7 @@ function App() {
           <button onClick={()=>go('semi')}><img src="/resources/semi-1.jpg" alt="Tesla Semi vehicle preview" loading="lazy"/><span>Tesla Semi <ArrowUpRight size={14}/></span></button>
         </div>
       </section>
-              <section className="home-investment-strip"><div><div className="eyebrow">INVESTMENT ENQUIRIES</div><h2>Explore Tesla<br/><em>investment information.</em></h2><p>Contact Tesla Markets Management directly with your investment questions.</p></div><button className="btn btn-light" onClick={() => { sessionStorage.setItem('tesla-markets-chat-context','Tesla investment enquiry'); go('chat'); }}>Invest now <ArrowUpRight size={16}/></button></section>
+              <section className="home-investment-strip"><div><div className="eyebrow">INVESTMENT ENQUIRIES</div><h2>Explore Tesla<br/><em>investment information.</em></h2><p>Contact Tesla Markets Management directly with your investment questions.</p></div><button className="btn btn-light" onClick={() => { sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'})); go('chat'); }}>Invest now <ArrowUpRight size={16}/></button></section>
     </>
   );
   const How = () => (
@@ -637,8 +637,8 @@ function App() {
       </section>
     </>
   );
-  const Shop = () => <VehicleExperience onBack={()=>goParent('home')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-chat-context',context);go('chat')}} />;
-  const VehicleDetail = () => <VehicleExperience modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('shop')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-chat-context',context);go('chat')}} />;
+  const Shop = () => <VehicleExperience onBack={()=>goParent('home')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
+  const VehicleDetail = () => <VehicleExperience modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('shop')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
   const Info = ({ kind }: { kind: 'about' | 'contact' | 'faq' }) => (
     <>
       <section className="page-hero compact">
