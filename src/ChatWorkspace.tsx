@@ -29,7 +29,7 @@ function ManagementAvatar({className='chat-avatar'}:{className?:string}) {
   return <span className={'management-avatar '+className}>{profileUrl || !fallbackFailed ? <img src={profileUrl || '/resources/tesla-management-profile'} alt="Tesla Markets Management profile" loading="eager" decoding="async" onError={()=>{if(profileUrl)setProfileUrl('');else setFallbackFailed(true);}}/> : <span className="management-avatar-fallback">TM</span>}</span>;
 }
 
-async function ensureCustomerSession() {
+async function ensureCustomerSession(details?:{name:string;email:string;phone:string}) {
   let { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     const { data, error } = await supabase.auth.signInAnonymously();
@@ -42,7 +42,7 @@ async function ensureCustomerSession() {
   const { data: currentProfile, error: roleError } = await supabase.from('customer_profiles').select('is_admin').eq('id',user.id).maybeSingle();
   if (roleError) throw roleError;
   if (currentProfile?.is_admin) throw new Error('You are signed in with the management account. Sign out of management or open the public website in a private browser window to test customer chat.');
-  const { error: profileError } = await supabase.from('customer_profiles').upsert({ id:user.id, display_name:'Website visitor', is_admin:false }, { onConflict:'id', ignoreDuplicates:true });
+  const { error: profileError } = await supabase.from('customer_profiles').upsert({ id:user.id, display_name:details?.name||'Website visitor', email:details?.email||null, phone:details?.phone||null, is_admin:false }, { onConflict:'id' });
   if (profileError) throw profileError;
   return user;
 }
@@ -75,7 +75,10 @@ export function ChatWorkspace({ onBack }: { onBack: () => void }) {
   const [problem,setProblem] = useState('');
   const [images,setImages] = useState<File[]>([]);
   const [attachOpen,setAttachOpen] = useState(false);
-  const [context] = useState(()=>sessionStorage.getItem('tesla-markets-chat-context') || '');
+  const [context] = useState(()=>{try{return JSON.parse(sessionStorage.getItem('tesla-markets-enquiry-intent')||'null')?.context||sessionStorage.getItem('tesla-markets-chat-context')||'';}catch{return sessionStorage.getItem('tesla-markets-chat-context')||'';}});
+  const [intent] = useState<any>(()=>{try{return JSON.parse(sessionStorage.getItem('tesla-markets-enquiry-intent')||'null');}catch{return null;}});
+  const [customerDetails,setCustomerDetails] = useState<{name:string;email:string;phone:string}>(()=>{try{return JSON.parse(sessionStorage.getItem('tesla-markets-customer-details')||'null')||{name:'',email:'',phone:''};}catch{return {name:'',email:'',phone:''};}});
+  const [enquiryKind,setEnquiryKind] = useState('Buying');
   const [booting,setBooting] = useState(true);
   const [viewerId,setViewerId] = useState('');
   const messagesRef = useRef<HTMLDivElement|null>(null);
@@ -84,19 +87,22 @@ export function ChatWorkspace({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     let active=true;
     (async()=>{
+      if(intent && (!customerDetails.name || !customerDetails.email)){setBooting(false);return;}
       try {
-        const user=await ensureCustomerSession();
+        const user=await ensureCustomerSession(customerDetails.name?customerDetails:undefined);
         if(!active)return;
         setViewerId(user.id);
         let id=localStorage.getItem('tesla-markets-enquiry-id')||'';
         if(id){ const {data,error}=await supabase.from('support_conversations').select('id').eq('id',id).eq('customer_id',user.id).maybeSingle(); if(error)throw error; if(!data)id=''; }
-        if(!id){ const {data,error}=await supabase.from('support_conversations').insert({customer_id:user.id,subject:context.slice(0,160)||'Website enquiry',status:'open'}).select('id').single(); if(error)throw error; id=data.id; localStorage.setItem('tesla-markets-enquiry-id',id); }
+        if(intent && customerDetails.name){id='';localStorage.removeItem('tesla-markets-enquiry-id');}
+        if(!id){ const {data,error}=await supabase.from('support_conversations').insert({customer_id:user.id,subject:context.slice(0,160)||'Website enquiry',status:'open',visitor_email:customerDetails.email||null,contact_phone:customerDetails.phone||null,enquiry_type:intent?.type==='vehicle'?enquiryKind:(intent?.type||'general'),enquiry_source:intent?.source||'Website chat',vehicle_model:intent?.vehicleModel||null}).select('id').single(); if(error)throw error; id=data.id; localStorage.setItem('tesla-markets-enquiry-id',id); }
+        if(intent)sessionStorage.removeItem('tesla-markets-enquiry-intent');
         if(active)setThreadId(id);
       } catch(e){if(active)setProblem(errorText(e));}
       finally{if(active)setBooting(false);}
     })();
     return()=>{active=false;};
-  },[]);
+  },[intent,customerDetails.name,customerDetails.email,customerDetails.phone]);
   const refresh=async()=>{if(!threadId||!viewerId)return;try{setMessages(await fetchMessages(threadId,viewerId));setProblem('');}catch(e){setProblem(errorText(e));}};
   useEffect(()=>{if(!threadId)return;void refresh();const timer=window.setInterval(()=>void refresh(),4000);return()=>window.clearInterval(timer);},[threadId,viewerId]);
   useEffect(()=>{const latest=messages[messages.length-1]?.id||'';if(latest && latest!==lastMessageIdRef.current && nearBottomRef.current){messagesRef.current?.scrollTo({top:messagesRef.current.scrollHeight,behavior:'smooth'});}lastMessageIdRef.current=latest;},[messages]);
@@ -116,6 +122,7 @@ export function ChatWorkspace({ onBack }: { onBack: () => void }) {
       setDraft('');setImages([]);setAttachOpen(false);await refresh();
     }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
   };
+  if(intent && (!customerDetails.name || !customerDetails.email)) return <section className="tm-enquiry-gate"><div className="tm-enquiry-card"><div className="tm-enquiry-mark">TM</div><span className="tm-enquiry-eyebrow">TESLA MARKETS · MANAGEMENT</span><h1>Let’s get you to the right conversation.</h1><p>Share your contact details so our team can identify your enquiry and respond with the right context.</p><form onSubmit={(e)=>{e.preventDefault();const form=e.currentTarget;const data=new FormData(form);const next={name:String(data.get('name')||'').trim(),email:String(data.get('email')||'').trim(),phone:String(data.get('phone')||'').trim()};if(!next.name||!next.email)return;sessionStorage.setItem('tesla-markets-customer-details',JSON.stringify(next));sessionStorage.setItem('tesla-markets-chat-context',context);setCustomerDetails(next);setBooting(true);}}><label>Full name<input name="name" autoComplete="name" required placeholder="Your full name"/></label><label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@example.com"/></label><label>Phone number <span>(optional)</span><input name="phone" type="tel" autoComplete="tel" placeholder="+234…"/></label>{intent.type==='vehicle'&&<label>What would you like to know?<select value={enquiryKind} onChange={e=>setEnquiryKind(e.target.value)}><option>Buying</option><option>Pricing</option><option>Availability</option><option>Other</option></select></label>}<button className="tm-enquiry-submit" type="submit">Continue to management chat <ArrowLeft size={17}/></button></form><button className="tm-enquiry-back" type="button" onClick={onBack}><ArrowLeft size={15}/> Back to website</button><small className="tm-enquiry-privacy">Your details are used to manage this enquiry and reply to you.</small></div></section>;
   return <section className="chat-fullscreen customer-chat-screen">
     <header className="chat-appbar"><button onClick={onBack} aria-label="Back to website"><ArrowLeft size={18}/><span>Back</span></button><div className="chat-appbar-brand"><ManagementAvatar className="chat-brand-avatar"/><div><b>Tesla Markets Management <BadgeCheck className="chat-verified-badge" size={16} fill="#1685e8" color="#1685e8" aria-label="Verified management profile"/></b></div></div></header>
     <div className="chat-full-body"><div className="chat-conversation-shell">
