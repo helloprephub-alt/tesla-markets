@@ -396,7 +396,6 @@ function App() {
           {videoMuted ? <VolumeX size={19} /> : <Volume2 size={19} />}
           <span>{videoMuted ? "Sound off" : "Sound on"}</span>
         </button>
-        <div className="hero-video-caption"><span>TESLA MARKETS / ELECTRIC MOBILITY</span><strong>Explore the road ahead.</strong></div>
       </div>
       <div className="hero-index">
         <span>01</span>
