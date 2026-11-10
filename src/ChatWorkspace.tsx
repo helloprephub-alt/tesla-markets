@@ -10,8 +10,22 @@ const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
 
 function ManagementAvatar({className='chat-avatar'}:{className?:string}) {
   const [profileUrl,setProfileUrl] = useState('');
-  useEffect(()=>{ let active=true; supabase.from('site_settings').select('value').eq('key','management_profile').maybeSingle().then(({data})=>{if(active && typeof data?.value?.url==='string')setProfileUrl(data.value.url);}); return ()=>{active=false;}; },[]);
-  return <span className={'management-avatar '+className}>{profileUrl ? <img src={profileUrl} alt="Tesla Markets Management profile" loading="eager" decoding="async"/> : <span className="management-avatar-fallback">TM</span>}</span>;
+  useEffect(()=>{
+    let active=true;
+    const load=async()=>{
+      const {data,error}=await supabase.from('site_settings').select('value').eq('key','management_profile').maybeSingle();
+      if(!active)return;
+      if(!error && typeof data?.value?.url==='string')setProfileUrl(data.value.url);
+    };
+    void load();
+    const channel=supabase.channel('management-profile-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'site_settings',filter:'key=eq.management_profile'},payload=>{
+        const next=(payload.new as {value?:{url?:string}}|undefined)?.value?.url;
+        if(typeof next==='string')setProfileUrl(next);
+      }).subscribe();
+    return ()=>{active=false;void supabase.removeChannel(channel);};
+  },[]);
+  return <span className={'management-avatar '+className}>{profileUrl ? <img src={profileUrl} alt="Tesla Markets Management profile" loading="eager" decoding="async" onError={()=>setProfileUrl('')}/> : <span className="management-avatar-fallback">TM</span>}</span>;
 }
 
 async function ensureCustomerSession() {
