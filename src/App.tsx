@@ -56,9 +56,12 @@ type Page =
   | 'roadster'
   | 'semi';
 const navItems: { label: string; page: Page }[] = [
+  { label: 'Home', page: 'home' },
+  { label: 'Vehicles', page: 'shop' },
   { label: 'Investments', page: 'markets' },
-  { label: 'Shop', page: 'shop' },
-  { label: 'Contact', page: 'chat' },
+  { label: 'About', page: 'about' },
+  { label: 'FAQs', page: 'faq' },
+  { label: 'Contact / Chat', page: 'chat' },
 ];
 const projects = [
   {
@@ -167,7 +170,23 @@ function App() {
     setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+  const goParent = (next: Page) => {
+    setPage(next);
+    location.hash = next;
+    setMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const goBack = () => {
+    // Vehicle navigation is hierarchical, not checkout/history based:
+    // a vehicle detail always returns to the collection; the collection returns home.
+    if (['model-y','model-3','cybertruck','roadster','semi'].includes(page)) {
+      goParent('shop');
+      return;
+    }
+    if (page === 'shop') {
+      goParent('home');
+      return;
+    }
     const previous = pageHistory[pageHistory.length - 1];
     if (previous) {
       setPageHistory(history => history.slice(0, -1));
@@ -596,8 +615,8 @@ function App() {
       </section>
     </>
   );
-  const Shop = () => <VehicleExperience onBack={()=>go('home')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-chat-context',context);go('chat')}} />;
-  const VehicleDetail = () => <VehicleExperience modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>go('shop')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-chat-context',context);go('chat')}} />;
+  const Shop = () => <VehicleExperience onBack={()=>goParent('home')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-chat-context',context);go('chat')}} />;
+  const VehicleDetail = () => <VehicleExperience modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('shop')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-chat-context',context);go('chat')}} />;
   const Info = ({ kind }: { kind: 'about' | 'contact' | 'faq' }) => (
     <>
       <section className="page-hero compact">
