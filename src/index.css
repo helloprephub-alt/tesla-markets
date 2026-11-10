@@ -774,3 +774,61 @@ body{overflow-x:clip}
   .customer-chat-screen .chat-full-body{width:100%;height:calc(100svh - 58px - 42px);min-height:440px;max-height:720px;border-radius:0 0 13px 13px}
   .customer-chat-screen .live-chat-panel{border-radius:0 0 13px 13px}
 }
+
+
+/* Keep the management identity and exit control visible while messages scroll */
+.customer-chat-screen.chat-fullscreen{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  overflow:visible;
+}
+.customer-chat-screen .chat-appbar{
+  position:sticky;
+  top:0;
+  z-index:30;
+  flex:0 0 64px;
+  min-height:64px;
+  background:#fff;
+}
+.customer-chat-screen .chat-full-body{
+  display:flex;
+  flex:0 0 auto;
+  min-height:0;
+  overflow:hidden;
+}
+.customer-chat-screen .chat-conversation-shell,
+.customer-chat-screen .live-chat-panel{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+.customer-chat-screen .live-chat-messages{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+}
+.customer-chat-screen .chat-compose{
+  position:sticky;
+  bottom:0;
+  z-index:20;
+  flex:0 0 auto;
+  background:#fff;
+}
+@media(max-width:560px){
+  .customer-chat-screen .chat-appbar{
+    position:sticky;
+    top:0;
+    z-index:30;
+    flex-basis:58px;
+    min-height:58px;
+    height:58px;
+  }
+  .customer-chat-screen .chat-full-body{
+    min-height:0;
+  }
+}
