@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { supabase, isCurrentUserAdmin } from './lib/supabase';
 import { ArrowLeft, BadgeCheck, CheckCheck, FileImage, LoaderCircle, LockKeyhole, MessageCircle, Plus, RefreshCw, Send, ShieldCheck, X } from 'lucide-react';
 
@@ -73,6 +73,9 @@ export function ChatWorkspace({ onBack }: { onBack: () => void }) {
   const [context] = useState(()=>sessionStorage.getItem('tesla-markets-chat-context') || '');
   const [booting,setBooting] = useState(true);
   const [viewerId,setViewerId] = useState('');
+  const messagesRef = useRef<HTMLDivElement|null>(null);
+  const nearBottomRef = useRef(true);
+  const lastMessageIdRef = useRef('');
   useEffect(() => {
     let active=true;
     (async()=>{
@@ -82,7 +85,7 @@ export function ChatWorkspace({ onBack }: { onBack: () => void }) {
         setViewerId(user.id);
         let id=localStorage.getItem('tesla-markets-enquiry-id')||'';
         if(id){ const {data,error}=await supabase.from('support_conversations').select('id').eq('id',id).eq('customer_id',user.id).maybeSingle(); if(error)throw error; if(!data)id=''; }
-        if(!id){ const {data,error}=await supabase.from('support_conversations').insert({customer_id:user.id,subject:context.slice(0,160)||'Website enquiry',status:'new'}).select('id').single(); if(error)throw error; id=data.id; localStorage.setItem('tesla-markets-enquiry-id',id); }
+        if(!id){ const {data,error}=await supabase.from('support_conversations').insert({customer_id:user.id,subject:context.slice(0,160)||'Website enquiry',status:'open'}).select('id').single(); if(error)throw error; id=data.id; localStorage.setItem('tesla-markets-enquiry-id',id); }
         if(active)setThreadId(id);
       } catch(e){if(active)setProblem(errorText(e));}
       finally{if(active)setBooting(false);}
@@ -91,6 +94,7 @@ export function ChatWorkspace({ onBack }: { onBack: () => void }) {
   },[]);
   const refresh=async()=>{if(!threadId||!viewerId)return;try{setMessages(await fetchMessages(threadId,viewerId));setProblem('');}catch(e){setProblem(errorText(e));}};
   useEffect(()=>{if(!threadId)return;void refresh();const timer=window.setInterval(()=>void refresh(),4000);return()=>window.clearInterval(timer);},[threadId,viewerId]);
+  useEffect(()=>{const latest=messages[messages.length-1]?.id||'';if(latest && latest!==lastMessageIdRef.current && nearBottomRef.current){messagesRef.current?.scrollTo({top:messagesRef.current.scrollHeight,behavior:'smooth'});}lastMessageIdRef.current=latest;},[messages]);
   const send=async(e:FormEvent)=>{
     e.preventDefault(); if((!draft.trim()&&!image)||busy||!threadId||!viewerId)return;
     setBusy(true);setProblem('');
@@ -103,10 +107,10 @@ export function ChatWorkspace({ onBack }: { onBack: () => void }) {
   };
   return <section className="chat-fullscreen customer-chat-screen">
     <header className="chat-appbar"><button onClick={onBack} aria-label="Back to website"><ArrowLeft size={18}/><span>Back</span></button><div className="chat-appbar-brand"><ManagementAvatar className="chat-brand-avatar"/><div><b>Tesla Markets Management <BadgeCheck className="chat-verified-badge" size={16} fill="#1685e8" color="#1685e8" aria-label="Verified management profile"/></b></div></div></header>
-    <div className="chat-full-body"><div className="chat-conversation-shell"><div className="chat-conversation-heading"><div><span className="eyebrow dark">PRIVATE CUSTOMER CONVERSATION</span><h1>Message our team</h1><p>Ask a question and continue the conversation here.</p></div><span className="chat-encryption"><LockKeyhole size={14}/> Private chat</span></div>
-      <div className="chat-panel live-chat-panel"><div className="chat-top chat-top-hidden" aria-hidden="true"/><div className="chat-messages live-chat-messages"><div className="chat-day-divider"><span>Conversation started</span></div><div className="chat-message-row theirs"><div className="chat-bubble team"><p>Welcome. How can our management team help you today?</p><small>Management team · Welcome</small></div></div>{context&&<div className="chat-context-card"><b>About your enquiry</b><span>{context}</span></div>}{messages.map(m=><div key={m.id} className={'chat-message-row '+(m.sender==='visitor'?'mine':'theirs')}><div className={'chat-bubble '+(m.sender==='visitor'?'you':'team')}>{m.text&&<p>{m.text}</p>}{m.attachmentUrl&&<a href={m.attachmentUrl} target="_blank" rel="noreferrer"><img className="chat-attachment" src={m.attachmentUrl} alt="Shared attachment"/></a>}<small>{m.sender==='admin'?'Management':'You'} · {timeLabel(m.createdAt)} {m.sender==='visitor'&&<CheckCheck size={12}/>}</small></div></div>)}</div>
-      {image&&<div className="chat-image-preview"><FileImage size={16}/><span>{image.name}</span><button type="button" onClick={()=>setImage(null)} aria-label="Remove attachment"><X size={15}/></button></div>}{(problem||booting)&&<p className="chat-error">{problem||'Opening secure chat…'}</p>}
-      <form className="chat-compose live-chat-compose" onSubmit={send}><div className="chat-attach-wrap"><button type="button" className={'chat-plus-button '+(attachOpen?'active':'')} onClick={()=>setAttachOpen(!attachOpen)} aria-label="Add attachment"><Plus size={21}/></button>{attachOpen&&<div className="chat-attach-menu"><button type="button" onClick={()=>document.getElementById('customer-chat-file')?.click()}><FileImage size={17}/> Photo or image</button><small>JPG, PNG, WEBP or GIF · up to 3 MB</small></div>}<input id="customer-chat-file" className="chat-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>{setImage(e.target.files?.[0]||null);setAttachOpen(false);}}/></div><input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Type your message…" aria-label="Write your message"/><button className="chat-send-button" disabled={busy||booting||(!draft.trim()&&!image)} aria-label="Send message">{busy?<LoaderCircle className="spin" size={18}/>:<Send size={18}/>}</button></form>
+    <div className="chat-full-body"><div className="chat-conversation-shell">
+      <div className="chat-panel live-chat-panel"><div ref={messagesRef} onScroll={e=>{const el=e.currentTarget;nearBottomRef.current=el.scrollHeight-el.scrollTop-el.clientHeight<90;}} className="chat-messages live-chat-messages"><div className="chat-day-divider"><span>Conversation started</span></div><div className="chat-message-row theirs"><div className="chat-bubble team"><p>Welcome. How can our management team help you today?</p><small>Management team · Welcome</small></div></div>{context&&<div className="chat-context-card"><b>About your enquiry</b><span>{context}</span></div>}{messages.map(m=><div key={m.id} className={'chat-message-row '+(m.sender==='visitor'?'mine':'theirs')}><div className={'chat-bubble '+(m.sender==='visitor'?'you':'team')}>{m.text&&<p>{m.text}</p>}{m.attachmentUrl&&<a href={m.attachmentUrl} target="_blank" rel="noreferrer"><img className="chat-attachment" src={m.attachmentUrl} alt="Shared attachment"/></a>}<small>{m.sender==='admin'?'Management':'You'} · {timeLabel(m.createdAt)} {m.sender==='visitor'&&<CheckCheck size={12}/>}</small></div></div>)}</div>
+      {image&&<div className="chat-image-preview"><FileImage size={16}/><span>{image.name}</span><button type="button" onClick={()=>setImage(null)} aria-label="Remove attachment"><X size={15}/></button></div>}{(problem||booting)&&<p className="chat-error" role="status">{problem||'Opening secure chat…'}</p>}
+      <form className="chat-compose live-chat-compose" onSubmit={send}><div className="chat-attach-wrap"><button type="button" className={'chat-plus-button '+(attachOpen?'active':'')} onClick={()=>setAttachOpen(!attachOpen)} aria-label="Add attachment"><Plus size={19}/></button>{attachOpen&&<div className="chat-attach-menu"><button type="button" onClick={()=>document.getElementById('customer-chat-file')?.click()}><FileImage size={17}/> Photo or image</button><small>JPG, PNG, WEBP or GIF · up to 3 MB</small></div>}<input id="customer-chat-file" className="chat-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>{setImage(e.target.files?.[0]||null);setAttachOpen(false);}}/></div><textarea value={draft} rows={1} onChange={e=>setDraft(e.target.value)} placeholder="Type a message…" aria-label="Write your message" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/><button className="chat-send-button" disabled={busy||booting||(!draft.trim()&&!image)} aria-label="Send message">{busy?<LoaderCircle className="spin" size={18}/>:<Send size={17}/>}</button></form>
       </div></div></div>
   </section>;
 }
