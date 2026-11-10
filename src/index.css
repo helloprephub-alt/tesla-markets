@@ -834,22 +834,23 @@ body{overflow-x:clip}
 }
 
 
-/* Tesla Markets header identity and hero video audio control */
-.brand{gap:14px;min-width:0}
-.brand-logo{width:58px;height:58px;flex:0 0 58px;object-fit:contain}
-.brand-word{display:inline-block;font:900 19px/1 Manrope,sans-serif;letter-spacing:.24em;color:#111820}
-.hero-video-sound{position:absolute;top:16px;right:16px;z-index:5;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px;border:1px solid #ffffff80;border-radius:999px;background:#101820d9;color:#fff;font:700 11px Manrope,sans-serif;letter-spacing:.02em;cursor:pointer;box-shadow:0 4px 18px #0003;backdrop-filter:blur(10px)}
+/* Tesla Markets header identity and compact hero video audio control */
+.brand{gap:8px;min-width:0;align-items:center}
+.brand-logo{width:132px;height:56px;flex:0 0 132px;object-fit:contain;display:block}
+.brand-word{display:inline-block;font:900 12px/1 Manrope,sans-serif;letter-spacing:.16em;color:#111820}
+.hero-video-sound{position:absolute;top:14px;right:14px;z-index:5;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;padding:0;border:1px solid #ffffff80;border-radius:50%;background:#101820d9;color:#fff;cursor:pointer;box-shadow:0 4px 18px #0003;backdrop-filter:blur(10px)}
+.hero-video-sound span{display:none}
 .hero-video-sound:focus-visible{outline:3px solid #fff;outline-offset:3px}
-.hero-video-sound svg{flex:0 0 auto}
+.hero-video-sound svg{width:17px;height:17px;flex:0 0 auto}
 @media(max-width:760px){
- .brand{gap:9px}
- .brand-logo{width:46px;height:46px;flex-basis:46px}
- .brand-word{font-size:15px;letter-spacing:.2em}
- .hero-video-sound{top:10px;right:10px;min-height:38px;padding:0 11px;font-size:10px}
+ .brand{gap:6px}
+ .brand-logo{width:112px;height:48px;flex-basis:112px}
+ .brand-word{font-size:11px;letter-spacing:.12em}
+ .hero-video-sound{top:10px;right:10px;width:32px;height:32px;min-height:32px}
+ .hero-video-sound svg{width:15px;height:15px}
 }
 @media(max-width:380px){
- .brand-logo{width:40px;height:40px;flex-basis:40px}
- .brand-word{font-size:13px;letter-spacing:.16em}
- .hero-video-sound span{display:none}
- .hero-video-sound{width:40px;height:40px;padding:0}
+ .brand-logo{width:100px;height:44px;flex-basis:100px}
+ .brand-word{font-size:10px;letter-spacing:.1em}
+ .hero-video-sound{width:30px;height:30px;min-height:30px}
 }
