@@ -168,7 +168,7 @@ it: {
 nl: {
 "Find your": "Vind jouw",
 "next electric drive.": "volgende elektrische auto.",
-"Explore each collection, compare versions and send a vehicle enquiry to management.": "Bekijk de collectie, vergelijk uitvoeringen en stuur een voertu aangevraag naar het management.",
+"Explore each collection, compare versions and send a vehicle enquiry to management.": "Bekijk de collectie, vergelijk uitvoeringen en stuur een voertuigenaanvraag naar het management.",
 "View gallery & details": "Galerij en details bekijken",
 "All vehicles": "Alle voertuigen",
 "View full image": "Volledige afbeelding bekijken",
