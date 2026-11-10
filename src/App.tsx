@@ -279,6 +279,7 @@ function App() {
       <div className="nav-wrap">
         <Brand />
         <nav className={menuOpen ? 'nav-links open' : 'nav-links'}>
+          <button className="mobile-nav-language" type="button" onClick={()=>{setLanguageOpen(true);setMenuOpen(false);}}><Globe2 size={17}/> Language · {currentLanguageName}</button>
           {navItems.map(item => (
             <button
               key={item.page}
@@ -293,7 +294,6 @@ function App() {
           <button className="language-trigger" type="button" onClick={()=>{setLanguageOpen(true);setMenuOpen(false);}} aria-label="Change language"><Globe2 size={19}/><span>Language</span><b>{currentLanguageName}</b><ChevronDown size={14}/></button>
           <button className="btn btn-outline btn-small" onClick={() => go('shop')}>Browse vehicles <ArrowUpRight size={15} /></button>
         </div>
-        <button className="language-trigger mobile-language-trigger" type="button" onClick={()=>setLanguageOpen(true)} aria-label="Change language"><Globe2 size={19}/><span>Language</span></button>
         <button
           className="mobile-menu"
           onClick={() => setMenuOpen(!menuOpen)}
