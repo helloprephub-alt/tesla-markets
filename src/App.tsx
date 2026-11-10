@@ -548,8 +548,8 @@ function App() {
     <main className="investment-page">
       <section className="investment-hero investment-enquiry-only">
         <div className="investment-slideshow" aria-label="Tesla investment information">
-          <img className="investment-slide investment-slide-one" src="/resources/tesla-city.jpg" alt="Tesla electric vehicle investment information" />
-          <img className="investment-slide investment-slide-two" src="/resources/tesla-road.jpg" alt="Tesla mobility and technology" />
+          <img className="investment-slide investment-slide-one" src="/resources/investment-slide-1" alt="Tesla electric vehicle investment information" />
+          <img className="investment-slide investment-slide-two" src="/resources/investment-slide-2" alt="Tesla mobility and technology" />
           <div className="investment-slide-shade" />
           <div className="investment-slide-caption"><span>TESLA MARKETS</span><b>Tesla investment enquiries</b></div>
         </div>
