@@ -80,7 +80,7 @@ export function AdminConsole() {
       if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked in browser settings.' : 'Allow notifications to receive new customer-message alerts.'); return; }
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('This browser does not support background push. Install the app in Chrome and try again.');
       const registration = await navigator.serviceWorker.ready;
-      const vapidPublicKey = 'BDkEE_7psAq5Rfc4C8nkFiIimotVfbPD-H6vyH8uNcgN1n_TNMvknAQL19xCnYPKy9Q619XKq0gtEVlCd7blWT0';
+      const vapidPublicKey = '2xUofw6bnx4UvmVeBk5U1vRmHnizWRNN67B-Ry9HmlkLH2lOc2bmZCJ9ixqgUMYiikHKqXXdxrCgw6rTamrDJg';
       const applicationServerKey = Uint8Array.from(atob(vapidPublicKey.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(vapidPublicKey.length / 4) * 4, '=')), char => char.charCodeAt(0));
       let subscription = await registration.pushManager.getSubscription();
       if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
