@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { isCurrentUserAdmin, supabase, supabaseConfigured } from './lib/supabase';
-import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, SlidersHorizontal, Sun, Moon, Search, Bell, TrendingUp, Wallet, Plus, Upload, Pencil, ArrowUpRight, BarChart3, ChevronRight } from 'lucide-react';
+import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, SlidersHorizontal, Sun, Moon, Search, Bell, TrendingUp, Wallet, Plus, Upload, Pencil, ArrowUpRight, BarChart3, ChevronRight, Monitor, Smartphone } from 'lucide-react';
 import { AdminInbox } from './ChatWorkspace';
 
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
@@ -61,6 +61,9 @@ export function AdminConsole() {
   const [isInstalled,setIsInstalled] = useState(false);
   const [notificationPermission,setNotificationPermission] = useState<NotificationPermission>(typeof Notification==='undefined'?'denied':Notification.permission);
   const [notificationStatus,setNotificationStatus] = useState('');
+  const [pushSubscribed,setPushSubscribed] = useState(false);
+  const [desktopView,setDesktopView] = useState(()=>localStorage.getItem('tesla-admin-desktop-view')==='true');
+  const toggleDesktopView=()=>setDesktopView(current=>{const next=!current;localStorage.setItem('tesla-admin-desktop-view',String(next));return next;});
 
   useEffect(() => {
     const onInstallPrompt = (event: Event) => { event.preventDefault(); setInstallPrompt(event as any); };
@@ -81,9 +84,16 @@ export function AdminConsole() {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('This browser does not support background push. Install the app in Chrome and try again.');
       const registration = await navigator.serviceWorker.ready;
       const vapidPublicKey = '2xUofw6bnx4UvmVeBk5U1vRmHnizWRNN67B-Ry9HmlkLH2lOc2bmZCJ9ixqgUMYiikHKqXXdxrCgw6rTamrDJg';
-      const applicationServerKey = Uint8Array.from(atob(vapidPublicKey.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(vapidPublicKey.length / 4) * 4, '=')), char => char.charCodeAt(0));
-      let subscription = await registration.pushManager.getSubscription();
-      if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+      const normalizedKey=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
+      const applicationServerKey=Uint8Array.from(atob(normalizedKey+'='.repeat((4-normalizedKey.length%4)%4)),char=>char.charCodeAt(0));
+      if(applicationServerKey.length!==65||applicationServerKey[0]!==4)throw new Error('The notification server key is misconfigured. Refresh later or contact support.');
+      let subscription=await registration.pushManager.getSubscription();
+      if(subscription){
+        const existingKey=subscription.options.applicationServerKey;
+        const existing=existingKey?Array.from(new Uint8Array(existingKey)):[];
+        if(existing.length!==applicationServerKey.length||existing.some((byte,index)=>byte!==applicationServerKey[index])){await subscription.unsubscribe();subscription=null;}
+      }
+      if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey});
       const json = subscription.toJSON();
       const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
       if (userError || !currentUser) throw new Error('Your administrator session has expired. Sign in again.');
@@ -96,9 +106,10 @@ export function AdminConsole() {
         updated_at: new Date().toISOString()
       }, { onConflict: 'endpoint' });
       if (saveError) throw saveError;
-      await registration.showNotification('Tesla Markets Management', { body: 'Background message alerts are now enabled on this device.', icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: 'tesla-admin-notifications-enabled' });
-      setNotificationStatus('Background push is enabled. Customer messages can alert this device while the app is closed. Keep Android notifications enabled for this app.');
-    } catch (e) { setNotificationStatus(e instanceof Error ? e.message : 'Could not enable notifications.'); }
+      await registration.showNotification('Tesla Markets Management', { body: 'This device is subscribed to customer message alerts.', icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: 'tesla-admin-notifications-enabled' });
+      setPushSubscribed(true);
+      setNotificationStatus('Device subscribed successfully. A background delivery test is still required before we can confirm closed-app alerts.');
+    } catch (e) { setPushSubscribed(false);setNotificationStatus(e instanceof Error ? e.message : 'Could not enable notifications.'); }
   };
 
   const installAdminApp = async () => {
@@ -342,15 +353,15 @@ export function AdminConsole() {
   ];
 
   return (
-    <div className={`admin-console admin-console-standalone admin-console-premium admin-theme-${adminTheme}`}>
+    <div className={`admin-console admin-console-standalone admin-console-premium admin-theme-${adminTheme} ${desktopView?'admin-desktop-view':''}`}>
       <section className="admin-install-card" style={{display:'flex',flexWrap:'wrap',alignItems:'center',gap:12,justifyContent:'space-between',padding:'14px 18px',margin:'14px 18px',border:'1px solid var(--admin-border,#ddd)',borderRadius:14,background:'var(--admin-panel,#fff)'}}>
         <div style={{minWidth:220,flex:'1 1 240px'}}><b>Install Tesla Markets Management</b><p style={{margin:'4px 0 0',fontSize:13,opacity:.75}}>Add a secure app shortcut to your phone and enable customer message alerts.</p>{notificationStatus&&<small role="status">{notificationStatus}</small>}</div>
-        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="btn btn-outline" type="button" onClick={()=>void enablePhoneNotifications()}>{notificationPermission==='granted'?'Notifications enabled':'Enable notifications'}</button>{!isInstalled&&<button className="btn btn-dark" type="button" onClick={()=>void installAdminApp()}>{installPrompt?'Install admin app':'How to install'}</button>}</div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="btn btn-outline" type="button" onClick={()=>void enablePhoneNotifications()}>{pushSubscribed?'Device subscribed':notificationPermission==='granted'?'Check notification setup':'Enable notifications'}</button>{!isInstalled&&<button className="btn btn-dark" type="button" onClick={()=>void installAdminApp()}>{installPrompt?'Install admin app':'How to install'}</button>}</div>
       </section>
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
         <div className="admin-console-brand"><span className="admin-brand-mark admin-tesla-mark">T</span><div><b>TESLA MARKETS</b><small>MANAGEMENT CONSOLE</small></div></div>
-        <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={adminTheme==='light'?'Switch to dark mode':'Switch to light mode'} title={adminTheme==='light'?'Dark mode':'Light mode'}>{adminTheme==='light'?<Moon size={16}/>:<Sun size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
+        <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={adminTheme==='light'?'Switch to dark mode':'Switch to light mode'} title={adminTheme==='light'?'Dark mode':'Light mode'}>{adminTheme==='light'?<Moon size={16}/>:<Sun size={16}/>}</button><button className="icon-btn admin-view-toggle" onClick={toggleDesktopView} aria-label={desktopView?'Use phone layout':'Use desktop layout'} title={desktopView?'Use phone layout':'Use desktop layout'}>{desktopView?<Smartphone size={16}/>:<Monitor size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
       </header>
       <div className="admin-shell">
         <aside className={'admin-console-side '+(mobileNavOpen?'is-open':'')}>
