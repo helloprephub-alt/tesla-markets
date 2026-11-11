@@ -1,30 +1,47 @@
 import webpush from 'web-push';
 import { timingSafeEqual } from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 type PushSubscriptionRecord = {
   endpoint: string;
   keys: { p256dh: string; auth: string };
 };
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
-  const expected = process.env.TESLA_PUSH_WEBHOOK_SECRET;
-  const supplied = request.headers.get('x-tesla-push-secret');
-  if (!expected || !supplied || supplied.length !== expected.length ||
-      !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+type IncomingRequest = IncomingMessage & { body?: unknown };
+
+export default async function handler(request: IncomingRequest, response: ServerResponse) {
+  const send = (status: number, data: Record<string, unknown>) => {
+    response.statusCode = status;
+    response.setHeader('Content-Type', 'application/json');
+    response.end(JSON.stringify(data));
+  };
+
+  if (request.method !== 'POST') return send(405, { error: 'Method not allowed' });
+  const expected = process.env.TESLA_PUSH_WEBHOOK_SECRET || '';
+  const header = request.headers['x-tesla-push-secret'];
+  const supplied = Array.isArray(header) ? header[0] || '' : header || '';
+  const expectedBytes = Buffer.from(expected);
+  const suppliedBytes = Buffer.from(supplied);
+  if (!expected || !supplied || expectedBytes.length !== suppliedBytes.length ||
+      !timingSafeEqual(expectedBytes, suppliedBytes)) {
+    return send(401, { error: 'Unauthorized' });
   }
 
   const publicKey = process.env.TESLA_PUSH_VAPID_PUBLIC_KEY;
   const privateKey = process.env.TESLA_PUSH_VAPID_PRIVATE_KEY;
-  if (!publicKey || !privateKey) return Response.json({ error: 'Push keys are not configured' }, { status: 503 });
+  if (!publicKey || !privateKey) return send(503, { error: 'Push keys are not configured' });
 
-  const payload = await request.json().catch(() => null) as {
+  let payload: {
     record?: { id?: string; body?: string; conversation_id?: string };
     subscriptions?: PushSubscriptionRecord[];
-  } | null;
+  } | null = null;
+  try {
+    payload = typeof request.body === 'string' ? JSON.parse(request.body) : request.body as typeof payload;
+  } catch {
+    return send(400, { error: 'Invalid JSON body' });
+  }
   if (!payload?.record || !Array.isArray(payload.subscriptions)) {
-    return Response.json({ error: 'Invalid webhook payload' }, { status: 400 });
+    return send(400, { error: 'Invalid webhook payload' });
   }
 
   webpush.setVapidDetails('mailto:oyejideoluwatobi7@gmail.com', publicKey, privateKey);
@@ -42,5 +59,5 @@ export default async function handler(request: Request): Promise<Response> {
   ));
   const sent = results.filter(result => result.status === 'fulfilled').length;
   const failed = results.length - sent;
-  return Response.json({ ok: true, sent, failed }, { status: 200 });
+  return send(200, { ok: true, sent, failed });
 }
