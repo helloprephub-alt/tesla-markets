@@ -7,10 +7,8 @@ const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
 const ADMIN_AUTH_REDIRECT = 'https://tesla-markets.vercel.app/#admin';
 type Thread = { id: string; visitorName?: string; visitorEmail?: string; enquiryType?:string; enquirySource?:string; vehicleModel?:string; phone?:string; createdAt: number; updatedAt: number; lastMessage?: string; status?: string };
 type Visit = { id: string; page: string; createdAt: number };
-type FinanceOrder = {id:string;reference:string;item:string;amount:number;currency:string;status:string;createdAt:number};
-type FinancePayment = {id:string;reference:string;orderId:string|null;amount:number;currency:string;status:string;method:string;createdAt:number};
 type Overview = { conversations: number; messages: number; generatedImages: number; visits: number; clicks: number; onlineNow: number; updatedAt: number };
-type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'finance' | 'settings';
+type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'settings';
 
 const catalogue = [
   { name: 'Model 3', count: 5, first: '/resources/model-3-1.jpg' },
@@ -39,13 +37,13 @@ export function AdminConsole() {
   const [dashboardSearch,setDashboardSearch]=useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
-  const [financeOrders,setFinanceOrders]=useState<FinanceOrder[]>([]);
-  const [financePayments,setFinancePayments]=useState<FinancePayment[]>([]);
   const [section, setSection] = useState<Section>('overview');
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const [collapsedGroups,setCollapsedGroups]=useState<string[]>([]);
-  const [adminTheme,setAdminTheme]=useState<'light'|'dark'>(()=>(localStorage.getItem('tesla-admin-theme')==='dark'?'dark':'light'));
-  const toggleAdminTheme=()=>setAdminTheme(current=>{const next=current==='light'?'dark':'light';localStorage.setItem('tesla-admin-theme',next);return next;});
+  const [adminTheme,setAdminTheme]=useState<'light'|'dark'|'auto'>(()=>{const saved=localStorage.getItem('tesla-admin-theme');return saved==='dark'||saved==='auto'?saved:'light';});
+  const [systemTheme,setSystemTheme]=useState<'light'|'dark'>(()=>window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+  useEffect(()=>{const media=window.matchMedia('(prefers-color-scheme: dark)');const update=()=>setSystemTheme(media.matches?'dark':'light');media.addEventListener?.('change',update);return()=>media.removeEventListener?.('change',update);},[]);
+  const toggleAdminTheme=()=>setAdminTheme(current=>{const next=current==='light'?'dark':current==='dark'?'auto':'light';localStorage.setItem('tesla-admin-theme',next);return next;});
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [profileUrl, setProfileUrl] = useState('');
@@ -141,7 +139,7 @@ export function AdminConsole() {
   const load = async () => {
     setRefreshing(true);
     try {
-      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, orderRows, paymentRows, customerCount] = await Promise.all([
+      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount] = await Promise.all([
         supabase.from('site_visits').select('id', { count:'exact', head:true }),
         supabase.from('site_clicks').select('id', { count:'exact', head:true }),
         supabase.from('support_conversations').select('id', { count:'exact', head:true }),
@@ -149,11 +147,9 @@ export function AdminConsole() {
         supabase.from('site_presence').select('visitor_id', { count:'exact', head:true }).gte('last_seen_at', new Date(Date.now()-90000).toISOString()),
         supabase.from('site_visits').select('id,page,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('support_conversations').select('id,customer_id,subject,status,updated_at,visitor_email,enquiry_type,enquiry_source,vehicle_model,contact_phone').order('updated_at',{ascending:false}).limit(100),
-        supabase.from('business_orders').select('id,order_reference,item_description,agreed_amount,currency,status,created_at').order('created_at',{ascending:false}).limit(100),
-        supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,status,method,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
       ]);
-      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,orderRows,paymentRows,customerCount]) if (result.error) throw result.error;
+      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
       const ids=rows.map(row=>row.customer_id);
       const {data:profiles,error:profilesError}=ids.length?await supabase.from('customer_profiles').select('id,display_name,email,phone').in('id',ids):{data:[],error:null};
@@ -167,8 +163,6 @@ export function AdminConsole() {
       setOverview({visits:visitCount.count||0,clicks:clickCount.count||0,conversations:conversationCount.count||0,messages:messageCount.count||0,generatedImages:0,onlineNow:presenceCount.count||0,updatedAt:Date.now()});
       setThreads(mapped);
       setVisits((visitorLog.data||[]).map(row=>({id:row.id,page:row.page,createdAt:new Date(row.created_at).getTime()})));
-      setFinanceOrders((orderRows.data||[]).map(row=>({id:row.id,reference:row.order_reference||row.id.slice(0,8),item:row.item_description||'Business order',amount:Number(row.agreed_amount||0),currency:row.currency||'USD',status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));
-      setFinancePayments((paymentRows.data||[]).map(row=>({id:row.id,reference:row.payment_reference||row.id.slice(0,8),orderId:row.order_id,amount:Number(row.amount||0),currency:row.currency||'USD',status:row.status||'pending',method:row.method||'—',createdAt:new Date(row.created_at).getTime()})));
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load management records.');
@@ -344,7 +338,6 @@ export function AdminConsole() {
     { id: 'customers' as const, label: 'Customer directory', icon: Users, group:'CUSTOMERS' },
     { id: 'messages' as const, label: 'Messages & live chat', icon: MessageCircle, group:'CUSTOMERS' },
     { id: 'operations' as const, label: 'Enquiries & orders', icon: ClipboardList, group:'CUSTOMERS' },
-    { id: 'finance' as const, label: 'Sales & finance', icon: Activity, group:'BUSINESS' },
     { id: 'catalogue' as const, label: 'Vehicle catalogue', icon: CarFront, group:'WEBSITE CONTROL' },
     { id: 'investment' as const, label: 'Investment page', icon: Activity, group:'WEBSITE CONTROL' },
     { id: 'content' as const, label: 'Website content', icon: Globe, group:'WEBSITE CONTROL' },
@@ -353,7 +346,7 @@ export function AdminConsole() {
   ];
 
   return (
-    <div className={`admin-console admin-console-standalone admin-console-premium admin-theme-${adminTheme} ${desktopView?'admin-desktop-view':''}`}>
+    <div className={`admin-console admin-console-standalone admin-console-premium admin-theme-${adminTheme==='auto'?systemTheme:adminTheme} ${desktopView?'admin-desktop-view':''}`}>
       <section className="admin-install-card" style={{display:'flex',flexWrap:'wrap',alignItems:'center',gap:12,justifyContent:'space-between',padding:'14px 18px',margin:'14px 18px',border:'1px solid var(--admin-border,#ddd)',borderRadius:14,background:'var(--admin-panel,#fff)'}}>
         <div style={{minWidth:220,flex:'1 1 240px'}}><b>Install Tesla Markets Management</b><p style={{margin:'4px 0 0',fontSize:13,opacity:.75}}>Add a secure app shortcut to your phone and enable customer message alerts.</p>{notificationStatus&&<small role="status">{notificationStatus}</small>}</div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="btn btn-outline" type="button" onClick={()=>void enablePhoneNotifications()}>{pushSubscribed?'Device subscribed':notificationPermission==='granted'?'Check notification setup':'Enable notifications'}</button>{!isInstalled&&<button className="btn btn-dark" type="button" onClick={()=>void installAdminApp()}>{installPrompt?'Install admin app':'How to install'}</button>}</div>
@@ -361,7 +354,7 @@ export function AdminConsole() {
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
         <div className="admin-console-brand"><span className="admin-brand-mark admin-tesla-mark">T</span><div><b>TESLA MARKETS</b><small>MANAGEMENT CONSOLE</small></div></div>
-        <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={adminTheme==='light'?'Switch to dark mode':'Switch to light mode'} title={adminTheme==='light'?'Dark mode':'Light mode'}>{adminTheme==='light'?<Moon size={16}/>:<Sun size={16}/>}</button><button className="icon-btn admin-view-toggle" onClick={toggleDesktopView} aria-label={desktopView?'Use phone layout':'Use desktop layout'} title={desktopView?'Use phone layout':'Use desktop layout'}>{desktopView?<Smartphone size={16}/>:<Monitor size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
+        <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={'Theme: '+adminTheme+'. Tap to change.'} title={'Theme: '+adminTheme+' · tap to cycle'}>{adminTheme==='light'?<Sun size={16}/>:adminTheme==='dark'?<Moon size={16}/>:<Monitor size={16}/>}</button><button className="icon-btn admin-view-toggle" onClick={toggleDesktopView} aria-label={desktopView?'Use phone layout':'Use desktop layout'} title={desktopView?'Use phone layout':'Use desktop layout'}>{desktopView?<Smartphone size={16}/>:<Monitor size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
       </header>
       <div className="admin-shell">
         <aside className={'admin-console-side '+(mobileNavOpen?'is-open':'')}>
@@ -386,7 +379,6 @@ export function AdminConsole() {
               <article className="tm-kpi-card"><span className="tm-kpi-icon"><Eye size={20}/></span><div><small>Website Visitors</small><strong>{overview?.visits??'—'}</strong><em>Recorded page visits</em></div><Eye className="tm-kpi-watermark"/></article>
               <article className="tm-kpi-card"><span className="tm-kpi-icon"><MessageCircle size={20}/></span><div><small>Active Chats</small><strong>{overview?.onlineNow??'—'}</strong><em>Visitors active in last 90 seconds</em></div><MessageCircle className="tm-kpi-watermark"/></article>
               <article className="tm-kpi-card"><span className="tm-kpi-icon"><CarFront size={20}/></span><div><small>Customer Enquiries</small><strong>{overview?.conversations??'—'}</strong><em>Saved customer conversations</em></div><CarFront className="tm-kpi-watermark"/></article>
-              <article className="tm-kpi-card"><span className="tm-kpi-icon"><Wallet size={20}/></span><div><small>Recorded Orders</small><strong>{financeOrders.length}</strong><em>Order records · no estimated value</em></div><Wallet className="tm-kpi-watermark"/></article>
             </section>
             <div className="tm-dashboard-grid tm-dashboard-grid-primary">
               <section className="tm-dashboard-card tm-activity-chart"><div className="tm-card-heading"><div><h2>Website Activity</h2><p>Recent visitor activity from recorded page views.</p></div><span className="tm-card-chip">Latest {visits.length} records</span></div>
@@ -396,7 +388,6 @@ export function AdminConsole() {
               <section className="tm-dashboard-card tm-recent-enquiries"><div className="tm-card-heading"><div><h2>Recent Enquiries</h2><p>Latest customer conversations.</p></div><button onClick={()=>setSection('operations')}>View all <ArrowUpRight size={13}/></button></div>{threads.filter(t=>!dashboardSearch||[t.visitorName,t.visitorEmail,t.lastMessage].join(' ').toLowerCase().includes(dashboardSearch.toLowerCase())).slice(0,5).map(t=><button className="tm-enquiry-row" key={t.id} onClick={()=>setSection('messages')}><span className="tm-enquiry-avatar">{(t.visitorName||'V').slice(0,1).toUpperCase()}</span><span><b>{t.visitorName||'Website visitor'}</b><small>{t.lastMessage||'Customer enquiry'}</small></span><ChevronRight size={15}/></button>)}{threads.length===0&&<p className="tm-empty">No enquiries recorded yet.</p>}</section>
             </div>
             <div className="tm-dashboard-grid tm-dashboard-grid-secondary">
-              <section className="tm-dashboard-card tm-sales-summary"><div className="tm-card-heading"><div><h2>Sales & Finance Summary</h2><p>Verified receipts and orders only.</p></div><button onClick={()=>setSection('finance')}>Finance <ArrowUpRight size={13}/></button></div><div className="tm-finance-summary-content"><div className="tm-finance-ring"><strong>{financePayments.filter(p=>['verified','completed','paid'].includes(p.status.toLowerCase())).length}</strong><small>Verified payments</small></div><div className="tm-finance-legend"><span><i/>Orders <b>{financeOrders.length}</b></span><span><i/>Payments <b>{financePayments.length}</b></span><span><i/>Pending <b>{financePayments.filter(p=>['pending','submitted','processing'].includes(p.status.toLowerCase())).length}</b></span></div></div><p className="tm-finance-caveat">Portfolio valuation and sales revenue are not displayed until supported by verified financial records.</p></section>
             </div>
             <section className="tm-dashboard-card tm-chat-dashboard"><div className="tm-card-heading"><div><h2>Customer Conversations</h2><p>Inbox, live replies and customer details.</p></div><button onClick={()=>setSection('messages')}>Open full inbox <ArrowUpRight size={13}/></button></div><AdminInbox/></section>
             <section className="tm-dashboard-card tm-quick-links"><div className="tm-card-heading"><div><h2>Management Sections</h2><p>All website controls in one organized place.</p></div></div><div className="admin-quick-actions">{nav.filter(item=>item.id!=='overview').map(item=><button key={item.id} onClick={()=>setSection(item.id)}>{item.label}</button>)}</div></section>
@@ -409,7 +400,6 @@ export function AdminConsole() {
           {section === 'media' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">MEDIA LIBRARY</div><h2>Website media</h2><p>Manage investment slides and the management profile image. Vehicle gallery assets remain attached to the current site resources.</p></div></div><div className="admin-media-links"><button onClick={()=>setSection('investment')}>Manage investment images</button><button onClick={()=>setSection('catalogue')}>View vehicle galleries</button><button onClick={()=>setSection('settings')}>Management profile image</button></div></section>}
           {section === 'messages' && <section className="admin-console-panel admin-messages-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER COMMUNICATIONS</div><h2>Customer inbox</h2><p>Customer conversation list and replies. The conversation header and reply bar remain in place while messages scroll.</p></div></div><AdminInbox/></section>}
           {section === 'operations' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">ENQUIRY PIPELINE</div><h2>{threads.length} enquiries</h2><p>Track the current status of each customer enquiry.</p></div></div>{threads.length?<div className="admin-pipeline">{threads.map(thread=><article key={thread.id}><div><b>{thread.visitorName||'Website visitor'}</b><small>{thread.lastMessage||'No message yet'} · {new Date(thread.updatedAt).toLocaleString()}</small></div><label>Status<select value={thread.status||'new'} onChange={event=>void updateStatus(thread.id,event.target.value)}>{statusOptions.map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></label></article>)}</div>:<p className="admin-empty-note">New enquiries will appear here.</p>}</section>}
-          {section === 'finance' && <><section className="admin-finance-kpis admin-finance-page-kpis"><article><small>Orders recorded</small><b>{financeOrders.length}</b><span>All order records</span></article><article><small>Payments recorded</small><b>{financePayments.length}</b><span>All payment records</span></article><article><small>Verified payments</small><b>{financePayments.filter(p=>['verified','completed','paid'].includes(p.status.toLowerCase())).length}</b><span>Marked verified or completed</span></article><article><small>Awaiting verification</small><b>{financePayments.filter(p=>['pending','submitted','processing'].includes(p.status.toLowerCase())).length}</b><span>Pending or processing</span></article></section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">SALES REGISTER</div><h2>Orders & agreed values</h2><p>Order values are not treated as received revenue until a payment is verified.</p></div></div>{financeOrders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Order</th><th>Item</th><th>Agreed value</th><th>Status</th><th>Date</th></tr></thead><tbody>{financeOrders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td>{new Intl.NumberFormat(undefined,{style:'currency',currency:order.currency||'USD',maximumFractionDigits:2}).format(order.amount)}</td><td><span className="admin-finance-status">{order.status}</span></td><td>{new Date(order.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div>:<div className="admin-finance-empty"><Activity size={24}/><b>No sales orders recorded yet</b><span>When an order is created, it will appear here with its agreed value and status.</span></div>}</section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT LEDGER</div><h2>Recorded payments</h2><p>Only verified payments should be counted as received funds.</p></div></div>{financePayments.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Amount</th><th>Method</th><th>Status</th><th>Recorded</th></tr></thead><tbody>{financePayments.map(payment=><tr key={payment.id}><td>{payment.reference}</td><td>{new Intl.NumberFormat(undefined,{style:'currency',currency:payment.currency||'USD',maximumFractionDigits:2}).format(payment.amount)}</td><td>{payment.method}</td><td><span className="admin-finance-status">{payment.status}</span></td><td>{new Date(payment.createdAt).toLocaleDateString()}</td></tr>)}</tbody></table></div>:<div className="admin-finance-empty"><Inbox size={24}/><b>No payment records yet</b><span>Payments will appear here after they are recorded in the business payment ledger.</span></div>}</section></>}
           {section === 'settings' && <><section className="admin-console-panel"><div className="eyebrow dark">ACCOUNT SECURITY</div><h2>Administrator sign-in protection</h2><p>Management access uses your private administrator password. No authenticator code is required.</p><div className="admin-security-row"><div><b>Administrator password</b><small>Only your password is required to sign in.</small></div><span className="admin-security-status">Password protected</span></div></section><section className="admin-console-panel admin-profile-settings"><div className="eyebrow dark">MANAGEMENT PROFILE</div><h2>Chat profile picture</h2><p>Upload or replace the picture displayed beside Tesla Markets Management in customer chat.</p><div className="admin-profile-preview">{profileUrl?<img src={profileUrl} alt="Current management profile"/>:<CircleUserRound size={54}/>}<span>{profileUrl?'Current profile picture':'No custom profile picture saved yet'}</span></div><label className="admin-upload-label">Choose a new profile picture<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event=>setProfileFile(event.target.files?.[0]||null)}/></label><small>JPG, PNG or WEBP · maximum 4 MB</small><button className="btn btn-dark" disabled={!profileFile||savingProfile} onClick={()=>void saveProfile()}>{savingProfile?'Saving…':'Save profile picture'}</button></section></>}
           <footer className="admin-console-footer">Signed in as {user.email} · Private management session · <a href="#home">Open public website</a></footer>
         </main>
