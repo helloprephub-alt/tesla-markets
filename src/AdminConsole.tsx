@@ -78,11 +78,26 @@ export function AdminConsole() {
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
       if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked in browser settings.' : 'Allow notifications to receive new customer-message alerts.'); return; }
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        await registration.showNotification('Tesla Markets Management', { body: 'Notifications are enabled on this device.', icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: 'tesla-admin-notifications-enabled' });
-      } else new Notification('Tesla Markets Management', { body: 'Notifications are enabled.' });
-      setNotificationStatus('Notifications enabled on this device. Allow notifications in Android settings.');
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('This browser does not support background push. Install the app in Chrome and try again.');
+      const registration = await navigator.serviceWorker.ready;
+      const vapidPublicKey = 'BDkEE_7psAq5Rfc4C8nkFiIimotVfbPD-H6vyH8uNcgN1n_TNMvknAQL19xCnYPKy9Q619XKq0gtEVlCd7blWT0';
+      const applicationServerKey = Uint8Array.from(atob(vapidPublicKey.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(vapidPublicKey.length / 4) * 4, '=')), char => char.charCodeAt(0));
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+      const json = subscription.toJSON();
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !currentUser) throw new Error('Your administrator session has expired. Sign in again.');
+      const { error: saveError } = await supabase.from('admin_push_subscriptions').upsert({
+        user_id: currentUser.id,
+        endpoint: subscription.endpoint,
+        p256dh: json.keys?.p256dh,
+        auth: json.keys?.auth,
+        expiration_time: subscription.expirationTime ? new Date(subscription.expirationTime).toISOString() : null,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'endpoint' });
+      if (saveError) throw saveError;
+      await registration.showNotification('Tesla Markets Management', { body: 'Background message alerts are now enabled on this device.', icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: 'tesla-admin-notifications-enabled' });
+      setNotificationStatus('Background push is enabled. Customer messages can alert this device while the app is closed. Keep Android notifications enabled for this app.');
     } catch (e) { setNotificationStatus(e instanceof Error ? e.message : 'Could not enable notifications.'); }
   };
 
@@ -105,13 +120,7 @@ export function AdminConsole() {
         const message = payload.new as { id?: string; body?: string; sender_role?: string };
         if (message.sender_role !== 'customer') return;
         void load();
-        const body = (message.body || 'A customer sent a new message.').trim().slice(0, 140);
-        try {
-          if ('serviceWorker' in navigator && Notification.permission === 'granted') {
-            const registration = await navigator.serviceWorker.ready;
-            await registration.showNotification('New customer message', { body, icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: message.id || 'tesla-customer-message', data: { url: '/#admin' }, renotify: true });
-          } else if ('Notification' in window && Notification.permission === 'granted') new Notification('New customer message', { body });
-        } catch (e) { console.error('Customer message notification failed', e); }
+        // The server-side database webhook sends background push. Realtime only refreshes the open dashboard.
       })
       .subscribe((status) => { if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setNotificationStatus('Live message connection interrupted. Refresh the admin app to reconnect.'); });
     return () => { active = false; void supabase.removeChannel(channel); };
