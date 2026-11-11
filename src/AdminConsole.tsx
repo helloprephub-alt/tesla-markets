@@ -57,6 +57,10 @@ export function AdminConsole() {
   const [investmentFiles,setInvestmentFiles] = useState<File[]>([]);
   const [savingContent,setSavingContent] = useState(false);
   const [savingInvestment,setSavingInvestment] = useState(false);
+  const [installPrompt,setInstallPrompt] = useState<any>(null);
+  const [isInstalled,setIsInstalled] = useState(false);
+  const [notificationPermission,setNotificationPermission] = useState<NotificationPermission>(typeof Notification==='undefined'?'denied':Notification.permission);
+  const [notificationStatus,setNotificationStatus] = useState('');
 
   const load = async () => {
     setRefreshing(true);
@@ -274,6 +278,10 @@ export function AdminConsole() {
 
   return (
     <div className={`admin-console admin-console-standalone admin-console-premium admin-theme-${adminTheme}`}>
+      <section className="admin-install-card" style={{display:'flex',flexWrap:'wrap',alignItems:'center',gap:12,justifyContent:'space-between',padding:'14px 18px',margin:'14px 18px',border:'1px solid var(--admin-border,#ddd)',borderRadius:14,background:'var(--admin-panel,#fff)'}}>
+        <div style={{minWidth:220,flex:'1 1 240px'}}><b>Install Tesla Markets Management</b><p style={{margin:'4px 0 0',fontSize:13,opacity:.75}}>Add a secure app shortcut to your phone and enable customer message alerts.</p>{notificationStatus&&<small role="status">{notificationStatus}</small>}</div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="btn btn-outline" type="button" onClick={()=>void enablePhoneNotifications()}>{notificationPermission==='granted'?'Notifications enabled':'Enable notifications'}</button>{!isInstalled&&<button className="btn btn-dark" type="button" onClick={()=>void installAdminApp()}>{installPrompt?'Install admin app':'How to install'}</button>}</div>
+      </section>
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
         <div className="admin-console-brand"><span className="admin-brand-mark admin-tesla-mark">T</span><div><b>TESLA MARKETS</b><small>MANAGEMENT CONSOLE</small></div></div>
