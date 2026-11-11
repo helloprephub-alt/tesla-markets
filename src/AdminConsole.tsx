@@ -83,7 +83,7 @@ export function AdminConsole() {
       if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked in browser settings.' : 'Allow notifications to receive new customer-message alerts.'); return; }
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('This browser does not support background push. Install the app in Chrome and try again.');
       const registration = await navigator.serviceWorker.ready;
-      const vapidPublicKey = '2xUofw6bnx4UvmVeBk5U1vRmHnizWRNN67B-Ry9HmlkLH2lOc2bmZCJ9ixqgUMYiikHKqXXdxrCgw6rTamrDJg';
+      const vapidPublicKey = 'BAu6xkwoHQRHaB7ootVTm2FGKMLxsJyFxRbVRyTbgNe5rPW42hNPZI1TB67yhBhPTAjMGU4eypBtW_TdFYjeuyU';
       const normalizedKey=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
       const applicationServerKey=Uint8Array.from(atob(normalizedKey+'='.repeat((4-normalizedKey.length%4)%4)),char=>char.charCodeAt(0));
       if(applicationServerKey.length!==65||applicationServerKey[0]!==4)throw new Error('The notification server key is misconfigured. Refresh later or contact support.');
@@ -108,7 +108,7 @@ export function AdminConsole() {
       if (saveError) throw saveError;
       await registration.showNotification('Tesla Markets Management', { body: 'This device is subscribed to customer message alerts.', icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: 'tesla-admin-notifications-enabled' });
       setPushSubscribed(true);
-      setNotificationStatus('Device subscribed successfully. A background delivery test is still required before we can confirm closed-app alerts.');
+      setNotificationStatus('This phone is subscribed. To re-enable later, return here and tap this button again. If Android permission was blocked, open Chrome site settings → Notifications and allow this site. A closed-app delivery test is still pending.');
     } catch (e) { setPushSubscribed(false);setNotificationStatus(e instanceof Error ? e.message : 'Could not enable notifications.'); }
   };
 
