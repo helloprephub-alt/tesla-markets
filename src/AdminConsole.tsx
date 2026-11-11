@@ -9,7 +9,10 @@ type Thread = { id: string; visitorName?: string; visitorEmail?: string; enquiry
 type Visit = { id: string; page: string; createdAt: number };
 type OperationalOrder = {id:string;reference:string;item:string;status:string;createdAt:number};
 type Overview = { conversations: number; messages: number; generatedImages: number; visits: number; clicks: number; onlineNow: number; updatedAt: number };
-type AdminTask = {id:string;title:string;description:string;status:string;priority:string;due_at:string|null;created_at:string};\ntype AdminNotice = {id:string;title:string;body:string;type:string;is_read:boolean;created_at:string};\ntype AuditEntry = {id:number;action:string;entity_type:string;entity_id:string|null;details:any;created_at:string};\ntype Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'orders' | 'tasks' | 'notifications' | 'activity' | 'settings';
+type AdminTask = {id:string;title:string;description:string;status:string;priority:string;due_at:string|null;created_at:string};
+type AdminNotice = {id:string;title:string;body:string;type:string;is_read:boolean;created_at:string};
+type AuditEntry = {id:number;action:string;entity_type:string;entity_id:string|null;details:any;created_at:string};
+type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'orders' | 'tasks' | 'notifications' | 'activity' | 'settings';
 
 const catalogue = [
   { name: 'Model 3', count: 5, first: '/resources/model-3-1.jpg' },
@@ -38,7 +41,14 @@ export function AdminConsole() {
   const [dashboardSearch,setDashboardSearch]=useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
-  const [orders,setOrders]=useState<OperationalOrder[]>([]);\n  const [tasks,setTasks]=useState<AdminTask[]>([]);\n  const [notices,setNotices]=useState<AdminNotice[]>([]);\n  const [auditEntries,setAuditEntries]=useState<AuditEntry[]>([]);\n  const [taskTitle,setTaskTitle]=useState('');\n  const [taskDescription,setTaskDescription]=useState('');\n  const [taskPriority,setTaskPriority]=useState('normal');\n  const [taskDue,setTaskDue]=useState('');
+  const [orders,setOrders]=useState<OperationalOrder[]>([]);
+  const [tasks,setTasks]=useState<AdminTask[]>([]);
+  const [notices,setNotices]=useState<AdminNotice[]>([]);
+  const [auditEntries,setAuditEntries]=useState<AuditEntry[]>([]);
+  const [taskTitle,setTaskTitle]=useState('');
+  const [taskDescription,setTaskDescription]=useState('');
+  const [taskPriority,setTaskPriority]=useState('normal');
+  const [taskDue,setTaskDue]=useState('');
   const [section, setSection] = useState<Section>('overview');
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const [collapsedGroups,setCollapsedGroups]=useState<string[]>([]);
@@ -150,7 +160,10 @@ export function AdminConsole() {
         supabase.from('site_visits').select('id,page,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('support_conversations').select('id,customer_id,subject,status,updated_at,visitor_email,enquiry_type,enquiry_source,vehicle_model,contact_phone').order('updated_at',{ascending:false}).limit(100),
         supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
-        supabase.from('business_orders').select('id,order_reference,item_description,status,created_at').order('created_at',{ascending:false}).limit(200),\n        supabase.from('admin_tasks').select('id,title,description,status,priority,due_at,created_at').order('created_at',{ascending:false}).limit(200),\n        supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),\n        supabase.from('admin_audit_logs').select('id,action,entity_type,entity_id,details,created_at').order('created_at',{ascending:false}).limit(100),
+        supabase.from('business_orders').select('id,order_reference,item_description,status,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('admin_tasks').select('id,title,description,status,priority,due_at,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),
+        supabase.from('admin_audit_logs').select('id,action,entity_type,entity_id,details,created_at').order('created_at',{ascending:false}).limit(100),
       ]);
       for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,orderRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
@@ -166,7 +179,8 @@ export function AdminConsole() {
       setOverview({visits:visitCount.count||0,clicks:clickCount.count||0,conversations:conversationCount.count||0,messages:messageCount.count||0,generatedImages:0,onlineNow:presenceCount.count||0,updatedAt:Date.now()});
       setThreads(mapped);
       setVisits((visitorLog.data||[]).map(row=>({id:row.id,page:row.page,createdAt:new Date(row.created_at).getTime()})));
-      setOrders((orderRows.data||[]).map(row=>({id:row.id,reference:row.order_reference||row.id.slice(0,8),item:row.item_description||'Customer request',status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));\n      setTasks((taskRows.data||[]) as AdminTask[]);setNotices((noticeRows.data||[]) as AdminNotice[]);setAuditEntries((auditRows.data||[]) as AuditEntry[]);
+      setOrders((orderRows.data||[]).map(row=>({id:row.id,reference:row.order_reference||row.id.slice(0,8),item:row.item_description||'Customer request',status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));
+      setTasks((taskRows.data||[]) as AdminTask[]);setNotices((noticeRows.data||[]) as AdminNotice[]);setAuditEntries((auditRows.data||[]) as AuditEntry[]);
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load management records.');
@@ -246,7 +260,16 @@ export function AdminConsole() {
   };
   const signIn = async () => completeKeyAuth('login');
   const saveInitialPassword = async () => completeKeyAuth('setup');
-  const createTask = async () => {\n    if(!taskTitle.trim())return;\n    try { const {user:current,isAdmin}=await isCurrentUserAdmin(); if(!current||!isAdmin)throw new Error('Administrator session expired.');\n      const {data,error:insertError}=await supabase.from('admin_tasks').insert({title:taskTitle.trim(),description:taskDescription.trim(),priority:taskPriority,due_at:taskDue?new Date(taskDue).toISOString():null,created_by:current.id}).select('id,title,description,status,priority,due_at,created_at').single();\n      if(insertError)throw insertError;setTasks(currentTasks=>[data as AdminTask,...currentTasks]);setTaskTitle('');setTaskDescription('');setTaskDue('');setTaskPriority('normal');setError('');\n    } catch(e){setError(e instanceof Error?e.message:'Could not create task.');}\n  };\n  const updateTaskStatus = async (taskId:string,status:string) => { try {const {error:updateError}=await supabase.from('admin_tasks').update({status,updated_at:new Date().toISOString()}).eq('id',taskId);if(updateError)throw updateError;setTasks(current=>current.map(task=>task.id===taskId?{...task,status}:task));}catch(e){setError(e instanceof Error?e.message:'Could not update task.');} };\n  const markNoticeRead = async (noticeId:string) => {try{const {error:updateError}=await supabase.from('admin_notifications').update({is_read:true}).eq('id',noticeId);if(updateError)throw updateError;setNotices(current=>current.map(item=>item.id===noticeId?{...item,is_read:true}:item));}catch(e){setError(e instanceof Error?e.message:'Could not update notification.');}};\n  const updateStatus = async (threadId: string, status: string) => {
+  const createTask = async () => {
+    if(!taskTitle.trim())return;
+    try { const {user:current,isAdmin}=await isCurrentUserAdmin(); if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const {data,error:insertError}=await supabase.from('admin_tasks').insert({title:taskTitle.trim(),description:taskDescription.trim(),priority:taskPriority,due_at:taskDue?new Date(taskDue).toISOString():null,created_by:current.id}).select('id,title,description,status,priority,due_at,created_at').single();
+      if(insertError)throw insertError;setTasks(currentTasks=>[data as AdminTask,...currentTasks]);setTaskTitle('');setTaskDescription('');setTaskDue('');setTaskPriority('normal');setError('');
+    } catch(e){setError(e instanceof Error?e.message:'Could not create task.');}
+  };
+  const updateTaskStatus = async (taskId:string,status:string) => { try {const {error:updateError}=await supabase.from('admin_tasks').update({status,updated_at:new Date().toISOString()}).eq('id',taskId);if(updateError)throw updateError;setTasks(current=>current.map(task=>task.id===taskId?{...task,status}:task));}catch(e){setError(e instanceof Error?e.message:'Could not update task.');} };
+  const markNoticeRead = async (noticeId:string) => {try{const {error:updateError}=await supabase.from('admin_notifications').update({is_read:true}).eq('id',noticeId);if(updateError)throw updateError;setNotices(current=>current.map(item=>item.id===noticeId?{...item,is_read:true}:item));}catch(e){setError(e instanceof Error?e.message:'Could not update notification.');}};
+  const updateStatus = async (threadId: string, status: string) => {
     try {
       const {error}=await supabase.from('support_conversations').update({status,updated_at:new Date().toISOString()}).eq('id',threadId);
       if(error) throw error;
@@ -342,7 +365,10 @@ export function AdminConsole() {
     { id: 'customers' as const, label: 'Customer directory', icon: Users, group:'CUSTOMERS' },
     { id: 'messages' as const, label: 'Messages & live chat', icon: MessageCircle, group:'CUSTOMERS' },
     { id: 'operations' as const, label: 'Enquiries', icon: ClipboardList, group:'WORKSPACE' },
-    { id: 'orders' as const, label: 'Orders & requests', icon: ClipboardList, group:'BUSINESS' },\n    { id: 'tasks' as const, label: 'Tasks & follow-ups', icon: ListTodo, group:'WORKSPACE' },\n    { id: 'notifications' as const, label: 'Notifications', icon: Bell, group:'SYSTEM' },\n    { id: 'activity' as const, label: 'Activity logs', icon: FileClock, group:'SYSTEM' },
+    { id: 'orders' as const, label: 'Orders & requests', icon: ClipboardList, group:'BUSINESS' },
+    { id: 'tasks' as const, label: 'Tasks & follow-ups', icon: ListTodo, group:'WORKSPACE' },
+    { id: 'notifications' as const, label: 'Notifications', icon: Bell, group:'SYSTEM' },
+    { id: 'activity' as const, label: 'Activity logs', icon: FileClock, group:'SYSTEM' },
     { id: 'catalogue' as const, label: 'Vehicle catalogue', icon: CarFront, group:'WEBSITE CONTROL' },
     { id: 'investment' as const, label: 'Investment page', icon: Activity, group:'WEBSITE CONTROL' },
     { id: 'content' as const, label: 'Website content', icon: Globe, group:'WEBSITE CONTROL' },
