@@ -1864,3 +1864,36 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 @media(max-width:380px){
  .topbar .brand-logo{width:92px;height:40px;flex-basis:92px}
 }
+
+/* Mobile-first admin app refinements and optional desktop canvas */
+.admin-install-card{padding-top:max(14px,env(safe-area-inset-top));}
+.admin-console-standalone .admin-topbar{position:sticky;top:0;z-index:60;padding-top:env(safe-area-inset-top);}
+.admin-console-standalone button,.admin-console-standalone a,.admin-console-standalone input,.admin-console-standalone select{touch-action:manipulation;}
+.admin-console-standalone button{min-height:40px;}
+.admin-console-standalone .admin-console-side{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.admin-console-standalone .admin-console-main{padding-bottom:calc(28px + env(safe-area-inset-bottom));}
+.admin-console-standalone .admin-inbox-layout{min-height:560px;}
+.admin-console-standalone .admin-conversation-head{position:sticky;top:0;z-index:5;background:var(--admin-panel,#fff);}
+.admin-console-standalone .admin-chat-messages{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+.admin-console-standalone .admin-compose{position:sticky;bottom:0;z-index:6;background:var(--admin-panel,#fff);padding-bottom:max(10px,env(safe-area-inset-bottom));}
+.admin-console-standalone .admin-view-toggle{display:grid;place-items:center;}
+.admin-console-standalone .admin-install-card [role="status"]{display:block;margin-top:9px;line-height:1.5;color:#9a4145;overflow-wrap:anywhere;}
+.admin-console-standalone.admin-desktop-view{min-width:1100px;width:1100px;max-width:none;}
+.admin-console-standalone.admin-desktop-view .admin-shell{grid-template-columns:238px minmax(0,1fr);}
+.admin-console-standalone.admin-desktop-view .admin-console-side{display:flex;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.admin-console-standalone.admin-desktop-view .admin-console-main{padding:34px 38px;}
+.admin-console-standalone.admin-desktop-view .admin-console-stats{grid-template-columns:repeat(3,minmax(0,1fr));}
+.admin-console-standalone.admin-desktop-view .admin-inbox-layout{display:grid;grid-template-columns:minmax(250px,.36fr) minmax(0,.64fr);height:70vh;min-height:560px;}
+.admin-console-standalone.admin-desktop-view .admin-thread-list{display:block;height:100%;overflow:auto;}
+.admin-console-standalone.admin-desktop-view .admin-conversation{display:flex;position:static;height:100%;}
+@media(max-width:760px){
+ .admin-console-standalone:not(.admin-desktop-view) .admin-topbar{gap:8px;padding-left:10px;padding-right:10px;}
+ .admin-console-standalone:not(.admin-desktop-view) .admin-topbar-email,.admin-console-standalone:not(.admin-desktop-view) .admin-secure-label{display:none;}
+ .admin-console-standalone:not(.admin-desktop-view) .admin-console-header{gap:12px;}
+ .admin-console-standalone:not(.admin-desktop-view) .admin-console-header h1{font-size:clamp(25px,7vw,32px);}
+ .admin-console-standalone:not(.admin-desktop-view) .admin-page-actions{width:100%;justify-content:space-between;}
+ .admin-console-standalone:not(.admin-desktop-view) .admin-console-panel{border-radius:12px;}
+ .admin-console-standalone:not(.admin-desktop-view) .admin-inbox-layout{height:calc(100dvh - 190px);min-height:500px;}
+ .admin-console-standalone:not(.admin-desktop-view) .admin-conversation-head{position:sticky;top:0;}
+ .admin-console-standalone:not(.admin-desktop-view) .admin-compose{position:sticky;bottom:0;padding-bottom:max(10px,env(safe-area-inset-bottom));}
+}
