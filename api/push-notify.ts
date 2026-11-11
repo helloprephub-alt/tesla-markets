@@ -1,4 +1,5 @@
 import webpush from 'web-push';
+import { timingSafeEqual } from 'node:crypto';
 
 type PushSubscriptionRecord = {
   endpoint: string;
@@ -10,7 +11,7 @@ export default async function handler(request: Request): Promise<Response> {
   const expected = process.env.TESLA_PUSH_WEBHOOK_SECRET;
   const supplied = request.headers.get('x-tesla-push-secret');
   if (!expected || !supplied || supplied.length !== expected.length ||
-      !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
+      !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
