@@ -1,12 +1,12 @@
 {
   "name": "Tesla Markets Management",
   "short_name": "Tesla Admin",
-  "description": "Private management workspace and customer message alerts.",
+  "description": "Private Tesla Markets management workspace and customer message alerts.",
   "start_url": "/#admin",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f5f5",
-  "theme_color": "#111111",
+  "theme_color": "#e82127",
   "icons": [
     {
       "src": "/icons/admin-icon.svg",
