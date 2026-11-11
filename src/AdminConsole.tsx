@@ -83,7 +83,7 @@ export function AdminConsole() {
       if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked in browser settings.' : 'Allow notifications to receive new customer-message alerts.'); return; }
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('This browser does not support background push. Install the app in Chrome and try again.');
       const registration = await navigator.serviceWorker.ready;
-      const vapidPublicKey = 'BAu6xkwoHQRHaB7ootVTm2FGKMLxsJyFxRbVRyTbgNe5rPW42hNPZI1TB67yhBhPTAjMGU4eypBtW_TdFYjeuyU';
+      const vapidPublicKey = 'BKJcJ--57zt22BhiSvVjhwLXjZdsAFlVKVVg9W0PvaqjzIb_mqeTkbH27msDyOV_-Bxb2rWOfYZcU7aToP2H08I';
       const normalizedKey=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
       const applicationServerKey=Uint8Array.from(atob(normalizedKey+'='.repeat((4-normalizedKey.length%4)%4)),char=>char.charCodeAt(0));
       if(applicationServerKey.length!==65||applicationServerKey[0]!==4)throw new Error('The notification server key is misconfigured. Refresh later or contact support.');
