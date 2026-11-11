@@ -7,8 +7,9 @@ const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
 const ADMIN_AUTH_REDIRECT = 'https://tesla-markets.vercel.app/#admin';
 type Thread = { id: string; visitorName?: string; visitorEmail?: string; enquiryType?:string; enquirySource?:string; vehicleModel?:string; phone?:string; createdAt: number; updatedAt: number; lastMessage?: string; status?: string };
 type Visit = { id: string; page: string; createdAt: number };
+type OperationalOrder = {id:string;reference:string;item:string;status:string;createdAt:number};
 type Overview = { conversations: number; messages: number; generatedImages: number; visits: number; clicks: number; onlineNow: number; updatedAt: number };
-type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'settings';
+type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'orders' | 'settings';
 
 const catalogue = [
   { name: 'Model 3', count: 5, first: '/resources/model-3-1.jpg' },
@@ -37,6 +38,7 @@ export function AdminConsole() {
   const [dashboardSearch,setDashboardSearch]=useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [orders,setOrders]=useState<OperationalOrder[]>([]);
   const [section, setSection] = useState<Section>('overview');
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const [collapsedGroups,setCollapsedGroups]=useState<string[]>([]);
@@ -139,7 +141,7 @@ export function AdminConsole() {
   const load = async () => {
     setRefreshing(true);
     try {
-      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount] = await Promise.all([
+      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, orderRows] = await Promise.all([
         supabase.from('site_visits').select('id', { count:'exact', head:true }),
         supabase.from('site_clicks').select('id', { count:'exact', head:true }),
         supabase.from('support_conversations').select('id', { count:'exact', head:true }),
@@ -148,8 +150,9 @@ export function AdminConsole() {
         supabase.from('site_visits').select('id,page,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('support_conversations').select('id,customer_id,subject,status,updated_at,visitor_email,enquiry_type,enquiry_source,vehicle_model,contact_phone').order('updated_at',{ascending:false}).limit(100),
         supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
+        supabase.from('business_orders').select('id,order_reference,item_description,status,created_at').order('created_at',{ascending:false}).limit(200),
       ]);
-      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount]) if (result.error) throw result.error;
+      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,orderRows]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
       const ids=rows.map(row=>row.customer_id);
       const {data:profiles,error:profilesError}=ids.length?await supabase.from('customer_profiles').select('id,display_name,email,phone').in('id',ids):{data:[],error:null};
@@ -163,6 +166,7 @@ export function AdminConsole() {
       setOverview({visits:visitCount.count||0,clicks:clickCount.count||0,conversations:conversationCount.count||0,messages:messageCount.count||0,generatedImages:0,onlineNow:presenceCount.count||0,updatedAt:Date.now()});
       setThreads(mapped);
       setVisits((visitorLog.data||[]).map(row=>({id:row.id,page:row.page,createdAt:new Date(row.created_at).getTime()})));
+      setOrders((orderRows.data||[]).map(row=>({id:row.id,reference:row.order_reference||row.id.slice(0,8),item:row.item_description||'Customer request',status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load management records.');
@@ -337,7 +341,8 @@ export function AdminConsole() {
     { id: 'visitors' as const, label: 'Visitor analytics', icon: Eye, group:'CUSTOMERS' },
     { id: 'customers' as const, label: 'Customer directory', icon: Users, group:'CUSTOMERS' },
     { id: 'messages' as const, label: 'Messages & live chat', icon: MessageCircle, group:'CUSTOMERS' },
-    { id: 'operations' as const, label: 'Enquiries & orders', icon: ClipboardList, group:'CUSTOMERS' },
+    { id: 'operations' as const, label: 'Enquiries', icon: ClipboardList, group:'WORKSPACE' },
+    { id: 'orders' as const, label: 'Orders & requests', icon: ClipboardList, group:'BUSINESS' },
     { id: 'catalogue' as const, label: 'Vehicle catalogue', icon: CarFront, group:'WEBSITE CONTROL' },
     { id: 'investment' as const, label: 'Investment page', icon: Activity, group:'WEBSITE CONTROL' },
     { id: 'content' as const, label: 'Website content', icon: Globe, group:'WEBSITE CONTROL' },
@@ -400,6 +405,7 @@ export function AdminConsole() {
           {section === 'media' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">MEDIA LIBRARY</div><h2>Website media</h2><p>Manage investment slides and the management profile image. Vehicle gallery assets remain attached to the current site resources.</p></div></div><div className="admin-media-links"><button onClick={()=>setSection('investment')}>Manage investment images</button><button onClick={()=>setSection('catalogue')}>View vehicle galleries</button><button onClick={()=>setSection('settings')}>Management profile image</button></div></section>}
           {section === 'messages' && <section className="admin-console-panel admin-messages-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER COMMUNICATIONS</div><h2>Customer inbox</h2><p>Customer conversation list and replies. The conversation header and reply bar remain in place while messages scroll.</p></div></div><AdminInbox/></section>}
           {section === 'operations' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">ENQUIRY PIPELINE</div><h2>{threads.length} enquiries</h2><p>Track the current status of each customer enquiry.</p></div></div>{threads.length?<div className="admin-pipeline">{threads.map(thread=><article key={thread.id}><div><b>{thread.visitorName||'Website visitor'}</b><small>{thread.lastMessage||'No message yet'} · {new Date(thread.updatedAt).toLocaleString()}</small></div><label>Status<select value={thread.status||'new'} onChange={event=>void updateStatus(thread.id,event.target.value)}>{statusOptions.map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></label></article>)}</div>:<p className="admin-empty-note">New enquiries will appear here.</p>}</section>}
+          {section === 'orders' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER ORDERS & REQUESTS</div><h2>{orders.length} recorded requests</h2><p>Operational tracking only. This view intentionally excludes payment processing, balances and financial management.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>{orders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Request / item</th><th>Status</th><th>Received</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td><span className="admin-finance-status">{order.status}</span></td><td>{new Date(order.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No customer orders or requests have been recorded yet.</p>}</section>}
           {section === 'settings' && <><section className="admin-console-panel"><div className="eyebrow dark">ACCOUNT SECURITY</div><h2>Administrator sign-in protection</h2><p>Management access uses your private administrator password. No authenticator code is required.</p><div className="admin-security-row"><div><b>Administrator password</b><small>Only your password is required to sign in.</small></div><span className="admin-security-status">Password protected</span></div></section><section className="admin-console-panel admin-profile-settings"><div className="eyebrow dark">MANAGEMENT PROFILE</div><h2>Chat profile picture</h2><p>Upload or replace the picture displayed beside Tesla Markets Management in customer chat.</p><div className="admin-profile-preview">{profileUrl?<img src={profileUrl} alt="Current management profile"/>:<CircleUserRound size={54}/>}<span>{profileUrl?'Current profile picture':'No custom profile picture saved yet'}</span></div><label className="admin-upload-label">Choose a new profile picture<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event=>setProfileFile(event.target.files?.[0]||null)}/></label><small>JPG, PNG or WEBP · maximum 4 MB</small><button className="btn btn-dark" disabled={!profileFile||savingProfile} onClick={()=>void saveProfile()}>{savingProfile?'Saving…':'Save profile picture'}</button></section></>}
           <footer className="admin-console-footer">Signed in as {user.email} · Private management session · <a href="#home">Open public website</a></footer>
         </main>
