@@ -62,6 +62,62 @@ export function AdminConsole() {
   const [notificationPermission,setNotificationPermission] = useState<NotificationPermission>(typeof Notification==='undefined'?'denied':Notification.permission);
   const [notificationStatus,setNotificationStatus] = useState('');
 
+  useEffect(() => {
+    const onInstallPrompt = (event: Event) => { event.preventDefault(); setInstallPrompt(event as any); };
+    const onInstalled = () => { setIsInstalled(true); setInstallPrompt(null); setNotificationStatus('Tesla Markets Management is installed on this device.'); };
+    window.addEventListener('beforeinstallprompt', onInstallPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    setIsInstalled(window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone));
+    if ('serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js').catch(() => setNotificationStatus('App worker could not be registered. Refresh and try again.'));
+    return () => { window.removeEventListener('beforeinstallprompt', onInstallPrompt); window.removeEventListener('appinstalled', onInstalled); };
+  }, []);
+
+  const enablePhoneNotifications = async () => {
+    if (!('Notification' in window)) { setNotificationStatus('This browser does not support notifications. Open the admin app in Chrome.'); return; }
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked in browser settings.' : 'Allow notifications to receive new customer-message alerts.'); return; }
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification('Tesla Markets Management', { body: 'Notifications are enabled on this device.', icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: 'tesla-admin-notifications-enabled' });
+      } else new Notification('Tesla Markets Management', { body: 'Notifications are enabled.' });
+      setNotificationStatus('Notifications enabled on this device. Allow notifications in Android settings.');
+    } catch (e) { setNotificationStatus(e instanceof Error ? e.message : 'Could not enable notifications.'); }
+  };
+
+  const installAdminApp = async () => {
+    if (!installPrompt) { setNotificationStatus('In Chrome, open menu ⋮ and choose Install app or Add to Home screen.'); return; }
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      setNotificationStatus(choice?.outcome === 'accepted' ? 'Installation accepted. Follow the Android prompt to finish.' : 'Installation cancelled. You can install later from Chrome menu ⋮.');
+      setInstallPrompt(null);
+    } catch { setNotificationStatus('Open Chrome menu ⋮ and choose Install app or Add to Home screen.'); }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const channel = supabase.channel('tesla-admin-customer-message-alerts')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages', filter: 'sender_role=eq.customer' }, async (payload) => {
+        if (!active) return;
+        const message = payload.new as { id?: string; body?: string; sender_role?: string };
+        if (message.sender_role !== 'customer') return;
+        void load();
+        const body = (message.body || 'A customer sent a new message.').trim().slice(0, 140);
+        try {
+          if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification('New customer message', { body, icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: message.id || 'tesla-customer-message', data: { url: '/#admin' }, renotify: true });
+          } else if ('Notification' in window && Notification.permission === 'granted') new Notification('New customer message', { body });
+        } catch (e) { console.error('Customer message notification failed', e); }
+      })
+      .subscribe((status) => { if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setNotificationStatus('Live message connection interrupted. Refresh the admin app to reconnect.'); });
+    return () => { active = false; void supabase.removeChannel(channel); };
+  }, [user?.email]);
+
+
   const load = async () => {
     setRefreshing(true);
     try {
