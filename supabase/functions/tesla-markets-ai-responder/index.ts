@@ -160,8 +160,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     reply="I can help record your Tesla Markets investment enquiry. Please share your full name, email address, phone number and country. If you already have an amount in mind, include that too.";
   } else if(has(/\b(payment|payment method|payment options|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
     intent="payment"; requiresManagement=true;
-    // Payment instructions are never guessed or repeated by the automatic responder.
-    reply="";
+    reply="The management will get back to them about the available payment method.";
   } else if(has(/\b(human|person|agent|manager|representative|real person|speak to someone|conseiller|personne|persona|mitarbeiter)\b/)){
     intent="human_handover"; requiresManagement=true;
     reply=lang==="fr"?"Bien entendu. Notre équipe prendra le relais dans ce chat.":
