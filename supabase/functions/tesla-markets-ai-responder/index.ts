@@ -89,10 +89,10 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     }
   } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
-    reply=lang==="fr"?"Merci de votre intérêt pour les opportunités d'investissement. Je peux vous aider à comprendre les informations disponibles et leurs risques. La valeur des investissements peut augmenter ou diminuer et les rendements ne sont pas garantis. Quelle opportunité souhaitez-vous découvrir ?":
-    lang==="es"?"Gracias por su interés en las oportunidades de inversión. Puedo ayudarle a comprender la información disponible y sus riesgos. Las inversiones pueden subir o bajar y los rendimientos no están garantizados. ¿Sobre qué oportunidad desea información?":
-    lang==="de"?"Vielen Dank für Ihr Interesse an Anlagemöglichkeiten. Ich helfe Ihnen gerne, die verfügbaren Informationen und Risiken zu verstehen. Anlagen können steigen oder fallen; Renditen sind nicht garantiert. Zu welcher Möglichkeit wünschen Sie Informationen?":
-    "Of course. I’d be happy to help you understand the investment information available. Please give me a moment to check the relevant details. Investment values can rise or fall, and returns are never guaranteed.";
+    reply=lang==="fr"?"Merci pour votre intérêt pour Tesla Markets. Notre équipe sera ravie de vous présenter les informations disponibles et de vous guider dans les prochaines étapes. Que souhaitez-vous savoir ?":
+    lang==="es"?"Gracias por su interés en Tesla Markets. Nuestro equipo estará encantado de explicarle la información disponible y guiarle en los próximos pasos. ¿Qué le gustaría saber?":
+    lang==="de"?"Vielen Dank für Ihr Interesse an Tesla Markets. Unser Team informiert Sie gerne über die verfügbaren Informationen und begleitet Sie bei den nächsten Schritten. Was möchten Sie wissen?":
+    "Thanks for your interest in Tesla Markets! Our team would be happy to walk you through the available information and guide you through the next steps. What would you like to know?";
   } else if(has(/\b(payment|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
     intent="payment"; requiresManagement=true;
     reply=lang==="fr"?"Merci. Je peux vérifier cela pour vous. Veuillez transmettre uniquement la référence de transaction ou le reçu via le chat sécurisé. Ne communiquez jamais vos numéros de carte, mots de passe ou codes de sécurité. Le paiement sera confirmé après vérification.":
