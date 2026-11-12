@@ -167,7 +167,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="es"?"Para preparar la entrega, indique su nombre completo, correo electrónico, teléfono, país, ciudad y dirección de entrega. Nuestro equipo confirmará las condiciones.":
     lang==="de"?"Bitte nennen Sie für die Lieferanfrage Ihren vollständigen Namen, Ihre E-Mail-Adresse, Telefonnummer, das Land, die Stadt und die Lieferadresse. Unser Team bestätigt anschließend die Einzelheiten.":
     "To prepare your delivery enquiry, please share your full name, email address, phone number, delivery country, city and full delivery address. Our team will confirm the delivery arrangements.";
-  } else if((vehicle || conversation.vehicle_model || mentionedModel) && (requestedVariant || has(/\b(price|prices|pricing|cost|how much|usd|dollar|performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy|specification|specifications|features|colours?|colors?|wheels?|details|information|overview|delivery|availability|available|version|variants?)\b/)) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
+  } else if((vehicle || conversation.vehicle_model || mentionedModel) && (requestedVariant || has(/\b(price|prices|pricing|cost|how much|usd|dollar|performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy|specification|specifications|features|colours?|colors?|wheels?|details|information|overview|delivery|availability|available|version|variants?|warranty|guarantee|insurance|financing|finance|test drive|servicing|maintenance|trade in|trade-in)\b/)) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const modelKey = canonicalVehicle(mentionedModel || conversation.vehicle_model || name);
     const specs = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
@@ -177,7 +177,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     const availability = cleanString(vehicle?.availability,120);
     const asksPrice=has(/\b(prices?|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
     const asksPerformance=has(/\b(performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy)\b/);
-    const asksAll=has(/\b(all details|all information|yes all|everything|full details|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/);
+    const asksAll=has(/\b(all details|all information|yes all|everything|full details|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/) || acceptsFullInfo;
     const specificPerformance=cleanString(specs.performance,240);
     const specificRange=cleanString(specs.range,240);
     const isPlaceholder=(value:string)=>!value||/\b(varies|variant-dependent|depends on|to be confirmed|must be confirmed|final production specification|final specification)\b/i.test(value);
@@ -218,7 +218,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
       reply=description ? "Thank you for your interest in the "+name+". "+description+" Would you like the available versions and prices, performance details, or delivery information?" : "";
     }
     if(!reply){intent="unverified_vehicle_information";requiresManagement=true;reply="Thank you for your question. I do not have a verified specification for that detail yet. Please hold while our management team confirms it for you."; }
-  } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
+  } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/) || acceptsPurchase){
     intent="purchase_ready";
     reply=lang==="fr"?"Pour préparer votre demande, veuillez indiquer votre nom complet, votre e-mail, votre téléphone, le modèle et la configuration souhaités, ainsi que le pays, la ville et l'adresse de livraison.":
     lang==="es"?"Para preparar su solicitud, indique su nombre completo, correo electrónico, teléfono, modelo y configuración deseados, además del país, ciudad y dirección de entrega.":
