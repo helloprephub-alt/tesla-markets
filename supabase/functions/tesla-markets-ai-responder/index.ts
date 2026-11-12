@@ -515,7 +515,6 @@ Deno.serve(async (req: Request) => {
         intent = "investment_submitted";
         reply = "Your investment enquiry has been recorded and sent to Tesla Markets Management. The summary card below is your enquiry record, not an invoice or payment receipt. Its status is PAYMENT PENDING. Management will review your details and contact you with the approved next steps. No payment has been requested or confirmed.";
       }
-    }
     } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
