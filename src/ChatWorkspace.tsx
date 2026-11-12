@@ -91,7 +91,7 @@ function RichMessageCard({type,data,onAddToCart}:{type?:string;data?:any;onAddTo
     {fields.length>0&&<section className="tm-rich-card-section"><h4>{String(data.fields_title||'Customer information')}</h4><dl>{fields.map((item:any,i:number)=><div key={i}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>}
     {sections.map((section:any,i:number)=><section className="tm-rich-card-section" key={i}><h4>{section.title}</h4><dl>{rows(section.rows).map((item:any,j:number)=><div key={j}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>)}
     {type==='vehicle_card'&&onAddToCart&&<button type="button" className="tm-add-cart-button" onClick={onAddToCart}>Add to cart</button>}
-    {data.note&&<p className="tm-rich-card-note">{String(data.note)}</p>
+    {data.note&&<p className="tm-rich-card-note">{String(data.note)}</p>}
     {data.disclaimer&&<p className="tm-rich-card-disclaimer">{String(data.disclaimer)}</p>}
   </article>;
 }
