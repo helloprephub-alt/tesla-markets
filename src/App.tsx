@@ -147,8 +147,33 @@ es:{home:'Inicio',vehicles:'Vehículos / Tienda',investments:'Inversiones',about
 
 function App() {
   const [page, setPage] = useState<Page>(
-    () => (location.hash.replace('#', '') as Page) || 'home'
+    () => {
+      const route = new URLSearchParams(location.search).get('page');
+      const hash = location.hash.replace(/^#\/?/, '');
+      const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : '');
+      const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
+      return allowed.includes(requested as Page) ? requested as Page : 'home';
+    }
   );
+
+  // Keep direct admin links working when Opera or another browser reuses an
+  // already-open public-site tab and changes only the URL fragment.
+  useEffect(() => {
+    const syncRoute = () => {
+      const route = new URLSearchParams(location.search).get('page');
+      const hash = location.hash.replace(/^#\/?/, '');
+      const path = location.pathname.replace(/^\/+|\/+$/g, '');
+      const requested = route || hash || (path === 'admin' ? 'admin' : 'home');
+      const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
+      if (allowed.includes(requested as Page)) setPage(requested as Page);
+    };
+    window.addEventListener('hashchange', syncRoute);
+    window.addEventListener('popstate', syncRoute);
+    return () => {
+      window.removeEventListener('hashchange', syncRoute);
+      window.removeEventListener('popstate', syncRoute);
+    };
+  }, []);
   const [pageHistory, setPageHistory] = useState<Page[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen,setLanguageOpen]=useState(false);
