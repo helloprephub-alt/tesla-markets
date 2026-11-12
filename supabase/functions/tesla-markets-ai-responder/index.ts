@@ -20,86 +20,115 @@ const json = (body: unknown, status: number, headers: HeadersInit) =>
 const cleanString = (value: unknown, max = 300) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
-function outputText(payload: any): string {
-  for (const item of payload?.output || []) {
-    if (item?.type !== "message") continue;
-    for (const part of item?.content || []) {
-      if (part?.type === "output_text" && typeof part.text === "string") return part.text;
+
+function normalized(value: string) {
+  return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+}
+function languageOf(text: string): "en"|"fr"|"es"|"de" {
+  const t=normalized(text);
+  const scores=[
+    ["fr", (t.match(/\\b(bonjour|merci|voiture|vehicule|prix|reduction|livraison|investissement|paiement|combien|vous|nous|souhaite)\\b/g)||[]).length],
+    ["es", (t.match(/\\b(hola|gracias|coche|vehiculo|precio|descuento|entrega|inversion|pago|cuanto|quiero|pueden)\\b/g)||[]).length],
+    ["de", (t.match(/\\b(hallo|danke|fahrzeug|auto|preis|rabatt|lieferung|investition|zahlung|mochte|bitte)\\b/g)||[]).length],
+  ].sort((x,y)=>Number(y[1])-Number(x[1]));
+  return scores[0][1]>=2 ? scores[0][0] as "fr"|"es"|"de" : "en";
+}
+function extractDelivery(text: string) {
+  const out: Record<string,string> = {};
+  const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i);
+  const phone=text.match(/(?:\\+?\\d[\\d ()-]{7,}\\d)/);
+  if(email)out.email=email[0].slice(0,200);
+  if(phone)out.phone=phone[0].slice(0,60);
+  const labels: Record<string,RegExp> = {
+    full_name: /(?:my name is|name is|nom est|me llamo|mein name ist)\\s+([^,.;\\n]{2,70})/i,
+    country: /(?:country|pays|pais|land)\\s*[:=-]\\s*([^,.;\\n]{2,70})/i,
+    city: /(?:city|ville|ciudad|stadt)\\s*[:=-]\\s*([^,.;\\n]{2,70})/i,
+    address: /(?:delivery address|address|adresse|direccion|anschrift)\\s*[:=-]\\s*([^.;\\n]{4,160})/i,
+    preferred_delivery_date: /(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\\s*[:=-]\\s*([^,.;\\n]{2,60})/i,
+    instructions: /(?:instructions|notes|instrucciones)\\s*[:=-]\\s*([^.;\\n]{3,160})/i
+  };
+  for(const [key,pattern] of Object.entries(labels)){const m=text.match(pattern);if(m?.[1])out[key]=m[1].trim().slice(0,300);}
+  return out;
+}
+function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any) {
+  const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text);
+  const has=(r:RegExp)=>r.test(t);
+  const name=vehicle?.name||vehicle?.model||conversation.vehicle_model||"your selected vehicle";
+  const price=Number(vehicle?.price_usd), validPrice=Number.isFinite(price)&&price>0;
+  const money=(n:number)=>new Intl.NumberFormat(lang==="fr"?"fr-FR":lang==="es"?"es-ES":lang==="de"?"de-DE":"en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(n);
+  let intent="general", requiresManagement=false, reply="";
+  if(discount.mentionsDiscount){
+    intent="discount"; requiresManagement=discount.aboveLimit;
+    if(validPrice&&!discount.aboveLimit){
+      const after=Math.round(price*.97*100)/100;
+      reply=lang==="fr"?`Merci pour votre intérêt pour ${name}. Cette annonce publiée est éligible à la remise automatique de 3 %. Le prix affiché est de ${money(price)} et le prix après remise est de ${money(after)}, hors taxes, frais et livraison. Souhaitez-vous connaître les prochaines étapes ?`:
+      lang==="es"?`Gracias por su interés en ${name}. Esta oferta publicada cumple los requisitos para el descuento automático del 3 %. El precio publicado es ${money(price)} y el precio con descuento es ${money(after)}, antes de impuestos, tasas y entrega. ¿Desea conocer los siguientes pasos?`:
+      lang==="de"?`Vielen Dank für Ihr Interesse am ${name}. Dieses veröffentlichte Angebot ist für den automatischen Rabatt von 3 % berechtigt. Der Listenpreis beträgt ${money(price)}, der Preis nach Rabatt ${money(after)}, ohne Steuern, Gebühren und Lieferung. Möchten Sie die nächsten Schritte besprechen?`:
+      `Thank you for your interest in the ${name}. This published listing qualifies for the standard 3% automatic discount. The listed price is ${money(price)}, and the discounted vehicle price is ${money(after)}, before taxes, fees and delivery. Would you like assistance with the next steps?`;
+    } else {
+      reply=lang==="fr"?"Merci pour votre demande. Tesla Markets peut appliquer automatiquement une remise maximale de 3 % sur les annonces publiées éligibles. Toute remise supplémentaire doit être examinée et approuvée par la direction. Veuillez préciser le modèle et la configuration souhaités.":
+      lang==="es"?"Gracias por su solicitud. Tesla Markets puede aplicar automáticamente hasta un 3 % de descuento en anuncios publicados que cumplan los requisitos. Cualquier descuento adicional debe ser revisado y aprobado por la dirección. Indíquenos el modelo y la configuración.":
+      lang==="de"?"Vielen Dank für Ihre Anfrage. Tesla Markets kann bei berechtigten veröffentlichten Angeboten automatisch bis zu 3 % Rabatt gewähren. Ein zusätzlicher Rabatt muss vom Management geprüft und genehmigt werden. Bitte nennen Sie das gewünschte Modell und die Konfiguration.":
+      discount.aboveLimit?"Thank you for sharing your preferred discount. Tesla Markets can automatically apply up to 3% on eligible published vehicle listings. Any additional discount requires management review and approval. Please share the exact model and configuration so we can confirm the current published price.":"Thank you for considering Tesla Markets. Eligible published vehicle configurations may qualify for an automatic discount of up to 3%. Please share your preferred model and configuration so we can confirm the current published price and eligibility.";
     }
+  } else if(has(/\\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\\b/)){
+    intent="investment"; requiresManagement=true;
+    reply=lang==="fr"?"Merci de votre intérêt pour les opportunités d'investissement. Notre équipe peut fournir des informations vérifiées sur les options disponibles et leurs risques. La valeur des investissements peut augmenter ou diminuer et les rendements ne sont pas garantis. Quelle opportunité souhaitez-vous découvrir ?":
+    lang==="es"?"Gracias por su interés en las oportunidades de inversión. Nuestro equipo puede facilitar información verificada sobre las opciones disponibles y sus riesgos. Las inversiones pueden subir o bajar y los rendimientos no están garantizados. ¿Sobre qué oportunidad desea información?":
+    lang==="de"?"Vielen Dank für Ihr Interesse an Anlagemöglichkeiten. Unser Team kann verifizierte Informationen zu verfügbaren Optionen und Risiken bereitstellen. Anlagen können steigen oder fallen; Renditen sind nicht garantiert. Zu welcher Möglichkeit wünschen Sie Informationen?":
+    "Thank you for your interest in investment opportunities. Our team can provide verified information about available options and their risks. Investment values can rise or fall, and returns are not guaranteed. Which opportunity would you like to learn about?";
+  } else if(has(/\\b(payment|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\\b/)){
+    intent="payment"; requiresManagement=true;
+    reply=lang==="fr"?"Merci. Notre équipe peut vous aider à vérifier le paiement. Veuillez transmettre uniquement la référence de transaction ou le reçu via le chat sécurisé. Ne communiquez jamais vos numéros de carte, mots de passe ou codes de sécurité. Le paiement sera confirmé après vérification.":
+    lang==="es"?"Gracias. Nuestro equipo puede ayudarle a verificar el pago. Comparta únicamente la referencia de transacción o el recibo mediante el chat seguro. Nunca envíe números de tarjeta, contraseñas ni códigos de seguridad. El pago se confirma después de verificarlo.":
+    lang==="de"?"Vielen Dank. Unser Team hilft Ihnen gerne bei der Zahlungsprüfung. Senden Sie bitte nur die Transaktionsreferenz oder den Beleg über den sicheren Chat. Teilen Sie niemals Kartennummern, Passwörter oder Sicherheitscodes. Die Zahlung wird erst nach Prüfung bestätigt.":
+    "Thank you. Our management team can help verify the payment. Please share only the transaction reference or receipt through the secure chat. Never send card numbers, passwords or security codes. Payment is confirmed only after verification.";
+  } else if(has(/\\b(human|person|agent|manager|representative|real person|speak to someone|conseiller|personne|persona|mitarbeiter)\\b/)){
+    intent="human_handover"; requiresManagement=true;
+    reply=lang==="fr"?"Bien entendu. Votre souhait d'échanger avec un membre de notre équipe a été transmis à la direction afin qu'un représentant puisse poursuivre la conversation ici.":
+    lang==="es"?"Por supuesto. Hemos señalado su solicitud para que un representante de la dirección continúe la conversación aquí.":
+    lang==="de"?"Selbstverständlich. Ihr Wunsch nach einem persönlichen Gespräch wurde an unser Management weitergeleitet.":
+    "Certainly. Your request to speak with a member of our team has been flagged for management follow-up. A representative can continue the conversation here.";
+  } else if(has(/\\b(complaint|complain|problem|issue|disappointed|not received|broken|plainte|probleme|reclamacion|beschwerde)\\b/)){
+    intent="complaint"; requiresManagement=true;
+    reply=lang==="fr"?"Merci de nous avoir signalé ce problème. Nous souhaitons l'examiner et vous aider. Votre message a été transmis à la direction. Vous pouvez partager la référence de commande, sans données de paiement sensibles.":
+    lang==="es"?"Gracias por informarnos. Queremos revisar el asunto y ayudarle. Su mensaje se ha señalado para la atención de la dirección. Puede compartir la referencia del pedido, sin datos de pago confidenciales.":
+    lang==="de"?"Vielen Dank für Ihren Hinweis. Wir möchten den Vorgang prüfen und Ihnen weiterhelfen. Ihre Nachricht wurde an das Management weitergeleitet. Bitte senden Sie keine sensiblen Zahlungsdaten.":
+    "Thank you for bringing this to our attention. We appreciate the opportunity to review it and help. Your message has been flagged for management attention.";
+  } else if(has(/\\b(hello|hi|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo)\\b/)&&t.split(/\\s+/).length<9){
+    intent="greeting";
+    reply=lang==="fr"?"Bienvenue chez Tesla Markets. Merci de nous avoir contactés. Notre équipe est à votre disposition. Que souhaitez-vous savoir aujourd'hui ?":
+    lang==="es"?"Le damos la bienvenida a Tesla Markets. Gracias por contactarnos. Nuestro equipo está encantado de ayudarle. ¿Qué desea saber hoy?":
+    lang==="de"?"Willkommen bei Tesla Markets. Vielen Dank für Ihre Nachricht. Unser Team unterstützt Sie gerne. Was möchten Sie heute wissen?":
+    "Welcome to Tesla Markets. Thank you for reaching out. Our customer-relations team is pleased to assist you. What would you like to know today?";
+  } else if(has(/\\b(delivery|deliver|shipping|ship|livraison|expedition|entrega|envio|lieferung|versand)\\b/)){
+    intent="delivery"; requiresManagement=true;
+    reply=lang==="fr"?"Nous serons ravis de vous aider concernant la livraison. Les frais, délais et destinations doivent être confirmés selon le véhicule et votre adresse. Quel pays et quelle ville souhaitez-vous pour la livraison ?":
+    lang==="es"?"Estaremos encantados de ayudarle con la entrega. Los costes, plazos y destinos deben confirmarse según el vehículo y su dirección. ¿En qué país y ciudad desea recibirlo?":
+    lang==="de"?"Gerne helfen wir Ihnen bei der Lieferung. Kosten, Zeitrahmen und Liefergebiet müssen anhand des Fahrzeugs und Ihrer Adresse bestätigt werden. In welches Land und welche Stadt soll geliefert werden?":
+    "We will be pleased to assist with delivery. Costs, timelines and eligible destinations must be confirmed for the specific vehicle and address. Which country and city would you like the vehicle delivered to?";
+  } else if(vehicle){
+    intent="vehicle_enquiry";
+    const facts=[validPrice?money(price):"",cleanString(vehicle.description,350),vehicle.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
+    reply=facts?`Thank you for your interest in ${name}. Here is the information currently published: ${facts}. Our team will confirm availability and delivery details. Would you like help selecting a configuration?`:`Thank you for your interest in ${name}. Our team will confirm the current specifications, price and availability for you. Which configuration are you considering?`;
+  } else if(has(/\\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\\b/)){
+    intent="purchase_ready";
+    reply=lang==="fr"?"Nous serons ravis de vous accompagner. Quel modèle et quelle configuration souhaitez-vous ? Nous recueillerons ensuite vos coordonnées et les informations de livraison nécessaires.":
+    lang==="es"?"Estaremos encantados de ayudarle. ¿Qué modelo y configuración desea? Después recogeremos sus datos de contacto y la información de entrega necesaria.":
+    lang==="de"?"Gerne begleiten wir Sie. Welches Modell und welche Konfiguration wünschen Sie? Anschließend erfassen wir die erforderlichen Kontakt- und Lieferdaten.":
+    "We will be pleased to guide you through the next steps. Which model and configuration would you like? We can then collect your contact and delivery details progressively.";
+  } else if(Object.keys(delivery).length){
+    intent="delivery_details";
+    reply="Thank you. We have noted the details you provided in this conversation. Our team will review the delivery information and confirm any remaining requirements.";
+  } else {
+    intent="general"; requiresManagement=true;
+    reply=lang==="fr"?"Merci pour votre message et votre intérêt pour Tesla Markets. Pour vous apporter une réponse exacte, pouvez-vous préciser votre question ou le modèle qui vous intéresse ?":
+    lang==="es"?"Gracias por su mensaje e interés en Tesla Markets. Para ofrecerle una respuesta precisa, ¿podría concretar su pregunta o indicar el modelo que le interesa?":
+    lang==="de"?"Vielen Dank für Ihre Nachricht und Ihr Interesse an Tesla Markets. Damit wir genau antworten können, teilen Sie uns bitte Ihre Frage oder das gewünschte Modell mit.":
+    "Thank you for your message and your interest in Tesla Markets. To provide an accurate answer, could you share a little more detail about your question or the model you are considering?";
   }
-  return "";
+  return {reply,intent,requiresManagement,delivery,language:lang};
 }
-
-function detectDiscountRequest(text: string) {
-  const mentionsDiscount = /(discount|cheaper|reduce.{0,20}price|lower.{0,20}price|negotiate|price.{0,15}off|off the price)/i.test(text);
-  const percent = text.match(/(\d+(?:\.\d+)?)\s*(?:%|percent)/i);
-  return {
-    mentionsDiscount,
-    requestedPercent: percent ? Number(percent[1]) : null,
-    aboveLimit: Boolean(percent && Number(percent[1]) > 3),
-  };
-}
-
-function matchVehicle(text: string, conversationModel: string, catalogue: any[]) {
-  const haystack = (conversationModel + " " + text).toLowerCase();
-  return catalogue.find((vehicle) =>
-    [vehicle.name, vehicle.model, vehicle.slug].filter(Boolean)
-      .some((value: string) => haystack.includes(String(value).toLowerCase()))
-  ) || null;
-}
-
-function buildDiscountReply(vehicle: any, aboveLimit: boolean) {
-  const name = vehicle?.name || vehicle?.model || "your selected vehicle";
-  if (vehicle?.price_usd !== null && vehicle?.price_usd !== undefined && Number(vehicle.price_usd) > 0) {
-    const original = Number(vehicle.price_usd);
-    const discounted = Math.round(original * 0.97 * 100) / 100;
-    const money = (value: number) => new Intl.NumberFormat("en-US", {
-      style: "currency", currency: "USD", maximumFractionDigits: 2,
-    }).format(value);
-    const extra = aboveLimit
-      ? " I have also referred your request for any additional discount to our management team for review."
-      : "";
-    return {
-      reply: `Thank you for your interest in the ${name}. This published listing qualifies for our standard 3% automatic discount. The listed price is ${money(original)}, and the discounted vehicle price is ${money(discounted)} before taxes, fees and delivery.${extra} Would you like assistance with the next steps?`,
-      requiresManagement: aboveLimit,
-      intent: "discount",
-    };
-  }
-  return {
-    reply: aboveLimit
-      ? "Thank you for sharing your preferred discount. Tesla Markets can automatically apply up to 3% on eligible published vehicle listings. I have referred your request for any additional discount to our management team for review. Please share the exact model and configuration so we can confirm the current published price."
-      : "Thank you for considering Tesla Markets. Eligible published vehicle configurations may qualify for an automatic discount of up to 3%. Please share your preferred model and configuration so we can confirm the current published price and eligibility.",
-    requiresManagement: aboveLimit,
-    intent: "discount",
-  };
-}
-
-const responseSchema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    reply: { type: "string" },
-    intent: { type: "string" },
-    requires_management: { type: "boolean" },
-    delivery_details: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        full_name: { type: ["string", "null"] },
-        email: { type: ["string", "null"] },
-        phone: { type: ["string", "null"] },
-        country: { type: ["string", "null"] },
-        city: { type: ["string", "null"] },
-        address: { type: ["string", "null"] },
-        preferred_delivery_date: { type: ["string", "null"] },
-        instructions: { type: ["string", "null"] },
-      },
-      required: ["full_name", "email", "phone", "country", "city", "address", "preferred_delivery_date", "instructions"],
-    },
-  },
-  required: ["reply", "intent", "requires_management", "delivery_details"],
-};
-
 Deno.serve(async (req: Request) => {
   const headers = corsHeaders(req.headers.get("origin"));
   if (req.method === "OPTIONS") return new Response("ok", { headers });
@@ -221,89 +250,11 @@ Deno.serve(async (req: Request) => {
     let requiresManagement = false;
     let extractedDelivery: Record<string, string> = {};
 
-    if (discount.mentionsDiscount) {
-      const result = buildDiscountReply(vehicle, discount.aboveLimit);
-      reply = result.reply;
-      intent = result.intent;
-      requiresManagement = result.requiresManagement;
-    } else {
-      const apiKey = Deno.env.get("OPENAI_API_KEY");
-      if (!apiKey) {
-        reply = "Thank you for contacting Tesla Markets. Your message has been received, and our management team will review it and assist you with accurate information shortly.";
-        intent = "management_review";
-        requiresManagement = true;
-      } else {
-        const model = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
-        const vehicleFacts = (catalogue || []).map((item: any) => ({
-          name: item.name, model: item.model, description: item.description,
-          price_usd: item.price_usd, availability: item.availability, specifications: item.specifications,
-        }));
-        const instructions = `You are the premium customer-relations assistant for Tesla Markets. Write in a polished, positive, courteous, concise corporate voice. The customer-facing chat is branded Tesla Markets Management, but you are an automated assistant: never claim a human is typing or has personally reviewed something. If asked directly, disclose that you are Tesla Markets' automated assistant supporting the management team.
-
-Reply in the customer's language automatically. Be welcoming and commercially helpful without pressure. Use "we" and "our team" naturally. Never invent vehicle models, prices, specifications, availability, shipping costs, delivery dates, payments, approvals, investment performance or business relationships. Vehicle information must come only from the published catalogue facts below. If a fact is missing, say the team will confirm it.
-
-Discount policy: automatic discount is capped at 3% and only applies to eligible published vehicle listings with a verified price. Do not promise more than 3%. Requests above 3% need management review and approval. Never imply a discount is approved unless the verified listing and policy allow it.
-
-Investment policy: never promise guaranteed profits, fixed returns, risk-free gains, or invented portfolio performance. Explain that investments can lose value. Do not claim Tesla, Inc. endorses Tesla Markets or that Tesla Markets is an official Tesla website. Investment-specific or regulated advice must be referred to management.
-
-Purchase and delivery: collect full name, email, phone, country, city and delivery address progressively when relevant. Do not ask for all details at once unless the customer is ready to order. Never say an order, payment or delivery is confirmed without verified records. Do not request passwords, full card numbers or security codes.
-
-Escalate complaints, requests for a human, legal or financial advice, payment disputes, fraud concerns, unverified facts and any matter you cannot answer confidently. Keep the reply natural and generally under 120 words.
-
-Published vehicle catalogue facts (empty means no current public listing is verified):
-${JSON.stringify(vehicleFacts)}`;
-
-        const input = history.map((item: any) => ({
-          role: item.sender_role === "customer" ? "user" : "assistant",
-          content: item.body || "[Customer shared an attachment]",
-        }));
-
-        const response = await fetch("https://api.openai.com/v1/responses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-          body: JSON.stringify({
-            model,
-            instructions,
-            input,
-            store: false,
-            max_output_tokens: 650,
-            temperature: 0.35,
-            text: { format: { type: "json_schema", name: "tesla_markets_customer_reply", strict: true, schema: responseSchema } },
-          }),
-        });
-
-        if (!response.ok) {
-          const detail = await response.text();
-          console.error("OpenAI response error", response.status, detail.slice(0, 500));
-          reply = "Thank you for contacting Tesla Markets. Your message has been received, and our management team will review it and assist you with accurate information shortly.";
-          intent = "management_review";
-          requiresManagement = true;
-        } else {
-          const payload = await response.json();
-          const raw = outputText(payload);
-          try {
-            const parsed = JSON.parse(raw);
-            reply = cleanString(parsed.reply, 1400);
-            intent = cleanString(parsed.intent, 80) || "general";
-            requiresManagement = parsed.requires_management === true;
-            const candidate = parsed.delivery_details || {};
-            for (const key of ["full_name", "email", "phone", "country", "city", "address", "preferred_delivery_date", "instructions"]) {
-              const value = cleanString(candidate[key], 300);
-              if (value) extractedDelivery[key] = value;
-            }
-          } catch {
-            reply = cleanString(raw, 1400);
-            intent = "general";
-            requiresManagement = true;
-          }
-          if (!reply) {
-            reply = "Thank you for your enquiry. Our management team will review the details and assist you shortly.";
-            intent = "management_review";
-            requiresManagement = true;
-          }
-        }
-      }
-    }
+    const local = independentReply(customerMessage.body, history, catalogue || [], vehicle, discount, conversation);
+    reply = local.reply;
+    intent = local.intent;
+    requiresManagement = local.requiresManagement;
+    extractedDelivery = local.delivery;
 
     if (Object.keys(extractedDelivery).length) {
       const current = conversation.delivery_details && typeof conversation.delivery_details === "object"
