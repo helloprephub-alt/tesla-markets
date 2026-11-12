@@ -172,9 +172,22 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
       const performanceLines=specLines.filter(line=>/performance|acceleration|top speed|speed|range|battery|charging|power|horsepower|torque|motor/i.test(line));
       reply=hasDetailedPerformance&&hasDetailedRange&&performanceLines.length?"Published performance and range details for the "+name+": "+performanceLines.join("; "):"";
     } else if(asksAll){
-      reply=hasDetailedPerformance&&hasDetailedRange&&lines.length?"Complete published details for the "+name+": "+lines.join(" · "):"";
+      if (lines.length) {
+        const sections:string[] = ["TESLA MARKETS — "+name.toUpperCase()];
+        if(description) sections.push("OVERVIEW\\n"+description);
+        if(validPrice) sections.push("PRICING\\n"+(Array.isArray(specs.variants)?specs.variants.map((item:any)=>"• "+cleanString(item?.name,100)+": "+cleanString(item?.price,60)).join("\\n"):"Starting price: "+money(price)));
+        if(cleanString(specs.performance,240) && !isPlaceholder(specificPerformance)) sections.push("PERFORMANCE\\n"+specificPerformance);
+        if(cleanString(specs.range,240) && !isPlaceholder(specificRange)) sections.push("DRIVING RANGE\\n"+specificRange);
+        if(cleanString(specs.drivetrain,240)) sections.push("DRIVETRAIN\\n"+cleanString(specs.drivetrain,240));
+        if(Array.isArray(specs.features)&&specs.features.length) sections.push("FEATURES\\n"+specs.features.map((item:any)=>"• "+String(item)).join("\\n"));
+        if(Array.isArray(specs.colors)&&specs.colors.length) sections.push("COLOUR OPTIONS\\n"+specs.colors.join(", "));
+        if(Array.isArray(specs.wheels)&&specs.wheels.length) sections.push("WHEEL OPTIONS\\n"+specs.wheels.join(", "));
+        if(cleanString(specs.lease,120)) sections.push("FINANCING INDICATION\\n"+cleanString(specs.lease,120));
+        sections.push("AVAILABILITY & DELIVERY\\nFinal availability, exact performance/range figures where not published, taxes and delivery costs are confirmed by management for your destination.");
+        reply=sections.join("\\n\\n");
+      } else reply="";
     } else {
-      reply=lines.length?"Published information for the "+name+": "+lines.join(" · "):"";
+      reply=description ? "Thank you for your interest in the "+name+". "+description+" Would you like the available versions and prices, performance details, or delivery information?" : "";
     }
     if(!reply){intent="unverified_vehicle_information";requiresManagement=true;reply="Thank you for your question. I do not have a verified specification for that detail yet. Please hold while our management team confirms it for you."; }
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
