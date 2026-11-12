@@ -2043,3 +2043,34 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 :root[data-theme="dark"] .admin-chat-messages .chat-bubble.you{background:#16382c!important;color:#e7f5ed}
 @media(max-width:860px){.desktop-theme-toggle{display:none}.mobile-theme-toggle{display:inline-flex;margin:12px 0 6px;align-self:flex-start}}
 @media(max-width:600px){.theme-toggle-button{min-height:34px;padding:0 9px;font-size:10px}.chat-theme-toggle{margin-left:auto}.customer-chat-screen .chat-appbar{gap:7px}.customer-chat-screen .chat-appbar-brand{margin-right:auto}.customer-chat-screen .chat-appbar-brand b{font-size:11px}}
+
+
+/* Structured Tesla Markets rich messages */
+.tm-rich-card{width:min(100%,430px);margin:8px 0 10px;padding:15px;border:1px solid var(--border,#e5e7eb);border-radius:18px;background:var(--card,#fff);color:var(--foreground,#17191c);box-shadow:0 3px 14px rgba(15,23,42,.055);overflow:hidden}
+.tm-rich-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:11px;border-bottom:1px solid var(--border,#e5e7eb)}
+.tm-rich-card-brand{font-size:10px;letter-spacing:.14em;font-weight:800;color:#68717d}
+.tm-rich-card-status{font-size:9px;letter-spacing:.08em;font-weight:800;border-radius:999px;padding:6px 9px;background:#e9f2ff;color:#245a9b}
+.tm-rich-card-status.pending{background:#fff4df;color:#8a5a13}
+.tm-rich-card-image{display:block;width:100%;max-height:205px;object-fit:cover;border-radius:12px;margin:12px 0}
+.tm-rich-card-heading{padding:12px 0 8px}
+.tm-rich-card-heading h3{font-size:19px;line-height:1.25;margin:0;font-weight:750;letter-spacing:-.02em}
+.tm-rich-card-heading p{font-size:12px;color:var(--muted-foreground,#727b86);margin:5px 0 0;line-height:1.5}
+.tm-rich-card-amount{padding:13px 14px;margin:8px 0;border-radius:12px;background:var(--muted,#f3f5f7);display:flex;flex-direction:column;gap:5px}
+.tm-rich-card-amount span{font-size:9px;letter-spacing:.1em;font-weight:800;color:var(--muted-foreground,#727b86)}
+.tm-rich-card-amount strong{font-size:25px;letter-spacing:-.035em;font-weight:800;font-variant-numeric:tabular-nums}
+.tm-rich-card-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 12px}
+.tm-rich-card-metric{padding:12px;border-radius:11px;background:var(--muted,#f3f5f7);min-width:0;display:flex;flex-direction:column;gap:5px}
+.tm-rich-card-metric strong{font-size:19px;line-height:1.15;letter-spacing:-.025em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tm-rich-card-metric span{font-size:10px;line-height:1.35;color:var(--muted-foreground,#727b86)}
+.tm-rich-card-section{padding:10px 0 2px;border-top:1px solid var(--border,#e5e7eb)}
+.tm-rich-card-section h4{font-size:11px;text-transform:uppercase;letter-spacing:.09em;margin:0 0 8px;color:var(--muted-foreground,#727b86)}
+.tm-rich-card-section dl{margin:0}
+.tm-rich-card-section dl>div{display:grid;grid-template-columns:minmax(0, .85fr) minmax(0,1.15fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--border,#edf0f2)}
+.tm-rich-card-section dl>div:last-child{border-bottom:0}
+.tm-rich-card-section dt{font-size:11px;color:var(--muted-foreground,#727b86);overflow-wrap:anywhere}
+.tm-rich-card-section dd{margin:0;text-align:right;font-size:11px;font-weight:650;overflow-wrap:anywhere;white-space:pre-wrap}
+.tm-rich-card-note{font-size:11px;line-height:1.55;margin:10px 0 0;padding:10px;border-radius:10px;background:var(--muted,#f3f5f7)}
+.tm-rich-card-disclaimer{font-size:9px;line-height:1.55;color:var(--muted-foreground,#727b86);margin:10px 0 0}
+.chat-bubble:has(.tm-rich-card){max-width:min(100%,470px);width:100%}
+.chat-bubble:has(.tm-rich-card)>p{white-space:pre-wrap}
+@media(max-width:480px){.tm-rich-card{padding:12px;border-radius:15px}.tm-rich-card-heading h3{font-size:17px}.tm-rich-card-metric strong{font-size:17px}}
