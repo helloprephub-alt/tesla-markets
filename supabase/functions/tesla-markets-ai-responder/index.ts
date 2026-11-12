@@ -126,15 +126,15 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   let intent="general", requiresManagement=false, reply="";
   if(asksOfficial){
     intent="official_status";
-    reply="Yes. You are speaking with Tesla Markets through this website's official customer enquiry channel.";
+    reply="Yes — this is Tesla Markets. We help with Tesla vehicle enquiries and investment-related enquiries. What would you like to know?";
   } else if(asksIdentity){
     intent="assistant_identity";
-    reply="I'm the Tesla Markets virtual customer assistant. I can help with general questions, vehicle information and your enquiries.";
+    reply="I'm the Tesla Markets virtual assistant. I can help with general questions, vehicle enquiries, investment enquiries and the services offered by Tesla Markets.";
   } else if(asksAddAnother){
     intent="add_vehicle_to_order";
-    const model=mentionedModel;
+    const model=explicitModel ? (canonicalVehicle(explicitModel) || explicitModel) : "";
     reply=model
-      ? "Absolutely. I can add the "+model+" as another vehicle in your enquiry. Would you like it included in the same order summary?"
+      ? "Absolutely. I can note the "+model+" as an additional vehicle of interest alongside your current enquiry. Would you prefer both vehicles on one order summary or handled as separate enquiries?"
       : "Absolutely. You can enquire about more than one vehicle. Which model would you like to add? I'll keep your existing vehicle enquiry in context.";
   } else if(discount.mentionsDiscount){
     intent="discount"; requiresManagement=discount.aboveLimit;
@@ -262,7 +262,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     }
     }
   }
-  return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||mentionedModel||null};
+  return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||mentionedModel||null,additionalVehicleModel:intent==="add_vehicle_to_order" ? (explicitModel ? canonicalVehicle(explicitModel) : null) : null};
 }
 Deno.serve(async (req: Request) => {
   const headers = corsHeaders(req.headers.get("origin"));
@@ -491,6 +491,7 @@ Deno.serve(async (req: Request) => {
     const memoryNext = {
       ...aiMemory,
       selected_vehicle: local.vehicleModel || conversation.vehicle_model || null,
+      vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
       selected_variant: mergedDetails.selected_variant || aiMemory.selected_variant || null,
       last_intent: intent,
       pending_slot: nextPendingSlot,
