@@ -871,13 +871,20 @@ Deno.serve(async (req: Request) => {
       const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
       const purchaseVariants = Array.isArray(purchaseSpecs.variants) ? purchaseSpecs.variants : [];
       const purchaseImages = Array.isArray(selectedVehicle.images) ? selectedVehicle.images : [];
-      const purchaseImage = typeof purchaseImages[0] === "string" ? purchaseImages[0] : ({ "model-3":"/resources/model-3-1.jpg", "model-y":"/resources/model-y-1.jpg", "cybertruck":"/resources/cybertruck-1.jpg", "roadster":"/resources/roadster-1.jpg", "semi":"/resources/semi-1.jpg" } as Record<string,string>)[String(selectedVehicle.slug||"")] || null;
+      const purchaseSlug = String(selectedVehicle.slug||"");
+      const purchaseGalleryCounts:Record<string,number>={"model-3":5,"model-y":5,"cybertruck":9,"roadster":6,"semi":10};
+      const purchaseGallery = Array.from({length:purchaseGalleryCounts[purchaseSlug]||0},(_,index)=>"/resources/"+purchaseSlug+"-"+(index+1)+".jpg");
+      const purchaseGalleryUrls = purchaseGallery.length ? purchaseGallery : purchaseImages.filter((url:any)=>typeof url==="string"&&url.trim());
+      const purchaseImage = purchaseGalleryUrls[0] || null;
       const chosenVariant = purchaseVariants.find((variant:any) => normalized(cleanString(variant?.name,100)) === normalized(cleanString(mergedDetails.selected_variant,100)));
       messageType = "vehicle_purchase_prompt";
       structuredData = {
         title: "Continue with " + cleanString(selectedVehicle.name,100),
         subtitle: "VEHICLE ENQUIRY · DETAILS REQUIRED",
         image_url: purchaseImage,
+        vehicle_slug: purchaseSlug,
+        gallery_urls: purchaseGalleryUrls,
+        purchase_variants: purchaseVariants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.price,80)})).filter((variant:any)=>variant.name),
         amount_label: "SELECTED VEHICLE PRICE",
         amount: chosenVariant ? cleanString(chosenVariant.price,80) : (selectedVehicle.price_usd ? "$" + Number(selectedVehicle.price_usd).toLocaleString("en-US") + " USD" : "Management quotation required"),
         fields_title: "Customer information already saved",
@@ -923,8 +930,11 @@ Deno.serve(async (req: Request) => {
       const colours = Array.isArray(specs.colors) ? specs.colors.join(", ") : cleanString(specs.colors,300);
       const features = Array.isArray(specs.features) ? specs.features.join(" · ") : cleanString(specs.features,500);
       const images = Array.isArray(selectedVehicle.images) ? selectedVehicle.images : [];
-      const fallbackVehicleImages:Record<string,string>={"model-3":"/resources/model-3-1.jpg","model-y":"/resources/model-y-1.jpg","cybertruck":"/resources/cybertruck-1.jpg","roadster":"/resources/roadster-1.jpg","semi":"/resources/semi-1.jpg"};
-      const vehicleImage = typeof images[0] === "string" ? images[0] : fallbackVehicleImages[String(selectedVehicle.slug||"")] || null;
+      const slug = String(selectedVehicle.slug||"");
+      const galleryCounts:Record<string,number>={"model-3":5,"model-y":5,"cybertruck":9,"roadster":6,"semi":10};
+      const galleryUrls = Array.from({length:galleryCounts[slug]||0},(_,index)=>"/resources/"+slug+"-"+(index+1)+".jpg");
+      const vehicleGallery = galleryUrls.length ? galleryUrls : images.filter((url:any)=>typeof url==="string"&&url.trim());
+      const vehicleImage = vehicleGallery[0] || null;
       const metrics = [
         specs.acceleration_0_60 ? { label: "⚡ 0–60 mph", value: String(specs.acceleration_0_60) } : null,
         specs.top_speed ? { label: "🏁 Top speed", value: String(specs.top_speed) } : null,
@@ -936,6 +946,9 @@ Deno.serve(async (req: Request) => {
         title: cleanString(selectedVehicle.name,100),
         subtitle: cleanString(specs.subtitle,160) || cleanString(selectedVehicle.description,220),
         image_url: vehicleImage,
+        vehicle_slug: slug,
+        gallery_urls: vehicleGallery,
+        purchase_variants: variants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.price,80)})).filter((variant:any)=>variant.name),
         metrics,
         sections: [
           { title: "Pricing and versions", rows: [
