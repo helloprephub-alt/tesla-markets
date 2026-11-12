@@ -141,7 +141,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     const modelKey = canonicalVehicle(mentionedModel || conversation.vehicle_model || name);
     const specs = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
     const label = (key:string) => key.replace(/[_-]+/g," ").replace(/\b\w/g,(ch:string)=>ch.toUpperCase());
-    const specLines = Object.entries(specs).filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=="").map(([key,value])=>label(key)+": "+(typeof value==="object"?JSON.stringify(value):String(value)));
+    const specLines = Object.entries(specs).filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=="").map(([key,value])=>label(key)+": "+(Array.isArray(value)?value.map(item=>typeof item==="object"?JSON.stringify(item):String(item)).join(", "):typeof value==="object"?JSON.stringify(value):String(value)));
     const description = cleanString(vehicle?.description,900);
     const availability = cleanString(vehicle?.availability,120);
     const asksPrice=has(/\b(price|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
@@ -153,7 +153,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     if(specLines.length) lines.push(...specLines);
     if(availability) lines.push("Published availability: "+availability);
     if(asksPrice){
-      if(validPrice) reply="The published price for the "+name+" is "+money(price)+".";
+      const variants=Array.isArray(specs.variants)?specs.variants.map((item:any)=>item.name+": "+item.price).join("; "):"";
+      const priceNote=cleanString(specs.price_note,260);
+      if(validPrice) reply="Published pricing for the "+name+": "+(variants||money(price))+". "+(priceNote||"Final quotation and availability are confirmed individually.");
       else reply="";
     } else if(asksPerformance){
       const performanceLines=specLines.filter(line=>/performance|acceleration|top speed|speed|range|battery|charging|power|horsepower|torque|motor/i.test(line));
