@@ -433,6 +433,10 @@ Deno.serve(async (req: Request) => {
         intent = "investment_awaiting_amount";
         reply = "Thank you. I have recorded your contact details. Please enter the amount you would like to invest in USD (for example, $5,000).";
       } else {
+        const { error: profileError } = await admin.from("customer_profiles").upsert({
+          id: user.id, display_name: investmentName, email: investmentEmail, phone: investmentPhone, is_admin: false, updated_at: new Date().toISOString()
+        }, { onConflict: "id" });
+        if (profileError) throw profileError;
         const { error: investmentInsertError } = await admin.from("investment_enquiries").insert({
           customer_id: user.id,
           opportunity: "Tesla Markets investment enquiry — $" + investmentAmount.toLocaleString("en-US") + " USD",
@@ -444,14 +448,6 @@ Deno.serve(async (req: Request) => {
         investmentEnquiryCreated = true;
         intent = "investment_submitted";
         reply = "Thank you. Your investment enquiry for $" + investmentAmount.toLocaleString("en-US") + " USD has been recorded. Please hold while Tesla Markets Management reviews your details and confirms the next steps and approved payment instructions. No payment has been confirmed or requested yet.";
-        await admin.from("admin_notifications").insert({
-          type: "investment_enquiry",
-          title: "New investment enquiry — $" + investmentAmount.toLocaleString("en-US") + " USD",
-          body: "Customer submitted an investment enquiry. Review their contact details and requested amount in the conversation.",
-          entity_type: "conversation",
-          entity_id: conversationId,
-          is_read: false
-        });
       }
     } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
@@ -711,8 +707,8 @@ Deno.serve(async (req: Request) => {
     if (intent === "investment" || intent === "investment_submitted") {
       await admin.from("admin_notifications").insert({
         type: "investment_enquiry",
-        title: "New investment enquiry",
-        body: `Customer ${conversation.visitor_email || "website visitor"} submitted an investment-related question. Management review is required.`,
+        title: intent === "investment_submitted" ? "Investment enquiry submitted — $" + investmentAmount.toLocaleString("en-US") + " USD" : "New investment enquiry",
+        body: `Customer ${conversation.visitor_email || investmentEmail || "website visitor"} · ${intent === "investment_submitted" ? "Amount: $" + investmentAmount.toLocaleString("en-US") + " USD" : "Investment details are being collected."}`,
         entity_type: "conversation",
         entity_id: conversationId,
         is_read: false,
