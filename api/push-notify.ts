@@ -45,7 +45,7 @@ export default async function handler(request: IncomingRequest, response: Server
   }
 
   webpush.setVapidDetails('mailto:oyejideoluwatobi7@gmail.com', publicKey, privateKey);
-  const body = (payload.record.body || 'A customer sent a new message.').replace(/\\s+/g, ' ').slice(0, 180);
+  const body = (payload.record.body || 'A customer sent a new message.').replace(/\s+/g, ' ').slice(0, 180);
   const message = JSON.stringify({
     title: `New message · ${payload.record.customer_name || 'Customer'}`,
     body,
