@@ -572,6 +572,7 @@ Deno.serve(async (req: Request) => {
     if (!reply.trim()) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
       await admin.from("support_conversations").update({ responder_paused: true, updated_at: new Date().toISOString() }).eq("id", conversationId);
+      await admin.from("ai_follow_up_queue").update({due_at:null,updated_at:new Date().toISOString()}).eq("conversation_id",conversationId);
       const { data: existingHandover } = await admin.from("admin_notifications").select("id").eq("type","ai_silent_handover").eq("entity_type","conversation").eq("entity_id",conversationId).eq("is_read",false).limit(1).maybeSingle();
       if (!existingHandover) await admin.from("admin_notifications").insert({
         type: "ai_silent_handover",
@@ -591,6 +592,7 @@ Deno.serve(async (req: Request) => {
     if (priorReply || history.some((row:any)=>row.sender_role==="management" && ["ai_response","automated_reply"].includes(row.automated_type) && canonical(row.body||"")===canonicalReply)) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
       await admin.from("support_conversations").update({ responder_paused: true, updated_at: new Date().toISOString() }).eq("id", conversationId);
+      await admin.from("ai_follow_up_queue").update({due_at:null,updated_at:new Date().toISOString()}).eq("conversation_id",conversationId);
       const { data: existingDuplicate } = await admin.from("admin_notifications").select("id").eq("type","ai_duplicate_blocked").eq("entity_type","conversation").eq("entity_id",conversationId).eq("is_read",false).limit(1).maybeSingle();
       if (!existingDuplicate) await admin.from("admin_notifications").insert({
         type:"ai_duplicate_blocked",title:"AI paused — duplicate reply blocked",
