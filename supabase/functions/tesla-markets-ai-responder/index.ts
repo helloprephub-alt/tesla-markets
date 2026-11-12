@@ -436,7 +436,12 @@ Deno.serve(async (req: Request) => {
     if (!hasAddress) missing.push("full delivery address");
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
-    const priorPurchaseStage = cleanString(aiMemory.conversation_stage,80);
+    const previousSelectedVehicle = canonicalVehicle(cleanString(aiMemory.selected_vehicle || conversation.vehicle_model,100));
+    const currentSelectedVehicle = canonicalVehicle(cleanString(selectedVehicle?.name || "",100));
+    const requestedVehicleChanged = !!currentSelectedVehicle && !!previousSelectedVehicle && currentSelectedVehicle !== previousSelectedVehicle;
+    const explicitVehiclePurchase = /\b(i want to buy|i would like to buy|i'd like to buy|i want to purchase|i'd like to purchase|buy now|place an order|reserve|book this)\b/i.test(customerMessage.body) || ["purchase_ready","vehicle_purchase"].includes(intent);
+    const priorPurchaseStage = requestedVehicleChanged && !explicitVehiclePurchase ? "" : cleanString(aiMemory.conversation_stage,80);
+    const purchaseFlowActive = explicitVehiclePurchase || ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage);
     if (intent === "vehicle_variant_selected" && priorPurchaseStage === "purchase_collecting_details") {
       intent = "customer_details_progress";
       reply = deliveryComplete
@@ -628,7 +633,7 @@ Deno.serve(async (req: Request) => {
     // against the question just asked, selected car, chosen trim and collected facts.
     const memoryNext = {
       ...aiMemory,
-      selected_vehicle: local.vehicleModel || conversation.vehicle_model || null,
+      selected_vehicle: selectedVehicle?.name || local.vehicleModel || conversation.vehicle_model || null,
       vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
       selected_variant: mergedDetails.selected_variant || null,
       last_intent: intent,
@@ -647,7 +652,7 @@ Deno.serve(async (req: Request) => {
         address: !!cleanString(mergedDetails.address,240),
         selected_variant: !!cleanString(mergedDetails.selected_variant,100)
       },
-      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : intent === "investment_awaiting_amount" ? "investment_awaiting_amount" : "investment_collecting_details") : intent === "proforma_invoice_created" ? "vehicle_order_submitted" : ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage) || ["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && priorPurchaseStage === "purchase_collecting_details") ? (priorPurchaseStage === "vehicle_order_submitted" ? "vehicle_order_submitted" : "purchase_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent
+      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : intent === "investment_awaiting_amount" ? "investment_awaiting_amount" : "investment_collecting_details") : requestedVehicleChanged && !explicitVehiclePurchase ? "vehicle_browsing" : intent === "proforma_invoice_created" ? "vehicle_order_submitted" : ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage) || ["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && priorPurchaseStage === "purchase_collecting_details") ? (priorPurchaseStage === "vehicle_order_submitted" ? "vehicle_order_submitted" : "purchase_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent
     };
     const { error: memoryWriteError } = await admin.from("ai_conversation_memory").upsert({
       conversation_id: conversationId,
@@ -659,7 +664,7 @@ Deno.serve(async (req: Request) => {
     }, { onConflict: "conversation_id" });
     if (memoryWriteError) throw memoryWriteError;
 
-    if (Object.keys(extractedDelivery).length || variantMatch) {
+    if (Object.keys(extractedDelivery).length || variantMatch || requestedVehicleChanged) {
       const { error: deliveryError } = await admin.from("support_conversations").update({
         delivery_details: mergedDetails,
         vehicle_model: selectedVehicle?.model || selectedVehicle?.name || conversation.vehicle_model,
@@ -676,7 +681,9 @@ Deno.serve(async (req: Request) => {
     }
 
     let proformaInvoice: { reference: string; amount: number; variant: string; payment_url?: string | null } | null = null;
-    if (["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && deliveryComplete && selectedVehicle && (hasVariant || variants.length <= 1)) {
+    const purchaseStepSubmitted = Object.keys(extractedDelivery).length > 0 || !!variantMatch;
+    const shouldCreateProforma = purchaseFlowActive && (["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && (purchaseStepSubmitted || explicitVehiclePurchase)));
+    if (shouldCreateProforma && deliveryComplete && selectedVehicle && (hasVariant || variants.length <= 1)) {
       const selectedVariant = variants.find((variant: any) => cleanString(variant?.name,100) === cleanString(mergedDetails.selected_variant,100)) || variants[0];
       const variantPriceText = cleanString(selectedVariant?.price,80);
       const parsedVariantPrice = Number(variantPriceText.replace(/[^0-9.]/g,""));
