@@ -2091,3 +2091,5 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-add-cart-button:active{transform:scale(.985)}
 .tm-add-cart-button:hover{opacity:.88}
 .tm-rich-card-cart_summary .tm-rich-card-fields{margin-top:8px}
+
+.tm-buy-now-button{display:flex;align-items:center;justify-content:center;width:100%;margin:12px 0 2px;padding:12px 16px;border:0;border-radius:10px;background:#e82127;color:#fff;font-size:12px;font-weight:800;letter-spacing:.02em;cursor:pointer;transition:transform .15s ease,opacity .15s ease}.tm-buy-now-button:active{transform:scale(.985)}.tm-buy-now-button:hover{opacity:.9}
