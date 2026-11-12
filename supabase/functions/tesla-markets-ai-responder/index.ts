@@ -480,7 +480,13 @@ Deno.serve(async (req: Request) => {
     let investmentSharePrice: number | null = null;
     let investmentQuoteTime = "";
 
-    if (cartSummary) {\n      intent = "cart_updated";\n      requiresManagement = true;\n      const totalItems = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0);\n      const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);\n      reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";\n    } else if (investmentFlow) {
+    if (cartSummary) {
+      intent = "cart_updated";
+      requiresManagement = true;
+      const totalItems = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0);
+      const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
+      reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";
+    } else if (investmentFlow) {
       requiresManagement = true;
       if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
         intent = "investment_awaiting_amount";
