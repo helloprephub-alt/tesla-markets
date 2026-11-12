@@ -25,7 +25,7 @@ function detectDiscountRequest(text: string) {
   const mentionsDiscount = /\b(discount|cheaper|reduce.{0,25}price|lower.{0,25}price|negotiate|price.{0,15}off|rabais|reduction|remise|descuento|rebaja|rabatt|gunstiger)\b/i.test(t) || /\b\d+(?:[.,]\d+)?\s*%\s*off\b/i.test(t);
   const percent = t.match(/(\d+(?:[.,]\d+)?)\s*(?:%|percent|pourcent|por ciento|prozent)/i);
   const requestedPercent = percent ? Number(percent[1].replace(",", ".")) : null;
-  return { mentionsDiscount, requestedPercent, aboveLimit: requestedPercent !== null && requestedPercent > 3 };
+  return { mentionsDiscount, requestedPercent, aboveLimit: requestedPercent !== null && requestedPercent > 5 };
 }
 function canonicalVehicle(value: string) {
   const t = normalized(value).replace(/[^a-z0-9]+/g, " ").trim();
@@ -140,16 +140,16 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   } else if(discount.mentionsDiscount){
     intent="discount"; requiresManagement=discount.aboveLimit;
     if(validPrice&&!discount.aboveLimit){
-      const after=Math.round(price*.97*100)/100;
-      reply=lang==="fr"?`Merci pour votre intérêt pour ${name}. Cette annonce publiée est éligible à la remise automatique de 3 %. Le prix affiché est de ${money(price)} et le prix après remise est de ${money(after)}, hors taxes, frais et livraison. Souhaitez-vous connaître les prochaines étapes ?`:
-      lang==="es"?`Gracias por su interés en ${name}. Esta oferta publicada cumple los requisitos para el descuento automático del 3 %. El precio publicado es ${money(price)} y el precio con descuento es ${money(after)}, antes de impuestos, tasas y entrega. ¿Desea conocer los siguientes pasos?`:
-      lang==="de"?`Vielen Dank für Ihr Interesse am ${name}. Dieses veröffentlichte Angebot ist für den automatischen Rabatt von 3 % berechtigt. Der Listenpreis beträgt ${money(price)}, der Preis nach Rabatt ${money(after)}, ohne Steuern, Gebühren und Lieferung. Möchten Sie die nächsten Schritte besprechen?`:
-      `Thank you for your interest in the ${name}. This published listing qualifies for the standard 3% automatic discount. The listed price is ${money(price)}, and the discounted vehicle price is ${money(after)}, before taxes, fees and delivery. Would you like assistance with the next steps?`;
+      const after=Math.round(price*.95*100)/100;
+      reply=lang==="fr"?`Merci pour votre intérêt pour ${name}. Cette annonce publiée est éligible à la remise automatique de 5 %. Le prix affiché est de ${money(price)} et le prix après remise est de ${money(after)}, hors taxes, frais et livraison. Souhaitez-vous connaître les prochaines étapes ?`:
+      lang==="es"?`Gracias por su interés en ${name}. Esta oferta publicada cumple los requisitos para el descuento automático del 5 %. El precio publicado es ${money(price)} y el precio con descuento es ${money(after)}, antes de impuestos, tasas y entrega. ¿Desea conocer los siguientes pasos?`:
+      lang==="de"?`Vielen Dank für Ihr Interesse am ${name}. Dieses veröffentlichte Angebot ist für den automatischen Rabatt von 5 % berechtigt. Der Listenpreis beträgt ${money(price)}, der Preis nach Rabatt ${money(after)}, ohne Steuern, Gebühren und Lieferung. Möchten Sie die nächsten Schritte besprechen?`:
+      `Thank you for your interest in the ${name}. This published listing qualifies for the standard 5% automatic discount. The listed price is ${money(price)}, and the discounted vehicle price is ${money(after)}, before taxes, fees and delivery. Would you like assistance with the next steps?`;
     } else {
-      reply=lang==="fr"?"Merci pour votre demande. Tesla Markets peut appliquer automatiquement une remise maximale de 3 % sur les annonces publiées éligibles. Je vais vérifier les possibilités pour vous. Pourriez-vous préciser le modèle et la configuration souhaités ?":
-      lang==="es"?"Gracias por su solicitud. Tesla Markets puede aplicar automáticamente hasta un 3 % de descuento en anuncios publicados que cumplan los requisitos. Voy a comprobar qué opciones pueden estar disponibles. Indíquenos el modelo y la configuración que desea.":
-      lang==="de"?"Vielen Dank für Ihre Anfrage. Tesla Markets kann bei berechtigten veröffentlichten Angeboten automatisch bis zu 3 % Rabatt gewähren. Ich prüfe gerne, welche Möglichkeiten es gibt. Bitte nennen Sie mir das gewünschte Modell und die Konfiguration.":
-      discount.aboveLimit?"Thank you for sharing your preferred discount. Tesla Markets can automatically apply up to 3% on eligible published vehicle listings. I’ll check what flexibility may be available for you. Please share the exact model and configuration so I can look into it.":"Thank you for considering Tesla Markets. Eligible published vehicle configurations may qualify for an automatic discount of up to 3%. Please share your preferred model and configuration so we can confirm the current published price and eligibility.";
+      reply=lang==="fr"?"Merci pour votre demande. Tesla Markets peut appliquer automatiquement une remise maximale de 5 % sur les annonces publiées éligibles. Je vais vérifier les possibilités pour vous. Pourriez-vous préciser le modèle et la configuration souhaités ?":
+      lang==="es"?"Gracias por su solicitud. Tesla Markets puede aplicar automáticamente hasta un 5 % de descuento en anuncios publicados que cumplan los requisitos. Voy a comprobar qué opciones pueden estar disponibles. Indíquenos el modelo y la configuración que desea.":
+      lang==="de"?"Vielen Dank für Ihre Anfrage. Tesla Markets kann bei berechtigten veröffentlichten Angeboten automatisch bis zu 5 % Rabatt gewähren. Ich prüfe gerne, welche Möglichkeiten es gibt. Bitte nennen Sie mir das gewünschte Modell und die Konfiguration.":
+      discount.aboveLimit?"Thank you for sharing your preferred discount. Tesla Markets can automatically apply up to 5% on eligible published vehicle listings. I’ll check what flexibility may be available for you. Please share the exact model and configuration so I can look into it.":"Thank you for considering Tesla Markets. Eligible published vehicle configurations may qualify for an automatic discount of up to 5%. Please share your preferred model and configuration so we can confirm the current published price and eligibility.";
     }
   } else if(has(/\b(explain|explain to me|how does|how do|what is|tell me about|understand)\b.{0,70}\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla|tesla)\b|\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla)\b/)){
     intent="investment_explanation"; requiresManagement=true;
@@ -1020,7 +1020,7 @@ Deno.serve(async (req: Request) => {
       await admin.from("admin_notifications").insert({
         type: "discount_approval_request",
         title: "Additional vehicle discount requires approval",
-        body: `Customer ${conversation.visitor_email || "website visitor"} requested a discount above the automatic 3% limit.`,
+        body: `Customer ${conversation.visitor_email || "website visitor"} requested a discount above the automatic 5% limit.`,
         entity_type: "conversation",
         entity_id: conversationId,
         is_read: false,
