@@ -1003,7 +1003,7 @@ Deno.serve(async (req: Request) => {
         body: reply,
         automated_type: "ai_response",
         message_type: messageType,
-        structured_data: structuredData,
+        structured_data: { ...(structuredData && typeof structuredData === "object" ? structuredData : {}), source_message_id: messageId },
       })
       .select("id").single();
     if (responseInsertError) {
