@@ -59,7 +59,7 @@ function languageOf(text: string): "en"|"fr"|"es"|"de" {
   ].sort((x,y)=>Number(y[1])-Number(x[1]));
   return Number(scores[0][1])>=2 ? String(scores[0][0]) as "fr"|"es"|"de" : "en";
 }
-function extractDelivery(text: string) {
+function extractDelivery(text: string, pendingSlot = "") {
   const out: Record<string,string> = {};
   const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   const phone=text.match(/(?:\+?\d[\d ()-]{7,}\d)/);
@@ -71,6 +71,16 @@ function extractDelivery(text: string) {
   if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
   const labelled:Record<string,RegExp>={country:/\b(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,80})/i,city:/\b(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,80})/i,preferred_delivery_date:/\b(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,instructions:/\b(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i};
   for(const [key,pattern] of Object.entries(labelled)){const m=text.match(pattern);if(m?.[1])out[key]=m[1].trim().slice(0,240);}
+  // If the assistant previously asked for one specific field, accept a natural,
+  // unlabelled answer instead of asking the customer to repeat the label.
+  const plain=text.trim().replace(/[.!?]+$/,"");
+  if(pendingSlot==="full_name" && !out.full_name && /^[\\p{L}][\\p{L} .'’-]{2,98}$/u.test(plain) && !/^(yes|no|okay|ok|sure|hello|hi|thanks|thank you)$/i.test(plain)) out.full_name=plain;
+  if(pendingSlot==="country" && !out.country && /^[\\p{L} .'-]{2,70}$/u.test(plain)) out.country=plain;
+  if(pendingSlot==="city" && !out.city && /^[\\p{L} .'-]{2,70}$/u.test(plain)) out.city=plain;
+  if(pendingSlot==="address" && !out.address && plain.length>=6 && /[0-9]/.test(plain)) out.address=plain.slice(0,240);
+  if(pendingSlot==="phone" && !out.phone && /(?:\\+?\\d[\\d ()-]{7,}\\d)/.test(plain)) out.phone=plain.match(/(?:\\+?\\d[\\d ()-]{7,}\\d)/)?.[0]?.trim().slice(0,60)||"";
+  if(pendingSlot==="email" && !out.email && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i.test(plain)) out.email=plain.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i)?.[0]||"";
+
   if(!out.country || !out.city){
     const location=text.match(/\b(?:from|based in|located in|delivery to|deliver to)\s+(.+?)(?=[.!?]|$)/i)?.[1]?.trim();
     if(location){
@@ -84,7 +94,7 @@ function extractDelivery(text: string) {
   return out;
 }
 function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any) {
-  const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text);
+  const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text, cleanString(conversation.ai_memory?.pending_slot,40));
   const has=(r:RegExp)=>r.test(t);
   const modelPattern=/\b(model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
   const explicitModel=text.match(modelPattern)?.[0];
@@ -320,6 +330,15 @@ Deno.serve(async (req: Request) => {
       .limit(14);
     if (historyError) throw historyError;
     const history = (historyRows || []).reverse();
+    const { data: memoryRow, error: memoryError } = await admin
+      .from("ai_conversation_memory")
+      .select("memory")
+      .eq("conversation_id", conversationId)
+      .maybeSingle();
+    if (memoryError) throw memoryError;
+    const aiMemory = memoryRow?.memory && typeof memoryRow.memory === "object" ? memoryRow.memory : {};
+    conversation.ai_memory = aiMemory;
+
 
     const { data: managementReplies, error: managementRepliesError } = await admin
       .from("support_messages")
@@ -380,6 +399,8 @@ Deno.serve(async (req: Request) => {
     if (!hasCity) missing.push("delivery city");
     if (!hasAddress) missing.push("full delivery address");
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
+    const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
+
     if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
@@ -429,6 +450,40 @@ Deno.serve(async (req: Request) => {
         .eq("id", conversationId);
       if (vehicleContextError) throw vehicleContextError;
     }
+
+
+    // Persist structured conversational memory so the next message is interpreted
+    // against the question just asked, selected car, chosen trim and collected facts.
+    const memoryNext = {
+      ...aiMemory,
+      selected_vehicle: local.vehicleModel || conversation.vehicle_model || null,
+      selected_variant: mergedDetails.selected_variant || aiMemory.selected_variant || null,
+      last_intent: intent,
+      pending_slot: nextPendingSlot,
+      last_customer_message: cleanString(customerMessage.body,500),
+      last_customer_message_at: customerMessage.created_at,
+      last_ai_response: cleanString(reply,1200),
+      last_ai_response_at: new Date().toISOString(),
+      known_fields: {
+        full_name: !!cleanString(mergedDetails.full_name,100),
+        email: !!cleanString(mergedDetails.email || conversation.visitor_email || user.email,200),
+        phone: !!cleanString(mergedDetails.phone || conversation.contact_phone,60),
+        country: !!cleanString(mergedDetails.country,80),
+        city: !!cleanString(mergedDetails.city,80),
+        address: !!cleanString(mergedDetails.address,240),
+        selected_variant: !!cleanString(mergedDetails.selected_variant,100)
+      },
+      conversation_stage: hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent === "purchase_ready" ? "collecting_delivery_details" : intent
+    };
+    const { error: memoryWriteError } = await admin.from("ai_conversation_memory").upsert({
+      conversation_id: conversationId,
+      customer_id: user.id,
+      memory: memoryNext,
+      last_customer_message_at: customerMessage.created_at,
+      last_ai_response_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }, { onConflict: "conversation_id" });
+    if (memoryWriteError) throw memoryWriteError;
 
     if (Object.keys(extractedDelivery).length || variantMatch) {
       const { error: deliveryError } = await admin.from("support_conversations").update({
