@@ -106,6 +106,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const asksIdentity=has(/\b(who are you|what are you|are you (a )?(bot|ai|human)|are you real)\b/);
   const asksAddAnother=has(/\b(add another|another car|one more car|also order|also buy|add (a )?car|include another|second car)\b/);
   const asksGeneralKnowledge=has(/\b(what is|who is|where is|when is|why is|how does|how do|can you explain|tell me about)\b/);
+  const asksVehicleView=has(/\b(show me|can i see|let me see|may i see|view|display|show|see the|see a|photos of|pictures of|images of)\b/);
 
 
   const modelPattern=/\b(model\s*yl|model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
@@ -185,7 +186,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="es"?"Para preparar la entrega, indique su nombre completo, correo electrónico, teléfono, país, ciudad y dirección de entrega. Nuestro equipo confirmará las condiciones.":
     lang==="de"?"Bitte nennen Sie für die Lieferanfrage Ihren vollständigen Namen, Ihre E-Mail-Adresse, Telefonnummer, das Land, die Stadt und die Lieferadresse. Unser Team bestätigt anschließend die Einzelheiten.":
     "To prepare your delivery enquiry, please share your full name, email address, phone number, delivery country, city and full delivery address. Our team will confirm the delivery arrangements.";
-  } else if((vehicle || conversation.vehicle_model || mentionedModel) && (requestedVariant || has(/\b(price|prices|pricing|cost|how much|usd|dollar|performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy|specification|specifications|features|colours?|colors?|wheels?|details|information|overview|delivery|availability|available|version|variants?|warranty|guarantee|insurance|financing|finance|test drive|servicing|maintenance|trade in|trade-in)\b/)) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
+  } else if((vehicle || conversation.vehicle_model || mentionedModel) && (requestedVariant || asksVehicleView || has(/\b(price|prices|pricing|cost|how much|usd|dollar|performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy|specification|specifications|features|colours?|colors?|wheels?|details|information|overview|delivery|availability|available|version|variants?|warranty|guarantee|insurance|financing|finance|test drive|servicing|maintenance|trade in|trade-in)\b/)) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const modelKey = canonicalVehicle(mentionedModel || conversation.vehicle_model || name);
     const specs = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
@@ -195,7 +196,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     const availability = cleanString(vehicle?.availability,120);
     const asksPrice=has(/\b(prices?|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
     const asksPerformance=has(/\b(performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy)\b/);
-    const asksAll=has(/\b(all details|all information|yes all|everything|full details|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/) || acceptsFullInfo;
+    const asksAll=has(/\b(all details|all information|yes all|everything|full details|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/) || asksVehicleView || acceptsFullInfo;
     const specificPerformance=cleanString(specs.performance,240);
     const specificRange=cleanString(specs.range,240);
     const isPlaceholder=(value:string)=>!value||/\b(varies|variant-dependent|depends on|to be confirmed|must be confirmed|final production specification|final specification)\b/i.test(value);
@@ -883,6 +884,7 @@ Deno.serve(async (req: Request) => {
         subtitle: "VEHICLE ENQUIRY · DETAILS REQUIRED",
         image_url: purchaseImage,
         vehicle_slug: purchaseSlug,
+        selected_variant:cleanString(mergedDetails.selected_variant,100)||null,
         gallery_urls: purchaseGalleryUrls,
         purchase_variants: purchaseVariants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.price,80)})).filter((variant:any)=>variant.name),
         amount_label: "SELECTED VEHICLE PRICE",
