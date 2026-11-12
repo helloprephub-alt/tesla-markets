@@ -604,14 +604,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Idempotency is scoped to this exact customer message. Similar answers to
-    // distinct enquiries are allowed; the database trigger uses the same message ID.
-    const { data: priorReply } = await admin.from("ai_sent_reply_registry")
-      .select("id").eq("conversation_id",conversationId).eq("source_message_id",messageId).maybeSingle();
-    if (priorReply) {
-      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      return json({ ok: true, duplicate: true, intent }, 200, headers);
-    }
+    // The ai_responder_runs row above provides per-customer-message idempotency.
+    // Do not suppress identical wording across different customer messages.
+
 
     if (local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
       const { error: vehicleContextError } = await admin.from("support_conversations")
