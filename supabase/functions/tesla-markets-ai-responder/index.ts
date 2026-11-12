@@ -20,6 +20,21 @@ const json = (body: unknown, status: number, headers: HeadersInit) =>
 const cleanString = (value: unknown, max = 300) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
+function detectDiscountRequest(text: string) {
+  const t = text.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+  const mentionsDiscount = /\\b(discount|cheaper|reduce.{0,25}price|lower.{0,25}price|negotiate|price.{0,15}off|rabais|reduction|remise|descuento|rebaja|rabatt|gunstiger)\\b/i.test(t);
+  const percent = t.match(/(\\d+(?:[.,]\\d+)?)\\s*(?:%|percent|pourcent|por ciento|prozent)/i);
+  const requestedPercent = percent ? Number(percent[1].replace(",", ".")) : null;
+  return { mentionsDiscount, requestedPercent, aboveLimit: requestedPercent !== null && requestedPercent > 3 };
+}
+function matchVehicle(text: string, conversationModel: string, catalogue: any[]) {
+  const haystack = normalized(conversationModel + " " + text);
+  return catalogue.find((vehicle) =>
+    [vehicle.name, vehicle.model, vehicle.slug].filter(Boolean)
+      .some((value: string) => haystack.includes(normalized(String(value))))
+  ) || null;
+}
+
 
 function normalized(value: string) {
   return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
@@ -31,7 +46,7 @@ function languageOf(text: string): "en"|"fr"|"es"|"de" {
     ["es", (t.match(/\\b(hola|gracias|coche|vehiculo|precio|descuento|entrega|inversion|pago|cuanto|quiero|pueden)\\b/g)||[]).length],
     ["de", (t.match(/\\b(hallo|danke|fahrzeug|auto|preis|rabatt|lieferung|investition|zahlung|mochte|bitte)\\b/g)||[]).length],
   ].sort((x,y)=>Number(y[1])-Number(x[1]));
-  return scores[0][1]>=2 ? scores[0][0] as "fr"|"es"|"de" : "en";
+  return Number(scores[0][1])>=2 ? String(scores[0][0]) as "fr"|"es"|"de" : "en";
 }
 function extractDelivery(text: string) {
   const out: Record<string,string> = {};
