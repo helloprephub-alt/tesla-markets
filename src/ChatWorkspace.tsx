@@ -119,15 +119,6 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     let active=true;
     (async()=>{
     
-  const sendQuickMessage=async(messageText:string)=>{
-    if(busy||!threadId||!viewerId)return;
-    setBusy(true);setProblem('');
-    try{
-      const {data:insertedMessage,error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:messageText,attachment_path:null,attachment_name:null,attachment_mime:null}).select('id').single();
-      if(error)throw error;
-      await runIndependentResponder(insertedMessage.id,messageText);
-    }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
-  };
   if(intent && (!customerDetails.name || !customerDetails.email)){setBooting(false);return;}
       try {
         const user=await ensureCustomerSession(customerDetails.name?customerDetails:undefined);
@@ -160,6 +151,15 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
       await refresh();
       setIsTyping(false);
     }
+  };
+  const sendQuickMessage=async(messageText:string)=>{
+    if(busy||!threadId||!viewerId)return;
+    setBusy(true);setProblem('');
+    try{
+      const {data:insertedMessage,error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:messageText,attachment_path:null,attachment_name:null,attachment_mime:null}).select('id').single();
+      if(error)throw error;
+      await runIndependentResponder(insertedMessage.id,messageText);
+    }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
   };
   const send=async(e:FormEvent)=>{
     e.preventDefault(); if((!draft.trim()&&!images.length)||busy||!threadId||!viewerId)return;
