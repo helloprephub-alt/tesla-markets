@@ -5,6 +5,9 @@ import { ArrowLeft, BadgeCheck, CheckCheck, FileImage, LoaderCircle, LockKeyhole
 
 type Message = { id: string; sender: 'visitor'|'admin'; text: string; attachmentUrl?: string|null; messageType?: string; structuredData?: any; createdAt: number };
 type Thread = { id: string; visitorName: string; visitorEmail: string; enquiryType?:string; enquirySource?:string; vehicleModel?:string; phone?:string; updatedAt: number; lastMessage: string; status?: string; responderPaused?: boolean };
+type VehicleCheckoutDraft = { title:string; slug:string; mode:'cart'|'purchase'; variants:{name:string;price:string}[] };
+type VehicleCheckoutForm = { fullName:string; email:string; phone:string; country:string; city:string; address:string; variant:string; instructions:string };
+const emptyVehicleCheckoutForm:VehicleCheckoutForm={fullName:'',email:'',phone:'',country:'',city:'',address:'',variant:'',instructions:''};
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Something went wrong. Please try again.';
 const timeLabel = (stamp:number) => new Date(stamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
@@ -76,21 +79,27 @@ async function uploadAttachment(file:File,userId:string,conversationId:string) {
 }
 
 
-function RichMessageCard({type,data,onAddToCart,onBuyNow}:{type?:string;data?:any;onAddToCart?:()=>void;onBuyNow?:()=>void}) {
+function RichMessageCard({type,data,onAddToCart,onBuyNow}:{type?:string;data?:any;onAddToCart?:(data:any)=>void;onBuyNow?:(data:any)=>void}) {
   if(!type || type==='text' || !data || typeof data!=='object') return null;
   const rows=(value:any)=>Array.isArray(value)?value.filter((x:any)=>x&&typeof x.label==='string'&&x.value!==undefined):[];
   const title=String(data.title|| (type==='vehicle_card'?'Vehicle information':type==='investment_summary'?'Investment enquiry summary':type==='customer_details'?'Customer information':'Tesla Markets information'));
+  const slug=String(data.vehicle_slug||(/cybertruck/i.test(title)?'cybertruck':/roadster/i.test(title)?'roadster':/semi/i.test(title)?'semi':/model\s*3/i.test(title)?'model-3':/model\s*y/i.test(title)?'model-y':''));
+  const fallbackImage=slug?'/resources/'+slug+'-1.jpg':'';
+  const imageUrl=typeof data.image_url==='string'&&data.image_url.trim()?data.image_url:fallbackImage;
+  const galleryCounts:Record<string,number>={'model-3':5,'model-y':5,'cybertruck':9,'roadster':6,'semi':10};
+  const gallery=Array.isArray(data.gallery_urls)&&data.gallery_urls.length?data.gallery_urls.filter((url:any)=>typeof url==='string'&&url.trim()):Array.from({length:galleryCounts[slug]||0},(_,index)=>'/resources/'+slug+'-'+(index+1)+'.jpg');
   const metrics=rows(data.metrics), fields=rows(data.fields);
   const sections=Array.isArray(data.sections)?data.sections.filter((x:any)=>x&&typeof x.title==='string'):[];
   return <article className={'tm-rich-card tm-rich-card-'+type}>
     <div className="tm-rich-card-top"><span className="tm-rich-card-brand">TESLA MARKETS</span>{data.status&&<span className={'tm-rich-card-status '+(String(data.status).toLowerCase().includes('pending')?'pending':'')}>{String(data.status).toUpperCase()}</span>}</div>
-    {data.image_url&&<img className="tm-rich-card-image" src={String(data.image_url)} alt={title} loading="lazy"/>}
+    {imageUrl&&<img className="tm-rich-card-image" src={imageUrl} alt={title+' vehicle'} loading="lazy" decoding="async" onError={event=>{const image=event.currentTarget;if(fallbackImage&&image.dataset.fallback!=='tried'&&image.src!==new URL(fallbackImage,window.location.origin).href){image.dataset.fallback='tried';image.src=fallbackImage;}else{image.style.display='none';}}}/>}
+    {gallery.length>1&&<div className="tm-rich-card-gallery">{gallery.slice(1,4).map((url:string,index:number)=><img key={url} src={url} alt={title+' gallery '+(index+2)} loading="lazy" decoding="async" onError={event=>{event.currentTarget.style.display='none';}}/>)}</div>}
     <div className="tm-rich-card-heading"><h3>{title}</h3>{data.subtitle&&<p>{String(data.subtitle)}</p>}</div>
     {data.amount&&<div className="tm-rich-card-amount"><span>{String(data.amount_label||'AMOUNT')}</span><strong>{String(data.amount)}</strong></div>}
     {metrics.length>0&&<div className="tm-rich-card-metrics">{metrics.map((item:any,i:number)=><div className="tm-rich-card-metric" key={i}><strong>{String(item.value)}</strong><span>{String(item.label)}</span></div>)}</div>}
     {fields.length>0&&<section className="tm-rich-card-section"><h4>{String(data.fields_title||'Customer information')}</h4><dl>{fields.map((item:any,i:number)=><div key={i}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>}
     {sections.map((section:any,i:number)=><section className="tm-rich-card-section" key={i}><h4>{section.title}</h4><dl>{rows(section.rows).map((item:any,j:number)=><div key={j}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>)}
-    {(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onBuyNow&&<button type="button" className="tm-buy-now-button" onClick={onBuyNow}>{type==='vehicle_purchase_prompt'?'Continue purchase':'Start purchase'}</button>}{type==='vehicle_card'&&onAddToCart&&<button type="button" className="tm-add-cart-button" onClick={onAddToCart}>Add to cart</button>}
+    {(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onBuyNow&&<button type="button" className="tm-buy-now-button" onClick={()=>onBuyNow(data)}>{type==='vehicle_purchase_prompt'?'Continue purchase':'Start purchase'}</button>}{type==='vehicle_card'&&onAddToCart&&<button type="button" className="tm-add-cart-button" onClick={()=>onAddToCart(data)}>Add to cart</button>}
     {data.note&&<p className="tm-rich-card-note">{String(data.note)}</p>}
     {type==='payment_card'&&typeof data.payment_url==='string'&&/^https:\/\//i.test(data.payment_url)&&<a className="tm-buy-now-button" href={data.payment_url} target="_blank" rel="noopener noreferrer">Pay securely</a>}{data.disclaimer&&<p className="tm-rich-card-disclaimer">{String(data.disclaimer)}</p>}
   </article>;
@@ -109,6 +118,9 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
   const [context] = useState(()=>{try{return JSON.parse(sessionStorage.getItem('tesla-markets-enquiry-intent')||'null')?.context||sessionStorage.getItem('tesla-markets-chat-context')||'';}catch{return sessionStorage.getItem('tesla-markets-chat-context')||'';}});
   const [intent] = useState<any>(()=>{try{return JSON.parse(sessionStorage.getItem('tesla-markets-enquiry-intent')||'null');}catch{return null;}});
   const [customerDetails,setCustomerDetails] = useState<{name:string;email:string;phone:string}>(()=>{try{return JSON.parse(localStorage.getItem('tesla-markets-customer-details')||'null')||JSON.parse(sessionStorage.getItem('tesla-markets-customer-details')||'null')||{name:'',email:'',phone:''};}catch{return {name:'',email:'',phone:''};}});
+  const [vehicleCheckout,setVehicleCheckout]=useState<VehicleCheckoutDraft|null>(null);
+  const [vehicleCheckoutForm,setVehicleCheckoutForm]=useState<VehicleCheckoutForm>(emptyVehicleCheckoutForm);
+  const [checkoutSubmitting,setCheckoutSubmitting]=useState(false);
   const [enquiryKind,setEnquiryKind] = useState('Buying');
   const [booting,setBooting] = useState(true);
   const [viewerId,setViewerId] = useState('');
@@ -143,7 +155,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     const started=Date.now();
     try{
       const {error}=await supabase.functions.invoke('tesla-markets-ai-responder',{body:{conversation_id:threadId,message_id:messageId}});
-      if(error)console.error('Tesla Markets independent responder invocation failed',error);
+      if(error)throw error;
     }finally{
       const minimum=Math.min(3400,Math.max(1750,950+messageText.length*16));
       const remaining=Math.max(0,minimum-(Date.now()-started));
@@ -152,14 +164,68 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
       setIsTyping(false);
     }
   };
-  const sendQuickMessage=async(messageText:string)=>{
-    if(busy||!threadId||!viewerId)return;
+  const sendQuickMessage=async(messageText:string):Promise<boolean>=>{
+    if(busy||!threadId||!viewerId)return false;
     setBusy(true);setProblem('');
     try{
       const {data:insertedMessage,error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:messageText}).select('id').single();
       if(error)throw error;
       await runIndependentResponder(insertedMessage.id,messageText);
-    }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
+      return true;
+    }catch(e){setProblem(errorText(e));return false;}finally{setBusy(false);}
+  };
+  const openVehicleCheckout=(data:any,mode:'cart'|'purchase')=>{
+    const title=String(data?.title||'Selected Tesla vehicle').replace(/^Continue with\s+/i,'').trim();
+    const slug=String(data?.vehicle_slug||(/cybertruck/i.test(title)?'cybertruck':/roadster/i.test(title)?'roadster':/semi/i.test(title)?'semi':/model\s*3/i.test(title)?'model-3':/model\s*y/i.test(title)?'model-y':''));
+    const variants=Array.isArray(data?.purchase_variants)?data.purchase_variants.filter((item:any)=>item&&typeof item.name==='string').map((item:any)=>({name:String(item.name),price:String(item.price||'Price to be confirmed')})):[];
+    const field=(label:string)=>String(data?.fields?.find((item:any)=>String(item?.label||'').toLowerCase()===label.toLowerCase())?.value||'').replace(/^Still needed$/i,'').trim();
+    const savedVariant=field('Vehicle version')||String(data?.selected_variant||'');
+    setVehicleCheckoutForm({
+      fullName:customerDetails.name||field('Full name'),
+      email:customerDetails.email||field('Email address'),
+      phone:customerDetails.phone||field('Phone number'),
+      country:field('Delivery country'),
+      city:field('Delivery city'),
+      address:field('Delivery address'),
+      variant:variants.length===1?variants[0].name:(variants.some((item:any)=>item.name===savedVariant)?savedVariant:''),
+      instructions:''
+    });
+    setProblem('');
+    setVehicleCheckout({title,slug,mode,variants});
+  };
+  const submitVehicleCheckout=async(event:FormEvent)=>{
+    event.preventDefault();
+    if(!vehicleCheckout||checkoutSubmitting||busy)return;
+    const form=vehicleCheckoutForm;
+    if(!form.fullName.trim()||!form.email.trim()||!form.phone.trim()||!form.country.trim()||!form.city.trim()||!form.address.trim()){
+      setProblem('Please complete all required contact and delivery details.');
+      return;
+    }
+    if(vehicleCheckout.variants.length>1&&!form.variant){
+      setProblem('Please select your preferred vehicle version.');
+      return;
+    }
+    setCheckoutSubmitting(true);
+    const saved={name:form.fullName.trim(),email:form.email.trim(),phone:form.phone.trim()};
+    try{
+      localStorage.setItem('tesla-markets-customer-details',JSON.stringify(saved));
+      sessionStorage.setItem('tesla-markets-customer-details',JSON.stringify(saved));
+      const message=[
+        vehicleCheckout.mode==='cart'?'Add '+vehicleCheckout.title+' to my cart.':'',
+        'I want to buy '+vehicleCheckout.title+'.',
+        form.variant?'Vehicle version: '+form.variant:'',
+        'Full name: '+form.fullName.trim(),
+        'Email: '+form.email.trim(),
+        'Phone: '+form.phone.trim(),
+        'Country: '+form.country.trim(),
+        'City: '+form.city.trim(),
+        'Delivery address: '+form.address.trim(),
+        form.instructions.trim()?'Instructions: '+form.instructions.trim():''
+      ].filter(Boolean).join('\n');
+      const sent=await sendQuickMessage(message);
+      if(sent)setVehicleCheckout(null);
+    }catch(e){setProblem(errorText(e));}
+    finally{setCheckoutSubmitting(false);}
   };
   const send=async(e:FormEvent)=>{
     e.preventDefault(); if((!draft.trim()&&!images.length)||busy||!threadId||!viewerId)return;
@@ -184,10 +250,27 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
   return <section className="chat-fullscreen customer-chat-screen">
     <header className="chat-appbar"><button onClick={onBack} aria-label={tr("Back to website")}><ArrowLeft size={18}/><span>{tr("Back")}</span></button><div className="chat-appbar-brand"><ManagementAvatar className="chat-brand-avatar"/><div><b>Tesla Markets Management <BadgeCheck className="chat-verified-badge" size={16} fill="#1685e8" color="#1685e8" aria-label="Verified management profile"/></b></div></div><ThemeToggle className="chat-theme-toggle"/></header>
     <div className="chat-full-body"><div className="chat-conversation-shell">
-      <div className="chat-panel live-chat-panel"><div ref={messagesRef} onScroll={e=>{const el=e.currentTarget;nearBottomRef.current=el.scrollHeight-el.scrollTop-el.clientHeight<90;}} className="chat-messages live-chat-messages"><div className="chat-day-divider"><span>{tr("Conversation started")}</span></div>{context&&<div className="chat-context-card"><b>{tr("About your enquiry")}</b><span>{context}</span></div>}{messages.map(m=><div key={m.id} className={'chat-message-row '+(m.sender==='visitor'?'mine':'theirs')}><div className={'chat-bubble '+(m.sender==='visitor'?'you':'team')}>{m.messageType&&m.messageType!=='text'&&<RichMessageCard type={m.messageType} data={m.structuredData} onBuyNow={m.sender==='admin'&&(m.messageType==='vehicle_card'||m.messageType==='vehicle_purchase_prompt')?()=>void sendQuickMessage(m.messageType==='vehicle_purchase_prompt'?"Continue with this purchase":"I want to buy "+String(m.structuredData?.title||"this vehicle")):undefined} onAddToCart={m.sender==='admin'&&m.messageType==='vehicle_card'?()=>void sendQuickMessage("Add "+String(m.structuredData?.title||"vehicle")+" to cart"):undefined}/ >}{m.text&&(!m.messageType||m.messageType==='text'||!m.structuredData)&&<p>{m.text}</p>}{m.attachmentUrl&&<a href={m.attachmentUrl} target="_blank" rel="noreferrer"><img className="chat-attachment" src={m.attachmentUrl} alt="Shared attachment"/></a>}<small>{m.sender==='admin'?tr('Tesla Markets Management'):tr('You')} · {timeLabel(m.createdAt)} {m.sender==='visitor'&&<CheckCheck size={12}/>}</small></div></div>)}</div>{isTyping&&<><style>{`@keyframes tmTypingBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}.tm-typing-bubble{display:flex;align-items:center;gap:5px;padding:13px 16px;min-width:64px}.tm-typing-bubble i{display:block;width:7px;height:7px;border-radius:50%;background:#87919b;animation:tmTypingBounce 1.05s infinite}.tm-typing-bubble i:nth-child(2){animation-delay:.15s}.tm-typing-bubble i:nth-child(3){animation-delay:.3s}`}</style><div className="chat-message-row theirs"><div className="chat-bubble team tm-typing-bubble" aria-label="Tesla Markets is typing"><i/><i/><i/></div></div></>}
+      <div className="chat-panel live-chat-panel"><div ref={messagesRef} onScroll={e=>{const el=e.currentTarget;nearBottomRef.current=el.scrollHeight-el.scrollTop-el.clientHeight<90;}} className="chat-messages live-chat-messages"><div className="chat-day-divider"><span>{tr("Conversation started")}</span></div>{context&&<div className="chat-context-card"><b>{tr("About your enquiry")}</b><span>{context}</span></div>}{messages.map(m=><div key={m.id} className={'chat-message-row '+(m.sender==='visitor'?'mine':'theirs')}><div className={'chat-bubble '+(m.sender==='visitor'?'you':'team')}>{m.messageType&&m.messageType!=='text'&&<RichMessageCard type={m.messageType} data={m.structuredData} onBuyNow={m.sender==='admin'&&(m.messageType==='vehicle_card'||m.messageType==='vehicle_purchase_prompt')?(data)=>openVehicleCheckout(data,'purchase'):undefined} onAddToCart={m.sender==='admin'&&m.messageType==='vehicle_card'?(data)=>openVehicleCheckout(data,'cart'):undefined}/ >}{m.text&&(!m.messageType||m.messageType==='text'||!m.structuredData)&&<p>{m.text}</p>}{m.attachmentUrl&&<a href={m.attachmentUrl} target="_blank" rel="noreferrer"><img className="chat-attachment" src={m.attachmentUrl} alt="Shared attachment"/></a>}<small>{m.sender==='admin'?tr('Tesla Markets Management'):tr('You')} · {timeLabel(m.createdAt)} {m.sender==='visitor'&&<CheckCheck size={12}/>}</small></div></div>)}</div>{isTyping&&<><style>{`@keyframes tmTypingBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}.tm-typing-bubble{display:flex;align-items:center;gap:5px;padding:13px 16px;min-width:64px}.tm-typing-bubble i{display:block;width:7px;height:7px;border-radius:50%;background:#87919b;animation:tmTypingBounce 1.05s infinite}.tm-typing-bubble i:nth-child(2){animation-delay:.15s}.tm-typing-bubble i:nth-child(3){animation-delay:.3s}`}</style><div className="chat-message-row theirs"><div className="chat-bubble team tm-typing-bubble" aria-label="Tesla Markets is typing"><i/><i/><i/></div></div></>}
       {images.length>0&&<div className="chat-image-previews" aria-label={images.length+' images selected'}><div className="chat-image-preview-heading">{images.length} {tr(images.length===1?'image selected':'images selected')}</div><div className="chat-image-preview-list">{images.map((file,index)=><div className="chat-image-preview-item" key={file.name+'-'+file.size+'-'+file.lastModified}><FileImage size={13}/><span>{file.name}</span><button type="button" onClick={()=>setImages(current=>current.filter((_,i)=>i!==index))} aria-label={'Remove '+file.name}><X size={13}/></button></div>)}</div></div>}{(problem||booting)&&<p className="chat-error" role="status">{problem||tr('Opening secure chat…')}</p>}
       <form className="chat-compose live-chat-compose" onSubmit={send}><div className="chat-attach-wrap"><button type="button" className={'chat-plus-button '+(attachOpen?'active':'')} onClick={()=>setAttachOpen(!attachOpen)} aria-label={tr('Add attachments')}><Plus size={19}/></button>{attachOpen&&<div className="chat-attach-menu"><button type="button" onClick={()=>document.getElementById('customer-chat-file')?.click()}><FileImage size={17}/> {tr('Choose images')}</button><small>{tr("Select multiple JPG, PNG, WEBP or GIF images. Each image can be up to 3 MB.")}</small></div>}<input id="customer-chat-file" className="chat-file-input" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>{const selected=Array.from(e.target.files||[]);setImages(current=>[...current,...selected.filter(file=>!current.some(existing=>existing.name===file.name&&existing.size===file.size&&existing.lastModified===file.lastModified))]);setAttachOpen(false);e.currentTarget.value='';}}/></div><textarea value={draft} rows={1} onChange={e=>setDraft(e.target.value)} placeholder={tr("Type a message…")} aria-label={tr('Write your message')} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/><button className="chat-send-button" disabled={busy||booting||(!draft.trim()&&!images.length)} aria-label="Send message">{busy?<LoaderCircle className="spin" size={18}/>:<Send size={17}/>}</button></form>
       </div></div></div>
+    {vehicleCheckout&&<div className="tm-checkout-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget&&!checkoutSubmitting&&!busy)setVehicleCheckout(null);}}>
+      <section className="tm-checkout-dialog" role="dialog" aria-modal="true" aria-labelledby="tm-checkout-title">
+        <header className="tm-checkout-head"><div><span className="tm-checkout-eyebrow">TESLA MARKETS · SECURE ENQUIRY</span><h2 id="tm-checkout-title">{vehicleCheckout.mode==='cart'?'Add to cart':'Start your purchase'}</h2><p>{vehicleCheckout.title}</p></div><button type="button" onClick={()=>setVehicleCheckout(null)} disabled={checkoutSubmitting||busy} aria-label="Close checkout"><X size={20}/></button></header>
+        <form className="tm-checkout-form" onSubmit={submitVehicleCheckout}>
+          {vehicleCheckout.variants.length>1&&<label>Preferred vehicle version<select required value={vehicleCheckoutForm.variant} onChange={event=>setVehicleCheckoutForm(current=>({...current,variant:event.target.value}))}><option value="">Select a version</option>{vehicleCheckout.variants.map(item=><option key={item.name} value={item.name}>{item.name} · {item.price}</option>)}</select></label>}
+          <div className="tm-checkout-section-title">Your contact details</div>
+          <div className="tm-checkout-grid"><label>Full name<input required autoComplete="name" value={vehicleCheckoutForm.fullName} onChange={event=>setVehicleCheckoutForm(current=>({...current,fullName:event.target.value}))} placeholder="Enter your full name"/></label><label>Email address<input required type="email" autoComplete="email" value={vehicleCheckoutForm.email} onChange={event=>setVehicleCheckoutForm(current=>({...current,email:event.target.value}))} placeholder="you@example.com"/></label><label>Phone number<input required type="tel" inputMode="tel" autoComplete="tel" value={vehicleCheckoutForm.phone} onChange={event=>setVehicleCheckoutForm(current=>({...current,phone:event.target.value}))} placeholder="Include country code"/></label></div>
+          <div className="tm-checkout-section-title">Delivery address</div>
+          <div className="tm-checkout-grid tm-checkout-grid-two"><label>Country<input required autoComplete="country-name" value={vehicleCheckoutForm.country} onChange={event=>setVehicleCheckoutForm(current=>({...current,country:event.target.value}))} placeholder="Delivery country"/></label><label>City<input required autoComplete="address-level2" value={vehicleCheckoutForm.city} onChange={event=>setVehicleCheckoutForm(current=>({...current,city:event.target.value}))} placeholder="Delivery city"/></label></div>
+          <label>Full delivery address<textarea required rows={3} autoComplete="street-address" value={vehicleCheckoutForm.address} onChange={event=>setVehicleCheckoutForm(current=>({...current,address:event.target.value}))} placeholder="Street, house/building number and postal code"/></label>
+          <label>Additional delivery instructions <span>(optional)</span><textarea rows={2} value={vehicleCheckoutForm.instructions} onChange={event=>setVehicleCheckoutForm(current=>({...current,instructions:event.target.value}))} placeholder="Anything management should know?"/></label>
+          <p className="tm-checkout-security-note">Your details will be saved to your Tesla Markets enquiry and sent to management. No payment is taken here. Management will confirm availability and the final quotation before sending approved payment instructions.</p>
+          {problem&&<p className="tm-checkout-error" role="alert">{problem}</p>}
+          <div className="tm-checkout-actions"><button type="button" className="tm-checkout-cancel" onClick={()=>setVehicleCheckout(null)} disabled={checkoutSubmitting||busy}>Cancel</button><button type="submit" className="tm-checkout-submit" disabled={checkoutSubmitting||busy||booting||!threadId||!viewerId}>{checkoutSubmitting||busy?'Submitting details…':vehicleCheckout.mode==='cart'?'Add to cart & continue':'Submit purchase details'}</button></div>
+        </form>
+      </section>
+    </div>}
   </section>;
 }
 
