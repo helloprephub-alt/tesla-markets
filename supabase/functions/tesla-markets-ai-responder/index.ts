@@ -32,6 +32,7 @@ function canonicalVehicle(value: string) {
   if (/\bcyber ?truck\b/.test(t)) return "Cybertruck";
   if (/\broadster\b/.test(t)) return "Roadster";
   if (/\b(tesla )?semi\b/.test(t)) return "Tesla Semi";
+  if (/\bmodel ?yl\b/.test(t)) return "Model Y";
   const model = t.match(/\bmodel ?([3ysx])\b/);
   if (model) return "Model " + model[1].toUpperCase();
   return "";
@@ -67,7 +68,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   if(phone)out.phone=phone[0].trim().slice(0,60);
   const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|this is|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
   if(nameMatch?.[1])out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
-  const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+)$/i);
+  const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+?)(?=(?:[,;\n]\s*)?(?:e-?mail|phone|telephone|country|delivery country|city|delivery city|preferred version|vehicle version|full name|name)\s*[:=-]|[\n]|$)/i);
   if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
   const labelled:Record<string,RegExp>={country:/\b(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,80})/i,city:/\b(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,80})/i,preferred_delivery_date:/\b(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,instructions:/\b(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i};
   for(const [key,pattern] of Object.entries(labelled)){const m=text.match(pattern);if(m?.[1])out[key]=m[1].trim().slice(0,240);}
@@ -107,7 +108,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const asksGeneralKnowledge=has(/\b(what is|who is|where is|when is|why is|how does|how do|can you explain|tell me about)\b/);
 
 
-  const modelPattern=/\b(model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
+  const modelPattern=/\b(model\s*yl|model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
   const explicitModel=text.match(modelPattern)?.[0];
   const priorModel=[...history].reverse().filter((row:any)=>row.sender_role==="customer").map((row:any)=>String(row.body||"").match(modelPattern)?.[0]).find(Boolean);
   const rawModel=explicitModel||conversation.vehicle_model||priorModel||null;
