@@ -766,6 +766,7 @@ Deno.serve(async (req: Request) => {
       const cartTotal = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
       structuredData = {
         title:"Your vehicle cart",
+        image_url:cartSummary.find((item:any)=>item.image_url)?.image_url||null,
         subtitle:"CUSTOMER VEHICLE SELECTION",
         status:"Enquiry — not an order",
         amount_label:"ESTIMATED CART TOTAL",
@@ -809,7 +810,24 @@ Deno.serve(async (req: Request) => {
         }],
         disclaimer: "This record confirms an enquiry only. It is not a share purchase, payment request, payment receipt or guaranteed investment return."
       };
-    } else if (selectedVehicle && ["vehicle_enquiry","vehicle_information","vehicle_specs","general"].includes(intent) && (vehicle || /\\b(cybertruck|roadster|model ?[3ysx]|tesla semi|semi)\\b/i.test(customerMessage.body))) {
+    } else if (Object.keys(extractedDelivery).length > 0 && !investmentEnquiryCreated) {
+      messageType = "customer_details";
+      structuredData = {
+        title:"Customer enquiry details",
+        subtitle:"INFORMATION SAVED TO THIS CONVERSATION",
+        fields_title:"Customer information",
+        fields:[
+          {label:"Full name",value:cleanString(mergedDetails.full_name,100)||"Not provided"},
+          {label:"Email address",value:cleanString(mergedDetails.email||conversation.visitor_email||user.email,200)||"Not provided"},
+          {label:"Phone number",value:cleanString(mergedDetails.phone||conversation.contact_phone,60)||"Not provided"},
+          {label:"Country",value:cleanString(mergedDetails.country,80)||"Not provided"},
+          {label:"City",value:cleanString(mergedDetails.city,80)||"Not provided"},
+          {label:"Delivery address",value:cleanString(mergedDetails.address,240)||"Not provided"},
+          {label:"Vehicle",value:cleanString(selectedVehicle?.name||conversation.vehicle_model,100)||"Not selected"}
+        ],
+        note:"These details are saved with this conversation. The customer does not need to submit the same information again unless something changes."
+      };
+    }  else if (selectedVehicle && ["vehicle_enquiry","vehicle_information","vehicle_specs","general"].includes(intent) && (vehicle || /\\b(cybertruck|roadster|model ?[3ysx]|tesla semi|semi)\\b/i.test(customerMessage.body))) {
       const specs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
       const variants = Array.isArray(specs.variants) ? specs.variants : [];
       const colours = Array.isArray(specs.colors) ? specs.colors.join(", ") : cleanString(specs.colors,300);
