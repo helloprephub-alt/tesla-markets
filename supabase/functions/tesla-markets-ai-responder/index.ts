@@ -371,7 +371,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: catalogue, error: catalogueError } = await admin
       .from("vehicle_catalog")
-      .select("name,model,slug,description,price_usd,availability,specifications")
+      .select("name,model,slug,description,price_usd,availability,images,specifications")
       .eq("is_published", true);
     if (catalogueError) throw catalogueError;
 
@@ -579,7 +579,7 @@ Deno.serve(async (req: Request) => {
       vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
       selected_variant: mergedDetails.selected_variant || aiMemory.selected_variant || null,
       last_intent: intent,
-      pending_slot: investmentFlow ? (!investmentName ? "full_name" : !investmentEmail ? "email" : !investmentPhone ? "phone" : !investmentCountry ? "country" : !(investmentAmount > 0) ? "investment_amount" : "") : nextPendingSlot,
+      pending_slot: investmentFlow ? (!(investmentAmount > 0) ? "investment_amount" : !investmentName ? "full_name" : !investmentEmail ? "email" : !investmentPhone ? "phone" : !investmentCountry ? "country" : !investmentAddress ? "address" : "") : nextPendingSlot,
       investment_amount_usd: investmentAmount > 0 && Number.isFinite(investmentAmount) ? investmentAmount : aiMemory.investment_amount_usd || null,
       last_customer_message: cleanString(customerMessage.body,500),
       last_customer_message_at: customerMessage.created_at,
@@ -722,6 +722,96 @@ Deno.serve(async (req: Request) => {
       requiresManagement = true;
     }
 
+    let messageType = "text";
+    let structuredData: Record<string, any> | null = null;
+    if (investmentEnquiryCreated) {
+      messageType = "investment_summary";
+      structuredData = {
+        title: "Investment enquiry summary",
+        subtitle: "CUSTOMER ENQUIRY · NOT AN INVOICE",
+        status: "Payment pending",
+        amount_label: "INTENDED INVESTMENT AMOUNT",
+        amount: "$" + investmentAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USD",
+        fields_title: "Customer information",
+        fields: [
+          { label: "Full legal name", value: investmentName },
+          { label: "Email address", value: investmentEmail },
+          { label: "Phone number", value: investmentPhone },
+          { label: "Country of residence", value: investmentCountry },
+          { label: "City", value: investmentCity || "Not provided" },
+          { label: "Residential address", value: investmentAddress }
+        ],
+        sections: [{
+          title: "Investment details",
+          rows: [
+            { label: "Intended amount", value: "$" + investmentAmount.toLocaleString("en-US") + " USD" },
+            { label: "Estimated shares", value: investmentShareEstimate !== null ? investmentShareEstimate.toFixed(4) : "Unavailable — current quote could not be verified" },
+            { label: "Share price", value: investmentSharePrice !== null ? "$" + investmentSharePrice.toFixed(2) + " USD" : "Not available" },
+            { label: "Quote timestamp", value: investmentQuoteTime || "Not available" },
+            { label: "Enquiry status", value: "Payment pending" }
+          ]
+        }],
+        disclaimer: "This record confirms an enquiry only. It is not a share purchase, payment request, payment receipt or guaranteed investment return."
+      };
+    } else if (selectedVehicle && ["vehicle_enquiry","vehicle_information","vehicle_specs","general"].includes(intent) && (vehicle || /\\b(cybertruck|roadster|model ?[3ysx]|tesla semi|semi)\\b/i.test(customerMessage.body))) {
+      const specs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
+      const variants = Array.isArray(specs.variants) ? specs.variants : [];
+      const colours = Array.isArray(specs.colors) ? specs.colors.join(", ") : cleanString(specs.colors,300);
+      const features = Array.isArray(specs.features) ? specs.features.join(" · ") : cleanString(specs.features,500);
+      const images = Array.isArray(selectedVehicle.images) ? selectedVehicle.images : [];
+      const metrics = [
+        specs.acceleration_0_60 ? { label: "0–60 mph", value: String(specs.acceleration_0_60) } : null,
+        specs.top_speed ? { label: "Top speed", value: String(specs.top_speed) } : null,
+        specs.range ? { label: "Estimated range", value: String(specs.range) } : null,
+        specs.power ? { label: "Power", value: String(specs.power) } : null
+      ].filter(Boolean);
+      messageType = "vehicle_card";
+      structuredData = {
+        title: cleanString(selectedVehicle.name,100),
+        subtitle: cleanString(specs.subtitle,160) || cleanString(selectedVehicle.description,220),
+        image_url: typeof images[0] === "string" ? images[0] : null,
+        metrics,
+        sections: [
+          { title: "Pricing and versions", rows: [
+            { label: "Starting listed price", value: selectedVehicle.price_usd ? "$" + Number(selectedVehicle.price_usd).toLocaleString("en-US") + " USD" : "Contact management" },
+            ...variants.map((v:any) => ({ label: cleanString(v?.name,80), value: cleanString(v?.price,80) })).filter((v:any)=>v.label&&v.value),
+            { label: "Price basis", value: cleanString(specs.price_note,240) || "Confirm current quotation with management" }
+          ]},
+          { title: "Performance and range", rows: [
+            { label: "Performance", value: cleanString(specs.performance,220) || "Not yet verified for this configuration" },
+            { label: "Range", value: cleanString(specs.range,220) || "Not yet verified for this configuration" },
+            { label: "Drivetrain", value: cleanString(specs.drivetrain,160) || "Configuration dependent" }
+          ]},
+          { title: "Colours and equipment", rows: [
+            { label: "Exterior colours", value: colours || "Confirm available colours for your market" },
+            { label: "Wheels", value: Array.isArray(specs.wheels) ? specs.wheels.join(", ") : cleanString(specs.wheels,220) || "Confirm with management" },
+            { label: "Key features", value: features || "Contact management for full equipment details" }
+          ]},
+          { title: "Availability", rows: [
+            { label: "Listing status", value: cleanString(selectedVehicle.availability,80) || "To be confirmed" },
+            { label: "Availability note", value: cleanString(specs.availability_note,220) || "Management must confirm current market availability and delivery" }
+          ]}
+        ],
+        disclaimer: "Specifications, prices, colours and availability depend on model year, trim and market. Items marked as preferences or management-supplied listings are not represented as confirmed factory specifications."
+      };
+    } else if (investmentFlow && investmentDetailsComplete && !investmentEnquiryCreated) {
+      messageType = "customer_details";
+      structuredData = {
+        title: "Investment enquiry details",
+        subtitle: "INFORMATION COLLECTED SO FAR",
+        fields: [
+          { label: "Full legal name", value: investmentName },
+          { label: "Email address", value: investmentEmail },
+          { label: "Phone number", value: investmentPhone },
+          { label: "Country of residence", value: investmentCountry },
+          { label: "Residential address", value: investmentAddress }
+        ],
+        amount_label: "INTENDED INVESTMENT AMOUNT",
+        amount: "$" + investmentAmount.toLocaleString("en-US") + " USD",
+        disclaimer: "Review the details before submission. This is not an invoice or proof of payment."
+      };
+    }
+
     const { data: responseMessage, error: responseInsertError } = await admin
       .from("support_messages")
       .insert({
@@ -730,6 +820,8 @@ Deno.serve(async (req: Request) => {
         sender_role: "management",
         body: reply,
         automated_type: "ai_response",
+        message_type: messageType,
+        structured_data: structuredData,
       })
       .select("id").single();
     if (responseInsertError) {
