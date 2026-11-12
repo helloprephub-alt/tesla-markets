@@ -360,7 +360,7 @@ Deno.serve(async (req: Request) => {
     const selectedVehicle = vehicle || matchVehicle("", conversation.vehicle_model || "", catalogue || []);
     const selectedSpecs = selectedVehicle?.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
-    const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); }); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); }) || (priorDetails.selected_variant ? variants.find((variant:any)=>normalized(cleanString(variant?.name,100))===normalized(cleanString(priorDetails.selected_variant,100))) : null);
+    const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); });
     if (variantMatch) mergedDetails.selected_variant = cleanString(variantMatch.name,100);
     if (selectedVehicle && !mergedDetails.selected_variant && variants.length === 1) mergedDetails.selected_variant = cleanString(variants[0].name,100);
     const hasPaymentIntent = /\b(payment|payment method|payment options|how do i pay|where do i pay|pay now|transfer|bank details|paiement|pago|zahlung)\b/i.test(normalized(customerMessage.body));
