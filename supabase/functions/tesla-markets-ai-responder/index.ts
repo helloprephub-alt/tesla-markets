@@ -559,7 +559,7 @@ Deno.serve(async (req: Request) => {
     const canonical = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
     const canonicalReply = canonical(reply);
     const { data: priorReply } = await admin.from("ai_sent_reply_registry")
-      .select("id").eq("conversation_id",conversationId).eq("canonical_hash",await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonicalReply)).then((digest)=>Array.from(new Uint8Array(digest)).map((byte)=>byte.toString(16).padStart(2,"0")).join(""))).maybeSingle();
+      .select("id").eq("conversation_id",conversationId).eq("canonical_text",canonicalReply).maybeSingle();
     if (priorReply || history.some((row:any)=>row.sender_role==="management" && ["ai_response","automated_reply"].includes(row.automated_type) && canonical(row.body||"")===canonicalReply)) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
       await admin.from("support_conversations").update({ responder_paused: true, updated_at: new Date().toISOString() }).eq("id", conversationId);
