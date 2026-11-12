@@ -439,9 +439,9 @@ Deno.serve(async (req: Request) => {
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
-    const cartIntent = /\\b(add to cart|add to my cart|put in (?:the )?cart|add .* to cart|add .* basket|view (?:my )?cart|show (?:my )?cart|my cart)\\b/i.test(customerMessage.body);
+    const cartIntent = /\b(add to cart|add to my cart|put in (?:the )?cart|add .* to cart|add .* basket|view (?:my )?cart|show (?:my )?cart|my cart)\b/i.test(customerMessage.body);
     const cartSummary = cartIntent && selectedVehicle ? (() => {
-      const quantityMatch = customerMessage.body.match(/\\b(\\d{1,2})\\b/);
+      const quantityMatch = customerMessage.body.match(/\b(\d{1,2})\b/);
       const quantity = Math.max(1, Math.min(20, quantityMatch ? Number(quantityMatch[1]) : 1));
       const current = priorCart.map((item:any)=>({...item}));
       const existing = current.find((item:any)=>item.slug===selectedVehicle.slug);
