@@ -21,9 +21,9 @@ const cleanString = (value: unknown, max = 300) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 
 function detectDiscountRequest(text: string) {
-  const t = text.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
-  const mentionsDiscount = /\\b(discount|cheaper|reduce.{0,25}price|lower.{0,25}price|negotiate|price.{0,15}off|rabais|reduction|remise|descuento|rebaja|rabatt|gunstiger)\\b/i.test(t) || /\b\d+(?:[.,]\d+)?\s*%\s*off\b/i.test(t);
-  const percent = t.match(/(\\d+(?:[.,]\\d+)?)\\s*(?:%|percent|pourcent|por ciento|prozent)/i);
+  const t = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const mentionsDiscount = /\b(discount|cheaper|reduce.{0,25}price|lower.{0,25}price|negotiate|price.{0,15}off|rabais|reduction|remise|descuento|rebaja|rabatt|gunstiger)\b/i.test(t) || /\b\d+(?:[.,]\d+)?\s*%\s*off\b/i.test(t);
+  const percent = t.match(/(\d+(?:[.,]\d+)?)\s*(?:%|percent|pourcent|por ciento|prozent)/i);
   const requestedPercent = percent ? Number(percent[1].replace(",", ".")) : null;
   return { mentionsDiscount, requestedPercent, aboveLimit: requestedPercent !== null && requestedPercent > 3 };
 }
@@ -37,30 +37,30 @@ function matchVehicle(text: string, conversationModel: string, catalogue: any[])
 
 
 function normalized(value: string) {
-  return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 function languageOf(text: string): "en"|"fr"|"es"|"de" {
   const t=normalized(text);
   const scores=[
-    ["fr", (t.match(/\\b(bonjour|merci|voiture|vehicule|prix|reduction|livraison|investissement|paiement|combien|vous|nous|souhaite)\\b/g)||[]).length],
-    ["es", (t.match(/\\b(hola|gracias|coche|vehiculo|precio|descuento|entrega|inversion|pago|cuanto|quiero|pueden)\\b/g)||[]).length],
-    ["de", (t.match(/\\b(hallo|danke|fahrzeug|auto|preis|rabatt|lieferung|investition|zahlung|mochte|bitte)\\b/g)||[]).length],
+    ["fr", (t.match(/\b(bonjour|merci|voiture|vehicule|prix|reduction|livraison|investissement|paiement|combien|vous|nous|souhaite)\b/g)||[]).length],
+    ["es", (t.match(/\b(hola|gracias|coche|vehiculo|precio|descuento|entrega|inversion|pago|cuanto|quiero|pueden)\b/g)||[]).length],
+    ["de", (t.match(/\b(hallo|danke|fahrzeug|auto|preis|rabatt|lieferung|investition|zahlung|mochte|bitte)\b/g)||[]).length],
   ].sort((x,y)=>Number(y[1])-Number(x[1]));
   return Number(scores[0][1])>=2 ? String(scores[0][0]) as "fr"|"es"|"de" : "en";
 }
 function extractDelivery(text: string) {
   const out: Record<string,string> = {};
-  const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i);
-  const phone=text.match(/(?:\\+?\\d[\\d ()-]{7,}\\d)/);
+  const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const phone=text.match(/(?:\+?\d[\d ()-]{7,}\d)/);
   if(email)out.email=email[0].slice(0,200);
   if(phone)out.phone=phone[0].slice(0,60);
   const labels: Record<string,RegExp> = {
-    full_name: /(?:my name is|name is|nom est|me llamo|mein name ist)\\s+([^,.;\\n]{2,70})/i,
-    country: /(?:country|pays|pais|land)\\s*[:=-]\\s*([^,.;\\n]{2,70})/i,
-    city: /(?:city|ville|ciudad|stadt)\\s*[:=-]\\s*([^,.;\\n]{2,70})/i,
-    address: /(?:delivery address|address|adresse|direccion|anschrift)\\s*[:=-]\\s*([^.;\\n]{4,160})/i,
-    preferred_delivery_date: /(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\\s*[:=-]\\s*([^,.;\\n]{2,60})/i,
-    instructions: /(?:instructions|notes|instrucciones)\\s*[:=-]\\s*([^.;\\n]{3,160})/i
+    full_name: /(?:my name is|name is|nom est|me llamo|mein name ist)\s+([^,.;\n]{2,70})/i,
+    country: /(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,70})/i,
+    city: /(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,70})/i,
+    address: /(?:delivery address|address|adresse|direccion|anschrift)\s*[:=-]\s*([^.;\n]{4,160})/i,
+    preferred_delivery_date: /(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,
+    instructions: /(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i
   };
   for(const [key,pattern] of Object.entries(labels)){const m=text.match(pattern);if(m?.[1])out[key]=m[1].trim().slice(0,300);}
   return out;
@@ -81,42 +81,42 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
       lang==="de"?`Vielen Dank für Ihr Interesse am ${name}. Dieses veröffentlichte Angebot ist für den automatischen Rabatt von 3 % berechtigt. Der Listenpreis beträgt ${money(price)}, der Preis nach Rabatt ${money(after)}, ohne Steuern, Gebühren und Lieferung. Möchten Sie die nächsten Schritte besprechen?`:
       `Thank you for your interest in the ${name}. This published listing qualifies for the standard 3% automatic discount. The listed price is ${money(price)}, and the discounted vehicle price is ${money(after)}, before taxes, fees and delivery. Would you like assistance with the next steps?`;
     } else {
-      reply=lang==="fr"?"Merci pour votre demande. Tesla Markets peut appliquer automatiquement une remise maximale de 3 % sur les annonces publiées éligibles. Toute remise supplémentaire doit être examinée et approuvée par la direction. Veuillez préciser le modèle et la configuration souhaités.":
-      lang==="es"?"Gracias por su solicitud. Tesla Markets puede aplicar automáticamente hasta un 3 % de descuento en anuncios publicados que cumplan los requisitos. Cualquier descuento adicional debe ser revisado y aprobado por la dirección. Indíquenos el modelo y la configuración.":
-      lang==="de"?"Vielen Dank für Ihre Anfrage. Tesla Markets kann bei berechtigten veröffentlichten Angeboten automatisch bis zu 3 % Rabatt gewähren. Ein zusätzlicher Rabatt muss vom Management geprüft und genehmigt werden. Bitte nennen Sie das gewünschte Modell und die Konfiguration.":
-      discount.aboveLimit?"Thank you for sharing your preferred discount. Tesla Markets can automatically apply up to 3% on eligible published vehicle listings. Any additional discount requires management review and approval. Please share the exact model and configuration so we can confirm the current published price.":"Thank you for considering Tesla Markets. Eligible published vehicle configurations may qualify for an automatic discount of up to 3%. Please share your preferred model and configuration so we can confirm the current published price and eligibility.";
+      reply=lang==="fr"?"Merci pour votre demande. Tesla Markets peut appliquer automatiquement une remise maximale de 3 % sur les annonces publiées éligibles. Je vais vérifier les possibilités pour vous. Pourriez-vous préciser le modèle et la configuration souhaités ?":
+      lang==="es"?"Gracias por su solicitud. Tesla Markets puede aplicar automáticamente hasta un 3 % de descuento en anuncios publicados que cumplan los requisitos. Voy a comprobar qué opciones pueden estar disponibles. Indíquenos el modelo y la configuración que desea.":
+      lang==="de"?"Vielen Dank für Ihre Anfrage. Tesla Markets kann bei berechtigten veröffentlichten Angeboten automatisch bis zu 3 % Rabatt gewähren. Ich prüfe gerne, welche Möglichkeiten es gibt. Bitte nennen Sie mir das gewünschte Modell und die Konfiguration.":
+      discount.aboveLimit?"Thank you for sharing your preferred discount. Tesla Markets can automatically apply up to 3% on eligible published vehicle listings. I’ll check what flexibility may be available for you. Please share the exact model and configuration so I can look into it.":"Thank you for considering Tesla Markets. Eligible published vehicle configurations may qualify for an automatic discount of up to 3%. Please share your preferred model and configuration so we can confirm the current published price and eligibility.";
     }
-  } else if(has(/\\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\\b/)){
+  } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
     reply=lang==="fr"?"Merci de votre intérêt pour les opportunités d'investissement. Notre équipe peut fournir des informations vérifiées sur les options disponibles et leurs risques. La valeur des investissements peut augmenter ou diminuer et les rendements ne sont pas garantis. Quelle opportunité souhaitez-vous découvrir ?":
     lang==="es"?"Gracias por su interés en las oportunidades de inversión. Nuestro equipo puede facilitar información verificada sobre las opciones disponibles y sus riesgos. Las inversiones pueden subir o bajar y los rendimientos no están garantizados. ¿Sobre qué oportunidad desea información?":
     lang==="de"?"Vielen Dank für Ihr Interesse an Anlagemöglichkeiten. Unser Team kann verifizierte Informationen zu verfügbaren Optionen und Risiken bereitstellen. Anlagen können steigen oder fallen; Renditen sind nicht garantiert. Zu welcher Möglichkeit wünschen Sie Informationen?":
-    "Thank you for your interest in investment opportunities. Our team can provide verified information about available options and their risks. Investment values can rise or fall, and returns are not guaranteed. Which opportunity would you like to learn about?";
-  } else if(has(/\\b(payment|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\\b/)){
+    "Of course. I’d be happy to help you understand the investment information available. Please give me a moment to check the relevant details. Investment values can rise or fall, and returns are never guaranteed.";
+  } else if(has(/\b(payment|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
     intent="payment"; requiresManagement=true;
     reply=lang==="fr"?"Merci. Notre équipe peut vous aider à vérifier le paiement. Veuillez transmettre uniquement la référence de transaction ou le reçu via le chat sécurisé. Ne communiquez jamais vos numéros de carte, mots de passe ou codes de sécurité. Le paiement sera confirmé après vérification.":
     lang==="es"?"Gracias. Nuestro equipo puede ayudarle a verificar el pago. Comparta únicamente la referencia de transacción o el recibo mediante el chat seguro. Nunca envíe números de tarjeta, contraseñas ni códigos de seguridad. El pago se confirma después de verificarlo.":
     lang==="de"?"Vielen Dank. Unser Team hilft Ihnen gerne bei der Zahlungsprüfung. Senden Sie bitte nur die Transaktionsreferenz oder den Beleg über den sicheren Chat. Teilen Sie niemals Kartennummern, Passwörter oder Sicherheitscodes. Die Zahlung wird erst nach Prüfung bestätigt.":
-    "Thank you. Our management team can help verify the payment. Please share only the transaction reference or receipt through the secure chat. Never send card numbers, passwords or security codes. Payment is confirmed only after verification.";
-  } else if(has(/\\b(human|person|agent|manager|representative|real person|speak to someone|conseiller|personne|persona|mitarbeiter)\\b/)){
+    "Thank you. I can help you with that. Please share the transaction reference or receipt here so I can check the status. For your security, never send card numbers, passwords or security codes.";
+  } else if(has(/\b(human|person|agent|manager|representative|real person|speak to someone|conseiller|personne|persona|mitarbeiter)\b/)){
     intent="human_handover"; requiresManagement=true;
     reply=lang==="fr"?"Bien entendu. Votre souhait d'échanger avec un membre de notre équipe a été transmis à la direction afin qu'un représentant puisse poursuivre la conversation ici.":
     lang==="es"?"Por supuesto. Hemos señalado su solicitud para que un representante de la dirección continúe la conversación aquí.":
     lang==="de"?"Selbstverständlich. Ihr Wunsch nach einem persönlichen Gespräch wurde an unser Management weitergeleitet.":
-    "Certainly. Your request to speak with a member of our team has been flagged for management follow-up. A representative can continue the conversation here.";
-  } else if(has(/\\b(complaint|complain|problem|issue|disappointed|not received|broken|plainte|probleme|reclamacion|beschwerde)\\b/)){
+    "Certainly. Certainly. Please give me a moment and I’ll arrange for the right person to continue with you here.";
+  } else if(has(/\b(complaint|complain|problem|issue|disappointed|not received|broken|plainte|probleme|reclamacion|beschwerde)\b/)){
     intent="complaint"; requiresManagement=true;
     reply=lang==="fr"?"Merci de nous avoir signalé ce problème. Nous souhaitons l'examiner et vous aider. Votre message a été transmis à la direction. Vous pouvez partager la référence de commande, sans données de paiement sensibles.":
     lang==="es"?"Gracias por informarnos. Queremos revisar el asunto y ayudarle. Su mensaje se ha señalado para la atención de la dirección. Puede compartir la referencia del pedido, sin datos de pago confidenciales.":
     lang==="de"?"Vielen Dank für Ihren Hinweis. Wir möchten den Vorgang prüfen und Ihnen weiterhelfen. Ihre Nachricht wurde an das Management weitergeleitet. Bitte senden Sie keine sensiblen Zahlungsdaten.":
-    "Thank you for bringing this to our attention. We appreciate the opportunity to review it and help. Your message has been flagged for management attention.";
-  } else if(has(/\\b(hello|hi|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo)\\b/)&&t.split(/\\s+/).length<9){
+    "Thank you for bringing this to our attention. We appreciate the opportunity to review it and help. I’m sorry this has happened. Please give me a moment to look into this and help you with the next step.";
+  } else if(has(/\b(hello|hi|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo)\b/)&&t.split(/\s+/).length<9){
     intent="greeting";
     reply=lang==="fr"?"Bienvenue chez Tesla Markets. Merci de nous avoir contactés. Notre équipe est à votre disposition. Que souhaitez-vous savoir aujourd'hui ?":
     lang==="es"?"Le damos la bienvenida a Tesla Markets. Gracias por contactarnos. Nuestro equipo está encantado de ayudarle. ¿Qué desea saber hoy?":
     lang==="de"?"Willkommen bei Tesla Markets. Vielen Dank für Ihre Nachricht. Unser Team unterstützt Sie gerne. Was möchten Sie heute wissen?":
     "Welcome to Tesla Markets. Thank you for reaching out. Our customer-relations team is pleased to assist you. What would you like to know today?";
-  } else if(has(/\\b(delivery|deliver|shipping|ship|livraison|expedition|entrega|envio|lieferung|versand)\\b/)){
+  } else if(has(/\b(delivery|deliver|shipping|ship|livraison|expedition|entrega|envio|lieferung|versand)\b/)){
     intent="delivery"; requiresManagement=true;
     reply=lang==="fr"?"Nous serons ravis de vous aider concernant la livraison. Les frais, délais et destinations doivent être confirmés selon le véhicule et votre adresse. Quel pays et quelle ville souhaitez-vous pour la livraison ?":
     lang==="es"?"Estaremos encantados de ayudarle con la entrega. Los costes, plazos y destinos deben confirmarse según el vehículo y su dirección. ¿En qué país y ciudad desea recibirlo?":
@@ -125,8 +125,8 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   } else if(vehicle && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const facts=[validPrice?money(price):"",cleanString(vehicle.description,350),vehicle.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
-    reply=facts?`Thank you for your interest in ${name}. Here is the information currently published: ${facts}. Our team will confirm availability and delivery details. Would you like help selecting a configuration?`:`Thank you for your interest in ${name}. Our team will confirm the current specifications, price and availability for you. Which configuration are you considering?`;
-  } else if(has(/\\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\\b/)){
+    reply=facts?`Thank you for your interest in ${name}. Here is the information currently published: ${facts}. Our team will confirm availability and delivery details. Would you like help selecting a configuration?`:`Thank you for your interest in ${name}. I’d be happy to help with the Model 3. Which version are you interested in? I’ll check the current details for you.`;
+  } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="purchase_ready";
     reply=lang==="fr"?"Nous serons ravis de vous accompagner. Quel modèle et quelle configuration souhaitez-vous ? Nous recueillerons ensuite vos coordonnées et les informations de livraison nécessaires.":
     lang==="es"?"Estaremos encantados de ayudarle. ¿Qué modelo y configuración desea? Después recogeremos sus datos de contacto y la información de entrega necesaria.":
