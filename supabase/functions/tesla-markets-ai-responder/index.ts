@@ -441,7 +441,7 @@ Deno.serve(async (req: Request) => {
     const priorInvestmentStage = cleanString(aiMemory.conversation_stage, 80);
     const investmentStages = ["investment_awaiting_amount","investment_collecting_details","investment_confirming_details"];
     const investmentFlow = intent === "investment" || investmentStages.includes(priorInvestmentStage);
-    const investmentAmountMatch = customerMessage.body.match(/(?:\\$|usd\\s*)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)|\\b([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s*(?:usd|dollars?)\\b/i);
+    const investmentAmountMatch = customerMessage.body.match(/(?:\\$|usd\\s*)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)|\\b([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s*(?:usd|dollars?)\\b/i) || (priorInvestmentStage === "investment_awaiting_amount" && /^\\s*[0-9][0-9,]*(?:\\.[0-9]{1,2})?\\s*$/.test(customerMessage.body) ? [customerMessage.body.trim(), customerMessage.body.trim().replace(/,/g,""), undefined] as any : null);
     const startingNewInvestment = intent === "investment" && priorInvestmentStage === "investment_submitted";
     const investmentAmount = investmentAmountMatch ? Number((investmentAmountMatch[1] || investmentAmountMatch[2]).replace(/,/g,"")) : startingNewInvestment ? 0 : Number(aiMemory.investment_amount_usd || 0);
     const investmentName = cleanString(mergedDetails.full_name,100);
@@ -594,7 +594,7 @@ Deno.serve(async (req: Request) => {
         address: !!cleanString(mergedDetails.address,240),
         selected_variant: !!cleanString(mergedDetails.selected_variant,100)
       },
-      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : intent === "investment_confirming_details" ? "investment_confirming_details" : intent === "investment_awaiting_confirmation" ? "investment_awaiting_confirmation" : investmentDetailsComplete ? "investment_awaiting_amount" : "investment_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent === "purchase_ready" ? "collecting_delivery_details" : intent
+      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : intent === "investment_awaiting_amount" ? "investment_awaiting_amount" : "investment_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent === "purchase_ready" ? "collecting_delivery_details" : intent
     };
     const { error: memoryWriteError } = await admin.from("ai_conversation_memory").upsert({
       conversation_id: conversationId,
