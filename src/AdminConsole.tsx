@@ -7,7 +7,8 @@ const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
 const ADMIN_AUTH_REDIRECT = 'https://tesla-markets.vercel.app/#admin';
 type Thread = { id: string; visitorName?: string; visitorEmail?: string; enquiryType?:string; enquirySource?:string; vehicleModel?:string; phone?:string; createdAt: number; updatedAt: number; lastMessage?: string; status?: string };
 type Visit = { id: string; page: string; createdAt: number };
-type OperationalOrder = {id:string;reference:string;item:string;status:string;createdAt:number};
+type OperationalOrder = {id:string;reference:string;item:string;status:string;amount:number;currency:string;customerId:string;createdAt:number};
+type OperationalPayment = {id:string;reference:string;orderId:string;amount:number;currency:string;method:string;providerReference:string|null;status:string;createdAt:number};
 type Overview = { conversations: number; messages: number; generatedImages: number; visits: number; clicks: number; onlineNow: number; updatedAt: number };
 type AdminTask = {id:string;title:string;description:string;status:string;priority:string;due_at:string|null;created_at:string};
 type AdminNotice = {id:string;title:string;body:string;type:string;is_read:boolean;created_at:string};
@@ -42,6 +43,12 @@ export function AdminConsole() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [orders,setOrders]=useState<OperationalOrder[]>([]);
+  const [payments,setPayments]=useState<OperationalPayment[]>([]);
+  const [paymentOrderId,setPaymentOrderId]=useState('');
+  const [paymentAmount,setPaymentAmount]=useState('');
+  const [paymentMethod,setPaymentMethod]=useState('bank_transfer');
+  const [paymentProviderReference,setPaymentProviderReference]=useState('');
+  const [savingPayment,setSavingPayment]=useState(false);
   const [tasks,setTasks]=useState<AdminTask[]>([]);
   const [notices,setNotices]=useState<AdminNotice[]>([]);
   const [auditEntries,setAuditEntries]=useState<AuditEntry[]>([]);
@@ -151,7 +158,7 @@ export function AdminConsole() {
   const load = async () => {
     setRefreshing(true);
     try {
-      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, orderRows, taskRows, noticeRows, auditRows] = await Promise.all([
+      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, orderRows, paymentRows, taskRows, noticeRows, auditRows] = await Promise.all([
         supabase.from('site_visits').select('id', { count:'exact', head:true }),
         supabase.from('site_clicks').select('id', { count:'exact', head:true }),
         supabase.from('support_conversations').select('id', { count:'exact', head:true }),
@@ -160,12 +167,13 @@ export function AdminConsole() {
         supabase.from('site_visits').select('id,page,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('support_conversations').select('id,customer_id,subject,status,updated_at,visitor_email,enquiry_type,enquiry_source,vehicle_model,contact_phone').order('updated_at',{ascending:false}).limit(100),
         supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
-        supabase.from('business_orders').select('id,order_reference,item_description,status,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('business_orders').select('id,order_reference,item_description,status,agreed_amount,currency,customer_id,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,method,provider_reference,status,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_tasks').select('id,title,description,status,priority,due_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('admin_audit_logs').select('id,action,entity_type,entity_id,details,created_at').order('created_at',{ascending:false}).limit(100),
       ]);
-      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,orderRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
+      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,orderRows,paymentRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
       const ids=rows.map(row=>row.customer_id);
       const {data:profiles,error:profilesError}=ids.length?await supabase.from('customer_profiles').select('id,display_name,email,phone').in('id',ids):{data:[],error:null};
@@ -179,7 +187,8 @@ export function AdminConsole() {
       setOverview({visits:visitCount.count||0,clicks:clickCount.count||0,conversations:conversationCount.count||0,messages:messageCount.count||0,generatedImages:0,onlineNow:presenceCount.count||0,updatedAt:Date.now()});
       setThreads(mapped);
       setVisits((visitorLog.data||[]).map(row=>({id:row.id,page:row.page,createdAt:new Date(row.created_at).getTime()})));
-      setOrders((orderRows.data||[]).map(row=>({id:row.id,reference:row.order_reference||row.id.slice(0,8),item:row.item_description||'Customer request',status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));
+      setOrders((orderRows.data||[]).map(row=>({id:row.id,reference:row.order_reference||row.id.slice(0,8),item:row.item_description||'Customer request',status:row.status||'draft',amount:Number(row.agreed_amount||0),currency:row.currency||'USD',customerId:row.customer_id,createdAt:new Date(row.created_at).getTime()})));
+      setPayments((paymentRows.data||[]).map(row=>({id:row.id,reference:row.payment_reference,orderId:row.order_id,amount:Number(row.amount||0),currency:row.currency||'USD',method:row.method||'unknown',providerReference:row.provider_reference||null,status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));
       setTasks((taskRows.data||[]) as AdminTask[]);setNotices((noticeRows.data||[]) as AdminNotice[]);setAuditEntries((auditRows.data||[]) as AuditEntry[]);
       setError('');
     } catch (e) {
@@ -269,6 +278,65 @@ export function AdminConsole() {
   };
   const updateTaskStatus = async (taskId:string,status:string) => { try {const {error:updateError}=await supabase.from('admin_tasks').update({status,updated_at:new Date().toISOString()}).eq('id',taskId);if(updateError)throw updateError;setTasks(current=>current.map(task=>task.id===taskId?{...task,status}:task));}catch(e){setError(e instanceof Error?e.message:'Could not update task.');} };
   const markNoticeRead = async (noticeId:string) => {try{const {error:updateError}=await supabase.from('admin_notifications').update({is_read:true}).eq('id',noticeId);if(updateError)throw updateError;setNotices(current=>current.map(item=>item.id===noticeId?{...item,is_read:true}:item));}catch(e){setError(e instanceof Error?e.message:'Could not update notification.');}};
+  const updateOrderStatus = async (orderId:string,status:string) => {
+    const allowed=['draft','awaiting_payment','partially_paid','paid','processing','completed','cancelled','refunded'];
+    if(!allowed.includes(status))return;
+    try {
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const {error:updateError}=await supabase.from('business_orders').update({status,updated_at:new Date().toISOString()}).eq('id',orderId);
+      if(updateError)throw updateError;
+      setOrders(currentOrders=>currentOrders.map(order=>order.id===orderId?{...order,status}:order));
+      setError('');
+    } catch(e){setError(e instanceof Error?e.message:'Could not update order status.');}
+  };
+  const recordPayment = async () => {
+    if(!paymentOrderId||!paymentAmount.trim()||!paymentProviderReference.trim())return;
+    const amount=Number(paymentAmount);
+    if(!Number.isFinite(amount)||amount<=0){setError('Enter a valid payment amount.');return;}
+    setSavingPayment(true);
+    try {
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const order=orders.find(item=>item.id===paymentOrderId);
+      if(!order)throw new Error('Select a valid order.');
+      const reference='TM-PAY-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+crypto.randomUUID().slice(0,6).toUpperCase();
+      const {data,error:insertError}=await supabase.from('business_payments').insert({
+        payment_reference:reference,order_id:order.id,customer_id:order.customerId,amount,currency:order.currency,
+        method:paymentMethod,provider_reference:paymentProviderReference.trim(),status:'pending',recorded_by:current.id,
+        notes:'Recorded by management. Verification required before the order can be marked paid.'
+      }).select('id,payment_reference,order_id,amount,currency,method,provider_reference,status,created_at').single();
+      if(insertError)throw insertError;
+      setPayments(currentPayments=>[{id:data.id,reference:data.payment_reference,orderId:data.order_id,amount:Number(data.amount),currency:data.currency,method:data.method,providerReference:data.provider_reference,status:data.status,createdAt:new Date(data.created_at).getTime()},...currentPayments]);
+      setPaymentAmount('');setPaymentProviderReference('');setPaymentOrderId('');
+      setError('');
+    } catch(e){setError(e instanceof Error?e.message:'Could not record payment.');}
+    finally{setSavingPayment(false);}
+  };
+  const updatePaymentStatus = async (paymentId:string,status:string) => {
+    if(!['pending','verified','rejected','refunded'].includes(status))return;
+    try {
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const payment=payments.find(item=>item.id===paymentId);
+      if(!payment)throw new Error('Payment record not found.');
+      const update={status,updated_at:new Date().toISOString(),...(status==='verified'?{verified_by:current.id,verified_at:new Date().toISOString()}:{})};
+      const {error:updateError}=await supabase.from('business_payments').update(update).eq('id',paymentId);
+      if(updateError)throw updateError;
+      setPayments(currentPayments=>currentPayments.map(item=>item.id===paymentId?{...item,status}:item));
+      if(status==='verified'){
+        const order=orders.find(item=>item.id===payment.orderId);
+        if(order){
+          const verifiedTotal=payments.filter(item=>item.orderId===order.id&&(item.status==='verified'||item.id===paymentId)).reduce((sum,item)=>sum+item.amount,0);
+          const nextStatus=verifiedTotal>=order.amount?'paid':'partially_paid';
+          const {error:orderError}=await supabase.from('business_orders').update({status:nextStatus,updated_at:new Date().toISOString()}).eq('id',order.id);
+          if(orderError)throw orderError;
+          setOrders(currentOrders=>currentOrders.map(item=>item.id===order.id?{...item,status:nextStatus}:item));
+        }
+      }
+      setError('');
+    } catch(e){setError(e instanceof Error?e.message:'Could not update payment verification.');}
+  };
   const updateStatus = async (threadId: string, status: string) => {
     try {
       const {error}=await supabase.from('support_conversations').update({status,updated_at:new Date().toISOString()}).eq('id',threadId);
@@ -435,7 +503,7 @@ export function AdminConsole() {
           {section === 'media' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">MEDIA LIBRARY</div><h2>Website media</h2><p>Manage investment slides and the management profile image. Vehicle gallery assets remain attached to the current site resources.</p></div></div><div className="admin-media-links"><button onClick={()=>setSection('investment')}>Manage investment images</button><button onClick={()=>setSection('catalogue')}>View vehicle galleries</button><button onClick={()=>setSection('settings')}>Management profile image</button></div></section>}
           {section === 'messages' && <section className="admin-console-panel admin-messages-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER COMMUNICATIONS</div><h2>Customer inbox</h2><p>Customer conversation list and replies. The conversation header and reply bar remain in place while messages scroll.</p></div></div><AdminInbox/></section>}
           {section === 'operations' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">ENQUIRY PIPELINE</div><h2>{threads.length} enquiries</h2><p>Track the current status of each customer enquiry.</p></div></div>{threads.length?<div className="admin-pipeline">{threads.map(thread=><article key={thread.id}><div><b>{thread.visitorName||'Website visitor'}</b><small>{thread.lastMessage||'No message yet'} · {new Date(thread.updatedAt).toLocaleString()}</small></div><label>Status<select value={thread.status||'new'} onChange={event=>void updateStatus(thread.id,event.target.value)}>{statusOptions.map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></label></article>)}</div>:<p className="admin-empty-note">New enquiries will appear here.</p>}</section>}
-          {section === 'orders' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER ORDERS & REQUESTS</div><h2>{orders.length} recorded requests</h2><p>Operational tracking only. This view intentionally excludes payment processing, balances and financial management.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>{orders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Request / item</th><th>Status</th><th>Received</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td><span className="admin-finance-status">{order.status}</span></td><td>{new Date(order.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No customer orders or requests have been recorded yet.</p>}</section>}
+          {section === 'orders' && <><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE ORDERS & PRO FORMA</div><h2>{orders.length} recorded orders</h2><p>Review each draft, approve the final quotation, then move it to awaiting payment. Only mark an order paid after verifying the funds.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>{orders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Vehicle</th><th>Subtotal</th><th>Order status</th><th>Received</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td>{new Intl.NumberFormat('en-US',{style:'currency',currency:order.currency||'USD'}).format(order.amount)}</td><td><select value={order.status} onChange={event=>void updateOrderStatus(order.id,event.target.value)}>{['draft','awaiting_payment','partially_paid','paid','processing','completed','cancelled','refunded'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td>{new Date(order.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No vehicle orders have been recorded yet.</p>}</section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECONCILIATION</div><h2>Record an incoming payment</h2><p>Use this for payments received through an independently approved method. New records stay pending until management verifies the transaction.</p></div></div><div className="admin-task-create"><label>Order<select value={paymentOrderId} onChange={event=>setPaymentOrderId(event.target.value)}><option value="">Select an order</option>{orders.filter(order=>!['cancelled','refunded'].includes(order.status)).map(order=><option key={order.id} value={order.id}>{order.reference} · {order.item}</option>)}</select></label><div className="admin-task-fields"><label>Amount (USD)<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={event=>setPaymentAmount(event.target.value)} placeholder="e.g. 39990"/></label><label>Payment method<select value={paymentMethod} onChange={event=>setPaymentMethod(event.target.value)}><option value="bank_transfer">Bank transfer</option><option value="card">Card / online gateway</option><option value="wire_transfer">International wire</option><option value="other">Other approved method</option></select></label><label>Transaction / provider reference<input value={paymentProviderReference} onChange={event=>setPaymentProviderReference(event.target.value)} placeholder="Bank or gateway reference"/></label><button className="btn btn-dark" disabled={savingPayment||!paymentOrderId||!paymentAmount.trim()||!paymentProviderReference.trim()} onClick={()=>void recordPayment()}>{savingPayment?'Saving…':'Record pending payment'}</button></div></div></section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECORDS</div><h2>{payments.length} recorded payments</h2><p>Verify only after matching the transaction against the bank or payment provider.</p></div></div>{payments.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Payment reference</th><th>Order</th><th>Amount</th><th>Method / provider reference</th><th>Verification</th></tr></thead><tbody>{payments.map(payment=><tr key={payment.id}><td>{payment.reference}</td><td>{orders.find(order=>order.id===payment.orderId)?.reference||'Order'}</td><td>{new Intl.NumberFormat('en-US',{style:'currency',currency:payment.currency||'USD'}).format(payment.amount)}</td><td>{payment.method.replaceAll('_',' ')}<small>{payment.providerReference||'No provider reference'}</small></td><td><select value={payment.status} onChange={event=>void updatePaymentStatus(payment.id,event.target.value)}>{['pending','verified','rejected','refunded'].map(status=><option key={status} value={status}>{status}</option>)}</select></td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No payments have been recorded. Payments must be recorded and independently verified.</p>}</section></>}
           {section === 'tasks' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">WORK MANAGEMENT</div><h2>Tasks & follow-ups</h2><p>Create real, saved follow-up tasks for the management team.</p></div></div><div className="admin-task-create"><label>Task title<input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} placeholder="e.g. Follow up with customer"/></label><label>Description<textarea rows={2} value={taskDescription} onChange={e=>setTaskDescription(e.target.value)} placeholder="What needs to be done?"/></label><div className="admin-task-fields"><label>Priority<select value={taskPriority} onChange={e=>setTaskPriority(e.target.value)}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Due date<input type="datetime-local" value={taskDue} onChange={e=>setTaskDue(e.target.value)}/></label><button className="btn btn-dark" disabled={!taskTitle.trim()} onClick={()=>void createTask()}><Plus size={15}/> Create task</button></div></div><div className="admin-task-list">{tasks.map(task=><article key={task.id}><div><b>{task.title}</b><p>{task.description||'No description provided.'}</p><small>{task.priority.toUpperCase()} priority · {task.due_at?'Due '+new Date(task.due_at).toLocaleString():'No due date'} · Created {new Date(task.created_at).toLocaleDateString()}</small></div><label>Status<select value={task.status} onChange={e=>void updateTaskStatus(task.id,e.target.value)}><option value="open">Open</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label></article>)}{tasks.length===0&&<p className="admin-empty-note">No tasks yet. Create your first follow-up above.</p>}</div></section>}
           {section === 'notifications' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">SYSTEM ALERTS</div><h2>Notifications</h2><p>Saved notifications from the admin notification feed.</p></div></div>{notices.map(item=><article className="admin-notice-row" key={item.id}><span className={item.is_read?'':'unread'}><Bell size={16}/></span><div><b>{item.title}</b><p>{item.body}</p><small>{item.type} · {new Date(item.created_at).toLocaleString()}</small></div>{!item.is_read&&<button className="btn btn-outline" onClick={()=>void markNoticeRead(item.id)}>Mark read</button>}</article>)}{notices.length===0&&<p className="admin-empty-note">No saved notifications yet. New system notifications will appear here.</p>}</section>}
           {section === 'activity' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">ADMIN AUDIT TRAIL</div><h2>Activity logs</h2><p>Recent recorded administrative actions. This view does not invent activity that has not been logged.</p></div></div>{auditEntries.map(entry=><article className="admin-audit-row" key={entry.id}><span><FileClock size={16}/></span><div><b>{entry.action.replaceAll('_',' ')}</b><p>{entry.entity_type}{entry.entity_id?' · '+entry.entity_id:''}</p><small>{new Date(entry.created_at).toLocaleString()} · {JSON.stringify(entry.details||{})}</small></div></article>)}{auditEntries.length===0&&<p className="admin-empty-note">No audit events have been recorded yet.</p>}</section>}
