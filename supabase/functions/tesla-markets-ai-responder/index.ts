@@ -438,41 +438,82 @@ Deno.serve(async (req: Request) => {
     if (!hasAddress) missing.push("full delivery address");
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
-    const investmentFlow = intent === "investment" || aiMemory.conversation_stage === "investment_collecting_details" || aiMemory.conversation_stage === "investment_awaiting_amount";
-    const investmentAmountMatch = customerMessage.body.match(/(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.\d{1,2})?)|\b([0-9][0-9,]*(?:\.\d{1,2})?)\s*(?:usd|dollars?)\b/i);
+    const priorInvestmentStage = cleanString(aiMemory.conversation_stage, 80);
+    const investmentStages = ["investment_collecting_details","investment_confirming_details","investment_awaiting_amount","investment_awaiting_confirmation","investment_submitted"];
+    const investmentFlow = intent === "investment" || investmentStages.includes(priorInvestmentStage);
+    const investmentAmountMatch = customerMessage.body.match(/(?:\\$|usd\\s*)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)|\\b([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s*(?:usd|dollars?)\\b/i);
     const investmentAmount = investmentAmountMatch ? Number((investmentAmountMatch[1] || investmentAmountMatch[2]).replace(/,/g,"")) : Number(aiMemory.investment_amount_usd || 0);
     const investmentName = cleanString(mergedDetails.full_name,100);
     const investmentEmail = cleanString(mergedDetails.email || conversation.visitor_email || user.email,200);
     const investmentPhone = cleanString(mergedDetails.phone || conversation.contact_phone,60);
     const investmentCountry = cleanString(mergedDetails.country,80);
     const investmentDetailsComplete = !!(investmentName && investmentEmail && investmentPhone && investmentCountry);
+    const saysConfirm = /^(yes|yeah|yep|sure|okay|ok|please do|go ahead|confirm|confirmed|proceed|submit|send it|that's correct|that is correct)[.!\\s]*$/i.test(customerMessage.body.trim());
+    const saysCorrectDetails = /\\b(correct|update|change|new email|new phone|wrong|not correct)\\b/i.test(customerMessage.body);
     let investmentEnquiryCreated = false;
 
     if (investmentFlow) {
       requiresManagement = true;
-      if (!investmentDetailsComplete) {
+      if (priorInvestmentStage === "investment_submitted") {
+        intent = "investment_submitted";
+        reply = "Your investment enquiry has already been submitted to Tesla Markets Management. Please wait for management to contact you with the next steps and approved payment instructions.";
+      } else if (!investmentDetailsComplete) {
         intent = "investment_collecting_details";
         const missingInvestment = [!investmentName ? "full name" : "", !investmentEmail ? "email address" : "", !investmentPhone ? "phone number" : "", !investmentCountry ? "country" : ""].filter(Boolean);
-        reply = "Thank you for your interest in Tesla. I have checked the details you sent. I still need your " + missingInvestment.join(", ") + ". You can send the missing details together in one message or separately.";
-      } else if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
-        intent = "investment_awaiting_amount";
-        reply = "Thank you. I have recorded your contact details. Please enter the amount you would like to invest in USD (for example, $5,000).";
+        reply = "To begin your Tesla investment enquiry, please provide your " + missingInvestment.join(", ") + ". You can send all the details together in one message or separately.";
+      } else if (priorInvestmentStage !== "investment_confirming_details" && !investmentStages.includes(priorInvestmentStage)) {
+        intent = "investment_confirming_details";
+        reply = "I found the following contact details from your earlier messages:\\nName: " + investmentName + "\\nEmail: " + investmentEmail + "\\nPhone: " + investmentPhone + "\\nCountry: " + investmentCountry + "\\n\\nPlease confirm that these details are correct, or send any corrections. Once confirmed, you can choose an investment amount or ask me to explain how Tesla shares work.";
+      } else if (priorInvestmentStage === "investment_collecting_details" || priorInvestmentStage === "investment_confirming_details") {
+        if (saysCorrectDetails) {
+          intent = "investment_confirming_details";
+          reply = "Please send the corrected details, including your full name, email address, phone number and country. I will update the information before proceeding.";
+        } else if (saysConfirm) {
+          intent = "investment_awaiting_amount";
+          reply = "Thank you. Your contact information is confirmed for this enquiry. Tell me the amount in USD that you would like to calculate, or ask me to explain how Tesla shares work.";
+        } else if (Object.keys(extractedDelivery).length) {
+          intent = "investment_awaiting_amount";
+          reply = "Thank you. I have checked and recorded the contact information you provided. Your details are complete. Tell me the amount in USD you would like to calculate, or ask me to explain how Tesla shares work.";
+        } else {
+          intent = "investment_confirming_details";
+          reply = "Please confirm that the name, email, phone number and country shown in my previous message are correct, or send the corrections.";
+        }
+      } else if (priorInvestmentStage === "investment_awaiting_confirmation") {
+        if (saysConfirm) {
+          const { error: profileError } = await admin.from("customer_profiles").upsert({
+            id: user.id, display_name: investmentName, email: investmentEmail, phone: investmentPhone, is_admin: false, updated_at: new Date().toISOString()
+          }, { onConflict: "id" });
+          if (profileError) throw profileError;
+          const { error: investmentInsertError } = await admin.from("investment_enquiries").insert({
+            customer_id: user.id,
+            opportunity: "Tesla Markets investment enquiry — $" + Number(aiMemory.investment_amount_usd || investmentAmount).toLocaleString("en-US") + " USD",
+            category: "investment",
+            customer_question: "Customer confirmed an investment enquiry. Requested amount: $" + Number(aiMemory.investment_amount_usd || investmentAmount).toFixed(2) + " USD. Name: " + investmentName + ". Email: " + investmentEmail + ". Phone: " + investmentPhone + ". Country: " + investmentCountry + ". Conversation: " + conversationId,
+            status: "new"
+          });
+          if (investmentInsertError) throw investmentInsertError;
+          investmentEnquiryCreated = true;
+          intent = "investment_submitted";
+          reply = "Thank you. Your investment enquiry has been sent to Tesla Markets Management. Please wait for management to contact you with the approved payment instructions and next steps. No payment has been requested or confirmed yet.";
+        } else {
+          intent = "investment_awaiting_confirmation";
+          reply = "Would you like me to submit your investment enquiry for $" + Number(aiMemory.investment_amount_usd || investmentAmount).toLocaleString("en-US") + " USD to management? Reply yes to confirm.";
+        }
+      } else if (investmentAmount > 0 && Number.isFinite(investmentAmount)) {
+        intent = "investment_awaiting_confirmation";
+        const quoteResponse = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/TSLA?range=1d&interval=1m", { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0 TeslaMarketsEnquiry/1.0" }, signal: AbortSignal.timeout(6000) });
+        if (!quoteResponse.ok) throw new Error("Market quote unavailable");
+        const quotePayload = await quoteResponse.json();
+        const quote = quotePayload?.chart?.result?.[0];
+        const sharePrice = Number(quote?.meta?.regularMarketPrice);
+        const quoteTime = Number(quote?.meta?.regularMarketTime);
+        if (!Number.isFinite(sharePrice) || sharePrice <= 0 || !Number.isFinite(quoteTime)) throw new Error("Invalid market quote");
+        const shareEstimate = investmentAmount / sharePrice;
+        const quoteDate = new Date(quoteTime * 1000).toISOString().replace("T"," ").replace(".000Z"," UTC");
+        reply = "At the latest available TSLA quote of $" + sharePrice.toFixed(2) + " USD per share (as of " + quoteDate + "; source: Yahoo Finance), $" + investmentAmount.toLocaleString("en-US") + " USD represents approximately " + shareEstimate.toFixed(4) + " shares before fees. Fractional-share availability depends on the broker.\\n\\nWould you like me to submit an investment enquiry for $" + investmentAmount.toLocaleString("en-US") + " USD to Tesla Markets Management? Reply yes to confirm. This chat does not execute share purchases.";
       } else {
-        const { error: profileError } = await admin.from("customer_profiles").upsert({
-          id: user.id, display_name: investmentName, email: investmentEmail, phone: investmentPhone, is_admin: false, updated_at: new Date().toISOString()
-        }, { onConflict: "id" });
-        if (profileError) throw profileError;
-        const { error: investmentInsertError } = await admin.from("investment_enquiries").insert({
-          customer_id: user.id,
-          opportunity: "Tesla Markets investment enquiry — $" + investmentAmount.toLocaleString("en-US") + " USD",
-          category: "investment",
-          customer_question: "Requested investment amount: $" + investmentAmount.toFixed(2) + " USD. Name: " + investmentName + ". Email: " + investmentEmail + ". Phone: " + investmentPhone + ". Country: " + investmentCountry + ". Conversation: " + conversationId,
-          status: "new"
-        });
-        if (investmentInsertError) throw investmentInsertError;
-        investmentEnquiryCreated = true;
-        intent = "investment_submitted";
-        reply = "Thank you. Your investment enquiry for $" + investmentAmount.toLocaleString("en-US") + " USD has been recorded. Please hold while Tesla Markets Management reviews your details and confirms the next steps and approved payment instructions. No payment has been confirmed or requested yet.";
+        intent = "investment_awaiting_amount";
+        reply = "Your contact information is confirmed. Tell me the amount in USD you would like to calculate, or ask me to explain how Tesla shares work.";
       }
     } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
