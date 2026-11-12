@@ -152,10 +152,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     }
   } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
-    reply=lang==="fr"?"Merci pour votre intérêt pour Tesla Markets. Notre équipe sera ravie de vous présenter les informations disponibles et de vous guider dans les prochaines étapes. Que souhaitez-vous savoir ?":
-    lang==="es"?"Gracias por su interés en Tesla Markets. Nuestro equipo estará encantado de explicarle la información disponible y guiarle en los próximos pasos. ¿Qué le gustaría saber?":
-    lang==="de"?"Vielen Dank für Ihr Interesse an Tesla Markets. Unser Team informiert Sie gerne über die verfügbaren Informationen und begleitet Sie bei den nächsten Schritten. Was möchten Sie wissen?":
-    "Thanks for your interest in Tesla Markets! Our team would be happy to walk you through the available information and guide you through the next steps. What would you like to know?";
+    reply="I can help record your Tesla Markets investment enquiry. Please share your full name, email address, phone number and country. If you already have an amount in mind, include that too.";
   } else if(has(/\b(payment|payment method|payment options|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
     intent="payment"; requiresManagement=true;
     // Payment instructions are never guessed or repeated by the automatic responder.
@@ -246,21 +243,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     reply="Thank you. I’ve added those details to your enquiry. Is there anything else you’d like us to know?";
   } else {
     intent="unverified_or_unsupported"; requiresManagement=true;
-    if(asksGeneralKnowledge){
-      intent="general_knowledge";
-      reply="I can help explain that. Could you tell me a little more about what you mean so I can give you a useful and accurate answer?";
-    } else {
-    const currentVehicle=conversation.vehicle_model || mentionedModel;
-    const priorAssistant=[...history].reverse().find((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response");
-    const previousPrompt=String(priorAssistant?.body||"").toLowerCase();
-    if(currentVehicle && previousPrompt.includes("would you like") && /\b(yes|yeah|sure|okay|ok|please)\b/i.test(text)) {
-      reply="Of course. I am following your enquiry for the "+currentVehicle+". You can ask me about its price, versions, performance, delivery or the buying process. What would you like to know first?";
-    } else if(currentVehicle) {
-      reply="I understand. I have kept your "+currentVehicle+" enquiry in context. Could you tell me a little more about what you would like to know? I will answer that directly rather than restart your enquiry.";
-    } else {
-      reply="Thanks for your message. I am here to help with vehicle enquiries, specifications, pricing, delivery and the buying process. What would you like to know?";
-    }
-    }
+    intent="unverified_or_unsupported";
+    requiresManagement=true;
+    reply="";
   }
   return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||mentionedModel||null,additionalVehicleModel:intent==="add_vehicle_to_order" ? (explicitModel ? canonicalVehicle(explicitModel) : null) : null};
 }
@@ -472,10 +457,8 @@ Deno.serve(async (req: Request) => {
     // to an identical answer, mark this message handled and leave the conversation quiet.
     const canonical = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
     if (history.some((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response" && canonical(row.body||"")===canonical(reply))) {
-      const isVehicleInfo = intent === "vehicle_enquiry" || intent === "unverified_vehicle_information";
-      reply = isVehicleInfo
-        ? "I have already shared the published information available for the " + (selectedVehicle?.name || conversation.vehicle_model || "vehicle") + " above. Which particular detail would you like me to clarify?"
-        : "I have noted your latest message and kept your enquiry open. What would you like me to help you with next?";
+      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
+      return json({ ok: true, silent: true, duplicate_reply: true, intent }, 200, headers);
     }
 
     if (local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
