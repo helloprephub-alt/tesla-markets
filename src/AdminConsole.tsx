@@ -81,6 +81,7 @@ export function AdminConsole() {
   const [notificationPermission,setNotificationPermission] = useState<NotificationPermission>(typeof Notification==='undefined'?'denied':Notification.permission);
   const [notificationStatus,setNotificationStatus] = useState('');
   const [pushSubscribed,setPushSubscribed] = useState(false);
+  const [pushBusy,setPushBusy] = useState(false);
   const [desktopView,setDesktopView] = useState(()=>localStorage.getItem('tesla-admin-desktop-view')==='true');
   const toggleDesktopView=()=>setDesktopView(current=>{const next=!current;localStorage.setItem('tesla-admin-desktop-view',String(next));return next;});
 
@@ -94,41 +95,73 @@ export function AdminConsole() {
     return () => { window.removeEventListener('beforeinstallprompt', onInstallPrompt); window.removeEventListener('appinstalled', onInstalled); };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const restorePushState = async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (!subscription || cancelled) { if (!cancelled) setPushSubscribed(false); return; }
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser || cancelled) return;
+        const { data, error } = await supabase.from('admin_push_subscriptions').select('endpoint').eq('endpoint', subscription.endpoint).maybeSingle();
+        if (error) throw error;
+        if (!cancelled) setPushSubscribed(Boolean(data));
+      } catch { if (!cancelled) setNotificationStatus('Could not check this app notification subscription. Tap Enable app notifications to retry.'); }
+    };
+    void restorePushState();
+    return () => { cancelled = true; };
+  }, []);
+
   const enablePhoneNotifications = async () => {
-    if (!('Notification' in window)) { setNotificationStatus('This browser does not support notifications. Open the admin app in Chrome.'); return; }
+    if (!('Notification' in window)) { setNotificationStatus('Notifications are not supported in this app environment.'); return; }
+    setPushBusy(true);
     try {
-      const permission = await Notification.requestPermission();
+      let permission = Notification.permission;
+      if (permission !== 'granted') permission = await Notification.requestPermission();
       setNotificationPermission(permission);
-      if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked in browser settings.' : 'Allow notifications to receive new customer-message alerts.'); return; }
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('This browser does not support background push. Install the app in Chrome and try again.');
+      if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked for this app in Android settings.' : 'Allow notifications to continue.'); return; }
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Push notifications are not supported in this app environment.');
       const registration = await navigator.serviceWorker.ready;
       const vapidPublicKey = 'BPSV7CwvZmNaYoDMrfs0EelCDW19B-VXNTwFDCoxpEabir9rQs-MvEFJ5M_tqrhdOoG0Dyp5YCP6KfJFm2JQfz0';
       const normalizedKey=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
       const applicationServerKey=Uint8Array.from(atob(normalizedKey+'='.repeat((4-normalizedKey.length%4)%4)),char=>char.charCodeAt(0));
-      if(applicationServerKey.length!==65||applicationServerKey[0]!==4)throw new Error('The notification server key is misconfigured. Refresh later or contact support.');
+      if(applicationServerKey.length!==65||applicationServerKey[0]!==4) throw new Error('The notification server key is invalid.');
       let subscription=await registration.pushManager.getSubscription();
       if(subscription){
         const existingKey=subscription.options.applicationServerKey;
         const existing=existingKey?Array.from(new Uint8Array(existingKey)):[];
-        if(existing.length!==applicationServerKey.length||existing.some((byte,index)=>byte!==applicationServerKey[index])){await subscription.unsubscribe();subscription=null;}
+        if(existing.length!==applicationServerKey.length||existing.some((byte,index)=>byte!==applicationServerKey[index])){ await subscription.unsubscribe(); subscription=null; }
       }
-      if(!subscription)subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey});
-      const json = subscription.toJSON();
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-      if (userError || !currentUser) throw new Error('Your administrator session has expired. Sign in again.');
-      const { error: saveError } = await supabase.from('admin_push_subscriptions').upsert({
-        user_id: currentUser.id,
-        endpoint: subscription.endpoint,
-        p256dh: json.keys?.p256dh,
-        auth: json.keys?.auth,
-        expiration_time: subscription.expirationTime ? new Date(subscription.expirationTime).toISOString() : null,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'endpoint' });
-      if (saveError) throw saveError;
-      await registration.showNotification('Tesla Markets Management', { body: 'This device is subscribed to customer message alerts.', icon: '/icons/admin-icon.svg', badge: '/icons/admin-icon.svg', tag: 'tesla-admin-notifications-enabled' });
+      if(!subscription) subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey});
+      const json=subscription.toJSON();
+      const {data:{user:currentUser},error:userError}=await supabase.auth.getUser();
+      if(userError||!currentUser) throw new Error('Your administrator session has expired. Sign in again.');
+      const {error:saveError}=await supabase.from('admin_push_subscriptions').upsert({user_id:currentUser.id,endpoint:subscription.endpoint,p256dh:json.keys?.p256dh,auth:json.keys?.auth,expiration_time:subscription.expirationTime?new Date(subscription.expirationTime).toISOString():null,updated_at:new Date().toISOString()},{onConflict:'endpoint'});
+      if(saveError) throw saveError;
       setPushSubscribed(true);
-      setNotificationStatus('This phone is subscribed. To re-enable later, return here and tap this button again. If Android permission was blocked, open Chrome site settings → Notifications and allow this site. A closed-app delivery test is still pending.');
-    } catch (e) { setPushSubscribed(false);setNotificationStatus(e instanceof Error ? e.message : 'Could not enable notifications.'); }
+      setNotificationStatus('Notifications are enabled for this app. You can turn them off here at any time.');
+      await registration.showNotification('Tesla Markets Management',{body:'Customer message alerts are enabled on this app.',icon:'/icons/admin-icon.svg',badge:'/icons/admin-icon.svg',tag:'tesla-admin-notifications-enabled'});
+    } catch(e) { setPushSubscribed(false); setNotificationStatus(e instanceof Error?e.message:'Could not enable notifications.'); }
+    finally { setPushBusy(false); }
+  };
+
+  const disablePhoneNotifications = async () => {
+    setPushBusy(true);
+    try {
+      const registration=await navigator.serviceWorker.ready;
+      const subscription=await registration.pushManager.getSubscription();
+      if(subscription){
+        const {error:deleteError}=await supabase.from('admin_push_subscriptions').delete().eq('endpoint',subscription.endpoint);
+        if(deleteError) throw deleteError;
+        const removed=await subscription.unsubscribe();
+        if(!removed) throw new Error('The browser did not confirm that notifications were disabled. Try again.');
+      }
+      setPushSubscribed(false);
+      setNotificationStatus('Notifications are turned off for this app on this phone.');
+    } catch(e) { setNotificationStatus(e instanceof Error?e.message:'Could not turn off notifications.'); }
+    finally { setPushBusy(false); }
   };
 
   const installAdminApp = async () => {
@@ -499,9 +532,9 @@ export function AdminConsole() {
 
   return (
     <div className={`admin-console admin-console-standalone admin-console-premium admin-theme-${adminTheme==='auto'?systemTheme:adminTheme} ${desktopView?'admin-desktop-view':''}`}>
-      <section className="admin-install-card" style={{display:'flex',flexWrap:'wrap',alignItems:'center',gap:12,justifyContent:'space-between',padding:'14px 18px',margin:'14px 18px',border:'1px solid var(--admin-border,#ddd)',borderRadius:14,background:'var(--admin-panel,#fff)'}}>
-        <div style={{minWidth:220,flex:'1 1 240px'}}><b>Install Tesla Markets Management</b><p style={{margin:'4px 0 0',fontSize:13,opacity:.75}}>Add a secure app shortcut to your phone and enable customer message alerts.</p>{notificationStatus&&<small role="status">{notificationStatus}</small>}</div>
-        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="btn btn-outline" type="button" onClick={()=>void enablePhoneNotifications()}>{pushSubscribed?'Device subscribed':notificationPermission==='granted'?'Check notification setup':'Enable notifications'}</button>{!isInstalled&&<button className="btn btn-dark" type="button" onClick={()=>void installAdminApp()}>{installPrompt?'Install admin app':'How to install'}</button>}</div>
+      <section className="admin-install-card" style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:12,justifyContent:"space-between",padding:"14px 18px",margin:"14px 18px",border:"1px solid var(--admin-border,#ddd)",borderRadius:14,background:"var(--admin-panel,#fff)"}}>
+        <div style={{minWidth:220,flex:"1 1 240px"}}><b>App notifications</b><p style={{margin:"4px 0 0",fontSize:13,opacity:.75}}>Receive customer message alerts on this phone, even when the app is closed.</p>{notificationStatus&&<small role="status">{notificationStatus}</small>}</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{pushSubscribed?<button className="btn btn-outline" type="button" disabled={pushBusy} onClick={()=>void disablePhoneNotifications()}>{pushBusy?"Please wait…":"Turn off notifications"}</button>:<button className="btn btn-dark" type="button" disabled={pushBusy} onClick={()=>void enablePhoneNotifications()}>{pushBusy?"Please wait…":"Enable app notifications"}</button>}{!isInstalled&&<button className="btn btn-outline" type="button" onClick={()=>void installAdminApp()}>Install app</button>}</div>
       </section>
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
