@@ -439,7 +439,7 @@ Deno.serve(async (req: Request) => {
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
-    const cartIntent = /\b(add to cart|add to my cart|put in (?:the )?cart|add .* to cart|add .* basket|view (?:my )?cart|show (?:my )?cart|my cart)\b/i.test(customerMessage.body);
+    const cartIntent = /(?:\b(add|put|include)\b.*\b(to (?:my )?(?:cart|basket)|\d{1,2}\s+(?:cybertruck|model|roadster|semi)|another|one|two|three)\b|\b(view|show)\b.*\b(cart|basket)\b)/i.test(customerMessage.body);
     const cartSummary = cartIntent && selectedVehicle ? (() => {
       const quantityMatch = customerMessage.body.match(/\b(\d{1,2})\b/);
       const quantity = Math.max(1, Math.min(20, quantityMatch ? Number(quantityMatch[1]) : 1));
@@ -816,9 +816,9 @@ Deno.serve(async (req: Request) => {
       const features = Array.isArray(specs.features) ? specs.features.join(" · ") : cleanString(specs.features,500);
       const images = Array.isArray(selectedVehicle.images) ? selectedVehicle.images : [];
       const metrics = [
-        specs.acceleration_0_60 ? { label: "0–60 mph", value: String(specs.acceleration_0_60) } : null,
-        specs.top_speed ? { label: "Top speed", value: String(specs.top_speed) } : null,
-        specs.range ? { label: "Estimated range", value: String(specs.range) } : null,
+        specs.acceleration_0_60 ? { label: "⚡ 0–60 mph", value: String(specs.acceleration_0_60) } : null,
+        specs.top_speed ? { label: "🏁 Top speed", value: String(specs.top_speed) } : null,
+        specs.range ? { label: "↗ Estimated range", value: String(specs.range) } : null,
         specs.power ? { label: "Power", value: String(specs.power) } : null
       ].filter(Boolean);
       messageType = "vehicle_card";
