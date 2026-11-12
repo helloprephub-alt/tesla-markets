@@ -115,7 +115,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="es"?"Gracias por informarnos. Queremos revisar el asunto y ayudarle. Su mensaje se ha señalado para la atención de la dirección. Puede compartir la referencia del pedido, sin datos de pago confidenciales.":
     lang==="de"?"Vielen Dank für Ihren Hinweis. Wir möchten den Vorgang prüfen und Ihnen weiterhelfen. Ich prüfe das gerne für Sie. Bitte senden Sie keine sensiblen Zahlungsdaten.":
     "Thank you for bringing this to our attention. We appreciate the opportunity to review it and help. I’m sorry this has happened. Please give me a moment to look into this and help you with the next step.";
-  } else if(has(/\b(hello|hi|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo)\b/)&&t.split(/\s+/).length<9){
+  } else if(has(/\b(hello|hi|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo)\b/)&&t.split(/\s+/).length<9&&!mentionedModel&&!conversation.vehicle_model){
     intent="greeting";
     reply=lang==="fr"?"Bienvenue chez Tesla Markets. Merci de nous avoir contactés. Notre équipe est à votre disposition. Que souhaitez-vous savoir aujourd'hui ?":
     lang==="es"?"Le damos la bienvenida a Tesla Markets. Gracias por contactarnos. Nuestro equipo está encantado de ayudarle. ¿Qué desea saber hoy?":
