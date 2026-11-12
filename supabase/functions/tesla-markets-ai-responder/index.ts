@@ -65,7 +65,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   const phone=text.match(/(?:\+?\d[\d ()-]{7,}\d)/);
   if(email)out.email=email[0].slice(0,200);
   if(phone)out.phone=phone[0].trim().slice(0,60);
-  const nameMatch=text.match(/\b(?:my full name is|my name is|name is|name|full name|i am|i\x27m|this is my details|my details are|these are my details|my details|nom est|me llamo|mein name ist)\s*[:,-]?\s+(.+?)(?=\s+(?:email|e-mail|phone|telephone|country|from|based in|located in|de|en|desde|aus)\s*[:=-]?|[,;\n]|$)/i);
+  const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|this is|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
   if(nameMatch?.[1])out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+)$/i);
   if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
@@ -80,7 +80,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   if(pendingSlot==="address" && !out.address && plain.length>=6 && /[0-9]/.test(plain)) out.address=plain.slice(0,240);
   if(pendingSlot==="phone" && !out.phone && /(?:\+?\d[\d ()-]{7,}\d)/.test(plain)) out.phone=plain.match(/(?:\+?\d[\d ()-]{7,}\d)/)?.[0]?.trim().slice(0,60)||"";
 
-  if(pendingSlot==="email" && !out.email && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i.test(plain)) out.email=plain.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i)?.[0]||"";
+  if(pendingSlot==="email" && !out.email && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(plain)) out.email=plain.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]||"";
 
   if(!out.country || !out.city){
     const location=text.match(/\b(?:from|based in|located in|delivery to|deliver to)\s+(.+?)(?=[.!?]|$)/i)?.[1]?.trim();
@@ -126,7 +126,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   let intent="general", requiresManagement=false, reply="";
   if(asksOfficial){
     intent="official_status";
-    reply="Yes — this is Tesla Markets. We help with Tesla vehicle enquiries and investment-related enquiries. What would you like to know?";
+    reply="This is the Tesla Markets website enquiry channel. Tesla Markets is a separate business and is not Tesla, Inc.’s official factory sales channel. We can help with vehicle and investment-related enquiries. What would you like to know?";
   } else if(asksIdentity){
     intent="assistant_identity";
     reply="I'm the Tesla Markets virtual assistant. I can help with general questions, vehicle enquiries, investment enquiries and the services offered by Tesla Markets.";
@@ -150,6 +150,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
       lang==="de"?"Vielen Dank für Ihre Anfrage. Tesla Markets kann bei berechtigten veröffentlichten Angeboten automatisch bis zu 3 % Rabatt gewähren. Ich prüfe gerne, welche Möglichkeiten es gibt. Bitte nennen Sie mir das gewünschte Modell und die Konfiguration.":
       discount.aboveLimit?"Thank you for sharing your preferred discount. Tesla Markets can automatically apply up to 3% on eligible published vehicle listings. I’ll check what flexibility may be available for you. Please share the exact model and configuration so I can look into it.":"Thank you for considering Tesla Markets. Eligible published vehicle configurations may qualify for an automatic discount of up to 3%. Please share your preferred model and configuration so we can confirm the current published price and eligibility.";
     }
+  } else if(has(/\b(explain|explain to me|how does|how do|what is|tell me about|understand)\b.{0,70}\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla|tesla)\b|\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla)\b/)){
+    intent="investment_explanation"; requiresManagement=true;
+    reply="Tesla is a publicly traded company listed on the Nasdaq under the ticker TSLA. Buying a share means buying a small ownership interest in the company; the share price changes with the market. I’m checking the latest available TSLA quote so I can show an estimated share calculation for your chosen amount.";
   } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
     reply="I can help record your Tesla Markets investment enquiry. Please share your full name, email address, phone number and country. If you already have an amount in mind, include that too.";
@@ -159,9 +162,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     reply="";
   } else if(has(/\b(human|person|agent|manager|representative|real person|speak to someone|conseiller|personne|persona|mitarbeiter)\b/)){
     intent="human_handover"; requiresManagement=true;
-    reply=lang==="fr"?"Bien entendu. Bien entendu. Veuillez patienter un instant pendant que je vous mets en relation avec la personne la mieux placée pour vous aider.":
-    lang==="es"?"Por supuesto. Por supuesto. Espere un momento mientras le pongo en contacto con la persona adecuada para ayudarle.":
-    lang==="de"?"Selbstverständlich. Selbstverständlich. Bitte warten Sie einen Moment, während ich Sie mit der richtigen Ansprechperson verbinde.":
+    reply=lang==="fr"?"Bien entendu. Notre équipe prendra le relais dans ce chat.":
+    lang==="es"?"Por supuesto. Nuestro equipo continuará con usted en este chat.":
+    lang==="de"?"Selbstverständlich. Unser Team übernimmt die weitere Betreuung in diesem Chat.":
     "Certainly. I’ve notified our management team, and someone will continue with you here.";
   } else if(has(/\b(complaint|complain|problem|issue|disappointed|not received|broken|plainte|probleme|reclamacion|beschwerde)\b/)){
     intent="complaint"; requiresManagement=true;
@@ -382,6 +385,28 @@ Deno.serve(async (req: Request) => {
 
     const local = independentReply(customerMessage.body, history, catalogue || [], vehicle, discount, conversation);
     reply = local.reply;
+    if (local.intent === "investment_explanation") {
+      try {
+        const quoteResponse = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/TSLA?range=1d&interval=1m", { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0 TeslaMarketsEnquiry/1.0" }, signal: AbortSignal.timeout(6000) });
+        if (!quoteResponse.ok) throw new Error("Market quote unavailable");
+        const quotePayload = await quoteResponse.json();
+        const quote = quotePayload?.chart?.result?.[0];
+        const price = Number(quote?.meta?.regularMarketPrice);
+        const quoteTime = Number(quote?.meta?.regularMarketTime);
+        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(quoteTime)) throw new Error("Invalid market quote");
+        const amountMatch = customerMessage.body.match(/(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)|\b([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?:usd|dollars?)\b/i);
+        const amount = amountMatch ? Number((amountMatch[1] || amountMatch[2]).replace(/,/g, "")) : 0;
+        const quoteDate = new Date(quoteTime * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC");
+        const shareCount = amount > 0 ? amount / price : 0;
+        reply = "Tesla (NASDAQ: TSLA) designs and manufactures electric vehicles, energy generation and storage products, and related software and services. A share represents a small ownership interest in Tesla; its market price moves with trading and company and market developments.\n\nLatest available TSLA quote: $" + price.toFixed(2) + " USD per share (quote timestamp: " + quoteDate + "; source: Yahoo Finance market data).";
+        if (amount > 0) reply += "\n\nAt $" + amount.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " USD, the estimate is " + shareCount.toFixed(4) + " shares before brokerage fees and other charges. Fractional shares depend on the broker. This is an estimate, not a trade or guaranteed return.";
+        else reply += "\n\nIf you tell me the amount you are considering, I can estimate how many shares it represents at this quote.";
+        reply += "\n\nTesla Markets collects investment enquiries; this chat does not execute share purchases. Management must confirm any available arrangement before an investment is made.";
+      } catch (_quoteError) {
+        reply = "";
+        local.requiresManagement = true;
+      }
+    }
     intent = local.intent;
     requiresManagement = local.requiresManagement;
     extractedDelivery = local.delivery;
@@ -428,7 +453,7 @@ Deno.serve(async (req: Request) => {
       if (!investmentDetailsComplete) {
         intent = "investment_collecting_details";
         const missingInvestment = [!investmentName ? "full name" : "", !investmentEmail ? "email address" : "", !investmentPhone ? "phone number" : "", !investmentCountry ? "country" : ""].filter(Boolean);
-        reply = "Thank you for your interest in investing through Tesla Markets. Please provide your " + missingInvestment.join(", ") + ".";
+        reply = "Thank you for your interest in Tesla. I have checked the details you sent. I still need your " + missingInvestment.join(", ") + ". You can send the missing details together in one message or separately.";
       } else if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
         intent = "investment_awaiting_amount";
         reply = "Thank you. I have recorded your contact details. Please enter the amount you would like to invest in USD (for example, $5,000).";
