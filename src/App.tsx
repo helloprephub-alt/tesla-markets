@@ -17,6 +17,7 @@ import {
   CircleHelp,
   Clock3,
   CreditCard,
+  Globe2,
   LayoutDashboard,
   LockKeyhole,
   Menu,
