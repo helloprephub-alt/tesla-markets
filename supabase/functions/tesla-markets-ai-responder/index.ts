@@ -144,7 +144,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     const specLines = Object.entries(specs).filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=="").map(([key,value])=>label(key)+": "+(Array.isArray(value)?value.map(item=>item&&typeof item==="object"&&"name" in item&&"price" in item?String(item.name)+" ("+String(item.price)+")":typeof item==="object"?JSON.stringify(item):String(item)).join(", "):typeof value==="object"?JSON.stringify(value):String(value)));
     const description = cleanString(vehicle?.description,900);
     const availability = cleanString(vehicle?.availability,120);
-    const asksPrice=has(/\b(price|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
+    const asksPrice=has(/\b(prices?|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
     const asksPerformance=has(/\b(performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy)\b/);
     const asksAll=has(/\b(all details|full details|everything|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/);
     const lines:string[]=[];
