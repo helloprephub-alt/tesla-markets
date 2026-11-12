@@ -478,6 +478,9 @@ Deno.serve(async (req: Request) => {
           intent = "investment_confirming_details";
           reply = "Please confirm that the name, email, phone number and country shown in my previous message are correct, or send the corrections.";
         }
+      } else if (priorInvestmentStage === "investment_awaiting_amount" && intent === "investment_explanation" && reply.trim()) {
+        intent = "investment_awaiting_amount";
+        reply += "\\n\\nYour contact information is confirmed. Tell me the amount in USD you would like to calculate, and I can estimate the number of shares.";
       } else if (priorInvestmentStage === "investment_awaiting_confirmation") {
         if (saysConfirm) {
           const { error: profileError } = await admin.from("customer_profiles").upsert({
@@ -593,7 +596,7 @@ Deno.serve(async (req: Request) => {
         address: !!cleanString(mergedDetails.address,240),
         selected_variant: !!cleanString(mergedDetails.selected_variant,100)
       },
-      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : investmentDetailsComplete ? "investment_awaiting_amount" : "investment_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent === "purchase_ready" ? "collecting_delivery_details" : intent
+      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : intent === "investment_confirming_details" ? "investment_confirming_details" : intent === "investment_awaiting_confirmation" ? "investment_awaiting_confirmation" : investmentDetailsComplete ? "investment_awaiting_amount" : "investment_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent === "purchase_ready" ? "collecting_delivery_details" : intent
     };
     const { error: memoryWriteError } = await admin.from("ai_conversation_memory").upsert({
       conversation_id: conversationId,
@@ -731,7 +734,13 @@ Deno.serve(async (req: Request) => {
         automated_type: "ai_response",
       })
       .select("id").single();
-    if (responseInsertError) throw responseInsertError;
+    if (responseInsertError) {
+      if (responseInsertError.code === "PGRST116" || /duplicate_management_reply_blocked/i.test(responseInsertError.message || "")) {
+        await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
+        return json({ ok: true, silent: true, duplicate_reply: true, intent }, 200, headers);
+      }
+      throw responseInsertError;
+    }
 
     await admin.from("ai_responder_runs").update({
       status: "completed",
