@@ -132,16 +132,16 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     "Welcome to Tesla Markets. Thank you for reaching out. Our customer-relations team is pleased to assist you. What would you like to know today?";
   } else if(has(/\b(delivery|deliver|shipping|ship|livraison|expedition|entrega|envio|lieferung|versand)\b/)){
     intent="delivery"; requiresManagement=true;
-    reply=lang==="fr"?"Nous serons ravis de vous aider concernant la livraison. Les frais, délais et destinations doivent être confirmés selon le véhicule et votre adresse. Quel pays et quelle ville souhaitez-vous pour la livraison ?":
-    lang==="es"?"Estaremos encantados de ayudarle con la entrega. Los costes, plazos y destinos deben confirmarse según el vehículo y su dirección. ¿En qué país y ciudad desea recibirlo?":
-    lang==="de"?"Gerne helfen wir Ihnen bei der Lieferung. Kosten, Zeitrahmen und Liefergebiet müssen anhand des Fahrzeugs und Ihrer Adresse bestätigt werden. In welches Land und welche Stadt soll geliefert werden?":
-    "We will be pleased to assist with delivery. Costs, timelines and eligible destinations must be confirmed for the specific vehicle and address. Which country and city would you like the vehicle delivered to?";
+    reply=lang==="fr"?"Pour préparer votre demande de livraison, veuillez indiquer votre nom complet, votre adresse e-mail, votre numéro de téléphone, le pays, la ville et l'adresse de livraison. Notre équipe confirmera les modalités.":
+    lang==="es"?"Para preparar la entrega, indique su nombre completo, correo electrónico, teléfono, país, ciudad y dirección de entrega. Nuestro equipo confirmará las condiciones.":
+    lang==="de"?"Bitte nennen Sie für die Lieferanfrage Ihren vollständigen Namen, Ihre E-Mail-Adresse, Telefonnummer, das Land, die Stadt und die Lieferadresse. Unser Team bestätigt anschließend die Einzelheiten.":
+    "To prepare your delivery enquiry, please share your full name, email address, phone number, delivery country, city and full delivery address. Our team will confirm the delivery arrangements.";
   } else if((vehicle || conversation.vehicle_model || mentionedModel) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const modelKey = canonicalVehicle(mentionedModel || conversation.vehicle_model || name);
     const specs = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
     const label = (key:string) => key.replace(/[_-]+/g," ").replace(/\b\w/g,(ch:string)=>ch.toUpperCase());
-    const specLines = Object.entries(specs).filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=="").map(([key,value])=>label(key)+": "+(Array.isArray(value)?value.map(item=>typeof item==="object"?JSON.stringify(item):String(item)).join(", "):typeof value==="object"?JSON.stringify(value):String(value)));
+    const specLines = Object.entries(specs).filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=="").map(([key,value])=>label(key)+": "+(Array.isArray(value)?value.map(item=>item&&typeof item==="object"&&"name" in item&&"price" in item?String(item.name)+" ("+String(item.price)+")":typeof item==="object"?JSON.stringify(item):String(item)).join(", "):typeof value==="object"?JSON.stringify(value):String(value)));
     const description = cleanString(vehicle?.description,900);
     const availability = cleanString(vehicle?.availability,120);
     const asksPrice=has(/\b(price|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
@@ -168,10 +168,10 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     if(!reply){intent="unverified_vehicle_information";requiresManagement=true;}
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="purchase_ready";
-    reply=lang==="fr"?"Nous serons ravis de vous accompagner. Quel modèle et quelle configuration souhaitez-vous ? Nous recueillerons ensuite vos coordonnées et les informations de livraison nécessaires.":
-    lang==="es"?"Estaremos encantados de ayudarle. ¿Qué modelo y configuración desea? Después recogeremos sus datos de contacto y la información de entrega necesaria.":
-    lang==="de"?"Gerne begleiten wir Sie. Welches Modell und welche Konfiguration wünschen Sie? Anschließend erfassen wir die erforderlichen Kontakt- und Lieferdaten.":
-    "We will be pleased to guide you through the next steps. Which model and configuration would you like? We can then collect your contact and delivery details progressively.";
+    reply=lang==="fr"?"Pour préparer votre demande, veuillez indiquer votre nom complet, votre e-mail, votre téléphone, le modèle et la configuration souhaités, ainsi que le pays, la ville et l'adresse de livraison.":
+    lang==="es"?"Para preparar su solicitud, indique su nombre completo, correo electrónico, teléfono, modelo y configuración deseados, además del país, ciudad y dirección de entrega.":
+    lang==="de"?"Bitte nennen Sie zur Vorbereitung Ihren vollständigen Namen, Ihre E-Mail-Adresse, Telefonnummer, das gewünschte Modell und die Konfiguration sowie Lieferland, Stadt und Adresse.":
+    "To prepare your vehicle enquiry, please share your full name, email address, phone number, preferred model and configuration, delivery country, city and full delivery address.";
   } else if(Object.keys(delivery).length){
     intent="delivery_details";
     reply="Thank you. I’ve added those details to your enquiry. Is there anything else you’d like us to know?";
