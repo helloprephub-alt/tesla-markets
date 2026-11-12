@@ -543,23 +543,33 @@ Deno.serve(async (req: Request) => {
 
     if (!reply.trim()) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      await admin.from("admin_notifications").insert({
+      await admin.from("support_conversations").update({ responder_paused: true, updated_at: new Date().toISOString() }).eq("id", conversationId);
+      const { data: existingHandover } = await admin.from("admin_notifications").select("id").eq("type","ai_silent_handover").eq("entity_type","conversation").eq("entity_id",conversationId).eq("is_read",false).limit(1).maybeSingle();
+      if (!existingHandover) await admin.from("admin_notifications").insert({
         type: "ai_silent_handover",
-        title: "Customer question needs a verified management answer",
-        body: `Customer ${conversation.visitor_email || "website visitor"} · ${intent} · No automated answer sent because verified information is unavailable.`,
-        entity_type: "conversation",
-        entity_id: conversationId,
-        is_read: false,
+        title: "AI paused — management response required",
+        body: `Customer ${conversation.visitor_email || "website visitor"} · ${intent} · The AI could not prepare a reliable answer, so it sent nothing and paused this conversation for management.`,
+        entity_type: "conversation", entity_id: conversationId, is_read: false,
       });
-      return json({ ok: true, silent: true, intent }, 200, headers);
+      return json({ ok: true, silent: true, paused: true, intent }, 200, headers);
     }
 
-    // Never emit the same automated sentence twice in a row. If the rules resolve
-    // to an identical answer, mark this message handled and leave the conversation quiet.
+    // Conversation-wide duplicate check. The database trigger is the final atomic
+    // barrier; this pre-check avoids unnecessary insert attempts for older replies.
     const canonical = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-    if (history.some((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response" && canonical(row.body||"")===canonical(reply))) {
+    const canonicalReply = canonical(reply);
+    const { data: priorReply } = await admin.from("ai_sent_reply_registry")
+      .select("id").eq("conversation_id",conversationId).eq("canonical_hash",await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonicalReply)).then((digest)=>Array.from(new Uint8Array(digest)).map((byte)=>byte.toString(16).padStart(2,"0")).join(""))).maybeSingle();
+    if (priorReply || history.some((row:any)=>row.sender_role==="management" && ["ai_response","automated_reply"].includes(row.automated_type) && canonical(row.body||"")===canonicalReply)) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      return json({ ok: true, silent: true, duplicate_reply: true, intent }, 200, headers);
+      await admin.from("support_conversations").update({ responder_paused: true, updated_at: new Date().toISOString() }).eq("id", conversationId);
+      const { data: existingDuplicate } = await admin.from("admin_notifications").select("id").eq("type","ai_duplicate_blocked").eq("entity_type","conversation").eq("entity_id",conversationId).eq("is_read",false).limit(1).maybeSingle();
+      if (!existingDuplicate) await admin.from("admin_notifications").insert({
+        type:"ai_duplicate_blocked",title:"AI paused — duplicate reply blocked",
+        body:"The AI attempted to repeat a reply already sent in this customer conversation. No duplicate was sent. Management can continue the conversation.",
+        entity_type:"conversation",entity_id:conversationId,is_read:false
+      });
+      return json({ ok: true, silent: true, paused: true, duplicate_reply: true, intent }, 200, headers);
     }
 
     if (local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
