@@ -88,9 +88,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     }
   } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
-    reply=lang==="fr"?"Merci de votre intérêt pour les opportunités d'investissement. Notre équipe peut fournir des informations vérifiées sur les options disponibles et leurs risques. La valeur des investissements peut augmenter ou diminuer et les rendements ne sont pas garantis. Quelle opportunité souhaitez-vous découvrir ?":
-    lang==="es"?"Gracias por su interés en las oportunidades de inversión. Nuestro equipo puede facilitar información verificada sobre las opciones disponibles y sus riesgos. Las inversiones pueden subir o bajar y los rendimientos no están garantizados. ¿Sobre qué oportunidad desea información?":
-    lang==="de"?"Vielen Dank für Ihr Interesse an Anlagemöglichkeiten. Unser Team kann verifizierte Informationen zu verfügbaren Optionen und Risiken bereitstellen. Anlagen können steigen oder fallen; Renditen sind nicht garantiert. Zu welcher Möglichkeit wünschen Sie Informationen?":
+    reply=lang==="fr"?"Merci de votre intérêt pour les opportunités d'investissement. Je peux vous aider à comprendre les informations disponibles et leurs risques. La valeur des investissements peut augmenter ou diminuer et les rendements ne sont pas garantis. Quelle opportunité souhaitez-vous découvrir ?":
+    lang==="es"?"Gracias por su interés en las oportunidades de inversión. Puedo ayudarle a comprender la información disponible y sus riesgos. Las inversiones pueden subir o bajar y los rendimientos no están garantizados. ¿Sobre qué oportunidad desea información?":
+    lang==="de"?"Vielen Dank für Ihr Interesse an Anlagemöglichkeiten. Ich helfe Ihnen gerne, die verfügbaren Informationen und Risiken zu verstehen. Anlagen können steigen oder fallen; Renditen sind nicht garantiert. Zu welcher Möglichkeit wünschen Sie Informationen?":
     "Of course. I’d be happy to help you understand the investment information available. Please give me a moment to check the relevant details. Investment values can rise or fall, and returns are never guaranteed.";
   } else if(has(/\b(payment|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
     intent="payment"; requiresManagement=true;
@@ -100,9 +100,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     "Thank you. I can help you with that. Please share the transaction reference or receipt here so I can check the status. For your security, never send card numbers, passwords or security codes.";
   } else if(has(/\b(human|person|agent|manager|representative|real person|speak to someone|conseiller|personne|persona|mitarbeiter)\b/)){
     intent="human_handover"; requiresManagement=true;
-    reply=lang==="fr"?"Bien entendu. Votre souhait d'échanger avec un membre de notre équipe a été transmis à la direction afin qu'un représentant puisse poursuivre la conversation ici.":
-    lang==="es"?"Por supuesto. Hemos señalado su solicitud para que un representante de la dirección continúe la conversación aquí.":
-    lang==="de"?"Selbstverständlich. Ihr Wunsch nach einem persönlichen Gespräch wurde an unser Management weitergeleitet.":
+    reply=lang==="fr"?"Bien entendu. Bien entendu. Veuillez patienter un instant pendant que je vous mets en relation avec la personne la mieux placée pour vous aider.":
+    lang==="es"?"Por supuesto. Por supuesto. Espere un momento mientras le pongo en contacto con la persona adecuada para ayudarle.":
+    lang==="de"?"Selbstverständlich. Selbstverständlich. Bitte warten Sie einen Moment, während ich Sie mit der richtigen Ansprechperson verbinde.":
     "Certainly. Certainly. Please give me a moment and I’ll arrange for the right person to continue with you here.";
   } else if(has(/\b(complaint|complain|problem|issue|disappointed|not received|broken|plainte|probleme|reclamacion|beschwerde)\b/)){
     intent="complaint"; requiresManagement=true;
