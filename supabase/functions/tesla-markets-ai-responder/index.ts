@@ -438,6 +438,28 @@ Deno.serve(async (req: Request) => {
     if (!hasAddress) missing.push("full delivery address");
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
+    const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
+    const cartIntent = /\\b(add to cart|add to my cart|put in (?:the )?cart|add .* to cart|add .* basket|view (?:my )?cart|show (?:my )?cart|my cart)\\b/i.test(customerMessage.body);
+    const cartSummary = cartIntent && selectedVehicle ? (() => {
+      const quantityMatch = customerMessage.body.match(/\\b(\\d{1,2})\\b/);
+      const quantity = Math.max(1, Math.min(20, quantityMatch ? Number(quantityMatch[1]) : 1));
+      const current = priorCart.map((item:any)=>({...item}));
+      const existing = current.find((item:any)=>item.slug===selectedVehicle.slug);
+      if (existing) existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
+      else current.push({
+        slug:selectedVehicle.slug,
+        model:selectedVehicle.name,
+        quantity,
+        unit_price_usd:Number(selectedVehicle.price_usd||0),
+        image_url:Array.isArray(selectedVehicle.images)&&typeof selectedVehicle.images[0]==="string"?selectedVehicle.images[0]:null,
+        availability:selectedVehicle.availability||"to_be_confirmed"
+      });
+      return current;
+    })() : null;
+    if (cartSummary) {
+      mergedDetails.cart_items = cartSummary;
+      await admin.from("support_conversations").update({delivery_details:mergedDetails,vehicle_model:selectedVehicle.name,updated_at:new Date().toISOString()}).eq("id",conversationId);
+    }
     const priorInvestmentStage = cleanString(aiMemory.conversation_stage, 80);
     const investmentStages = ["investment_awaiting_amount","investment_collecting_details","investment_confirming_details"];
     const investmentFlow = intent === "investment" || investmentStages.includes(priorInvestmentStage);
@@ -458,7 +480,7 @@ Deno.serve(async (req: Request) => {
     let investmentSharePrice: number | null = null;
     let investmentQuoteTime = "";
 
-    if (investmentFlow) {
+    if (cartSummary) {\n      intent = "cart_updated";\n      requiresManagement = true;\n      const totalItems = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0);\n      const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);\n      reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";\n    } else if (investmentFlow) {
       requiresManagement = true;
       if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
         intent = "investment_awaiting_amount";
@@ -733,7 +755,26 @@ Deno.serve(async (req: Request) => {
 
     let messageType = "text";
     let structuredData: Record<string, any> | null = null;
-    if (investmentEnquiryCreated) {
+    if (cartSummary) {
+      messageType = "cart_summary";
+      const cartTotal = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
+      structuredData = {
+        title:"Your vehicle cart",
+        subtitle:"CUSTOMER VEHICLE SELECTION",
+        status:"Enquiry — not an order",
+        amount_label:"ESTIMATED CART TOTAL",
+        amount:"$"+cartTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USD",
+        fields_title:"Selected vehicles",
+        fields:cartSummary.map((item:any)=>({label:item.model+" × "+item.quantity,value:item.unit_price_usd>0?"$"+(item.unit_price_usd*item.quantity).toLocaleString("en-US")+" USD":"Price to be confirmed"})),
+        sections:[{title:"Cart details",rows:[
+          {label:"Number of vehicles",value:String(cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0))},
+          {label:"Models selected",value:String(cartSummary.length)},
+          {label:"Next step",value:"Management will confirm configuration, availability, delivery and final pricing"}
+        ]}],
+        note:"You can add more vehicles to this cart during the same conversation. Your saved customer details are retained.",
+        disclaimer:"This is a cart estimate only. It is not an invoice, confirmed order or payment receipt."
+      };
+    } else if (investmentEnquiryCreated) {
       messageType = "investment_summary";
       structuredData = {
         title: "Investment enquiry summary",
