@@ -22,7 +22,7 @@ const cleanString = (value: unknown, max = 300) =>
 
 function detectDiscountRequest(text: string) {
   const t = text.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
-  const mentionsDiscount = /\\b(discount|cheaper|reduce.{0,25}price|lower.{0,25}price|negotiate|price.{0,15}off|rabais|reduction|remise|descuento|rebaja|rabatt|gunstiger)\\b/i.test(t);
+  const mentionsDiscount = /\\b(discount|cheaper|reduce.{0,25}price|lower.{0,25}price|negotiate|price.{0,15}off|rabais|reduction|remise|descuento|rebaja|rabatt|gunstiger)\\b/i.test(t) || /\b\d+(?:[.,]\d+)?\s*%\s*off\b/i.test(t);
   const percent = t.match(/(\\d+(?:[.,]\\d+)?)\\s*(?:%|percent|pourcent|por ciento|prozent)/i);
   const requestedPercent = percent ? Number(percent[1].replace(",", ".")) : null;
   return { mentionsDiscount, requestedPercent, aboveLimit: requestedPercent !== null && requestedPercent > 3 };
@@ -122,7 +122,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="es"?"Estaremos encantados de ayudarle con la entrega. Los costes, plazos y destinos deben confirmarse según el vehículo y su dirección. ¿En qué país y ciudad desea recibirlo?":
     lang==="de"?"Gerne helfen wir Ihnen bei der Lieferung. Kosten, Zeitrahmen und Liefergebiet müssen anhand des Fahrzeugs und Ihrer Adresse bestätigt werden. In welches Land und welche Stadt soll geliefert werden?":
     "We will be pleased to assist with delivery. Costs, timelines and eligible destinations must be confirmed for the specific vehicle and address. Which country and city would you like the vehicle delivered to?";
-  } else if(vehicle){
+  } else if(vehicle && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const facts=[validPrice?money(price):"",cleanString(vehicle.description,350),vehicle.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
     reply=facts?`Thank you for your interest in ${name}. Here is the information currently published: ${facts}. Our team will confirm availability and delivery details. Would you like help selecting a configuration?`:`Thank you for your interest in ${name}. Our team will confirm the current specifications, price and availability for you. Which configuration are you considering?`;
