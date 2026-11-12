@@ -387,7 +387,7 @@ Deno.serve(async (req: Request) => {
       intent = "customer_details_progress";
       const needs = missing.length ? missing.join(", ") : "confirmation of your preferred vehicle version";
       reply = "Certainly. I have kept your " + selectedVehicle.name + " enquiry open. To move to the next step, please provide your " + needs + ". I will prepare the pro forma invoice once the required details are complete.";
-    } else if (Object.keys(extractedDelivery).length || variantMatch) {
+    } else if (Object.keys(extractedDelivery).length || (variantMatch && !discount.mentionsDiscount)) {
       intent = "customer_details_progress"; requiresManagement = true;
       if (deliveryComplete && (hasVariant || variants.length <= 1)) {
         reply = "Thank you. I have received and recorded your contact and delivery details, together with your selected vehicle version. I am preparing your order summary and pro forma invoice now. Payment will remain pending until management confirms the payment method and verifies receipt.";
