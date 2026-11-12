@@ -176,7 +176,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     } else {
       reply=lines.length?"Published information for the "+name+": "+lines.join(" · "):"";
     }
-    if(!reply){intent="unverified_vehicle_information";requiresManagement=true;}
+    if(!reply){intent="unverified_vehicle_information";requiresManagement=true;reply="Thank you for your question. I do not have a verified specification for that detail yet. Please hold while our management team confirms it for you."; }
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="purchase_ready";
     reply=lang==="fr"?"Pour préparer votre demande, veuillez indiquer votre nom complet, votre e-mail, votre téléphone, le modèle et la configuration souhaités, ainsi que le pays, la ville et l'adresse de livraison.":
@@ -188,7 +188,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     reply="Thank you. I’ve added those details to your enquiry. Is there anything else you’d like us to know?";
   } else {
     intent="unverified_or_unsupported"; requiresManagement=true;
-    reply="";
+    reply="Thank you for your message. I want to make sure you receive accurate information rather than an unverified answer. Please hold while our management team reviews your enquiry. We will respond here.";
   }
   return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||mentionedModel||null};
 }
@@ -349,6 +349,10 @@ Deno.serve(async (req: Request) => {
     if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
+    } else if (/^\\s*(okay|ok|yes|yeah|sure|proceed|continue|go ahead|sounds good|alright|all right)\\b/i.test(customerMessage.body) && selectedVehicle) {
+      intent = "customer_details_progress";
+      const needs = missing.length ? missing.join(", ") : "confirmation of your preferred vehicle version";
+      reply = "Certainly. I have kept your " + selectedVehicle.name + " enquiry open. To move to the next step, please provide your " + needs + ". I will prepare the pro forma invoice once the required details are complete.";
     } else if (Object.keys(extractedDelivery).length || variantMatch) {
       intent = "customer_details_progress"; requiresManagement = true;
       if (deliveryComplete && (hasVariant || variants.length <= 1)) {
@@ -411,7 +415,7 @@ Deno.serve(async (req: Request) => {
       const selectedVariant = variants.find((variant: any) => cleanString(variant?.name,100) === cleanString(mergedDetails.selected_variant,100)) || variants[0];
       const variantPriceText = cleanString(selectedVariant?.price,80);
       const parsedVariantPrice = Number(variantPriceText.replace(/[^0-9.]/g,""));
-      const finalAmount = Number.isFinite(parsedVariantPrice) && parsedVariantPrice > 0 ? parsedVariantPrice : Number(selectedVehicle.price_usd);
+      const finalAmount = variantPriceText ? (Number.isFinite(parsedVariantPrice) && parsedVariantPrice > 0 ? parsedVariantPrice : NaN) : Number(selectedVehicle.price_usd);
       if (Number.isFinite(finalAmount) && finalAmount > 0) {
         const { data: existingOrder, error: existingOrderError } = await admin.from("business_orders")
           .select("id,order_reference,agreed_amount,item_description,status")
