@@ -64,16 +64,23 @@ function extractDelivery(text: string) {
   const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   const phone=text.match(/(?:\+?\d[\d ()-]{7,}\d)/);
   if(email)out.email=email[0].slice(0,200);
-  if(phone)out.phone=phone[0].slice(0,60);
-  const labels: Record<string,RegExp> = {
-    full_name: /(?:my name is|name is|nom est|me llamo|mein name ist)\s+([^,.;\n]{2,70})/i,
-    country: /(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,70})/i,
-    city: /(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,70})/i,
-    address: /(?:delivery address|address|adresse|direccion|anschrift)\s*[:=-]\s*([^.;\n]{4,160})/i,
-    preferred_delivery_date: /(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,
-    instructions: /(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i
-  };
-  for(const [key,pattern] of Object.entries(labels)){const m=text.match(pattern);if(m?.[1])out[key]=m[1].trim().slice(0,300);}
+  if(phone)out.phone=phone[0].trim().slice(0,60);
+  const nameMatch=text.match(/\b(?:my name is|name is|i am|i\x27m|nom est|me llamo|mein name ist)\s+(.+?)(?=\s+(?:from|based in|located in|de|en|desde|aus)\s+|[,;\n]|$)/i);
+  if(nameMatch?.[1])out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
+  const addressMatch=text.match(/\b(?:my address is|address is|delivery address is|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+)$/i);
+  if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
+  const labelled:Record<string,RegExp>={country:/\b(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,80})/i,city:/\b(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,80})/i,preferred_delivery_date:/\b(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,instructions:/\b(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i};
+  for(const [key,pattern] of Object.entries(labelled)){const m=text.match(pattern);if(m?.[1])out[key]=m[1].trim().slice(0,240);}
+  if(!out.country || !out.city){
+    const location=text.match(/\b(?:from|based in|located in|delivery to|deliver to)\s+(.+?)(?=[.!?]|$)/i)?.[1]?.trim();
+    if(location){
+      const countries=["United States of America","United States","USA","U.S.A.","United Kingdom","UK","Nigeria","Canada","France","Germany","Australia","United Arab Emirates","UAE"];
+      const found=countries.find(country=>location.toLowerCase().includes(country.toLowerCase()));
+      if(found&&!out.country)out.country=found;
+      const rest=found?location.replace(new RegExp(found.replace(/[.*+?^$()|[\]\\]/g,"\\$&"),"i"),"").trim():location;
+      if(rest&&!out.city&&rest.length<80)out.city=rest.replace(/^,|,$/g,"").trim();
+    }
+  }
   return out;
 }
 function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any) {
@@ -313,6 +320,48 @@ Deno.serve(async (req: Request) => {
     requiresManagement = local.requiresManagement;
     extractedDelivery = local.delivery;
 
+    // Recover customer details expressed naturally across multiple messages.
+    const priorDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
+    const mergedDetails: Record<string, any> = { ...priorDetails, ...extractedDelivery };
+    const selectedVehicle = vehicle || matchVehicle("", conversation.vehicle_model || "", catalogue || []);
+    const selectedSpecs = selectedVehicle?.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
+    const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
+    const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); });
+    if (variantMatch) mergedDetails.selected_variant = cleanString(variantMatch.name,100);
+    if (selectedVehicle && !mergedDetails.selected_variant && variants.length === 1) mergedDetails.selected_variant = cleanString(variants[0].name,100);
+    const hasPaymentIntent = /\b(payment|payment method|payment options|how do i pay|where do i pay|pay now|transfer|bank details|paiement|pago|zahlung)\b/i.test(normalized(customerMessage.body));
+    const hasName = !!cleanString(mergedDetails.full_name,100);
+    const hasEmail = !!cleanString(mergedDetails.email || conversation.visitor_email || user.email,200);
+    const hasPhone = !!cleanString(mergedDetails.phone || conversation.contact_phone,60);
+    const hasCountry = !!cleanString(mergedDetails.country,80);
+    const hasCity = !!cleanString(mergedDetails.city,80);
+    const hasAddress = !!cleanString(mergedDetails.address,240);
+    const hasVariant = !!cleanString(mergedDetails.selected_variant,100);
+    const deliveryComplete = hasName && hasEmail && hasPhone && hasCountry && hasCity && hasAddress;
+    const missing: string[] = [];
+    if (!hasName) missing.push("full name");
+    if (!hasEmail) missing.push("email address");
+    if (!hasPhone) missing.push("phone number");
+    if (!hasCountry) missing.push("delivery country");
+    if (!hasCity) missing.push("delivery city");
+    if (!hasAddress) missing.push("full delivery address");
+    if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
+    if (hasPaymentIntent) {
+      intent = "payment_method_confirmation"; requiresManagement = true;
+      reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
+    } else if (Object.keys(extractedDelivery).length || variantMatch) {
+      intent = "customer_details_progress"; requiresManagement = true;
+      if (deliveryComplete && (hasVariant || variants.length <= 1)) {
+        reply = "Thank you. I have received and recorded your contact and delivery details, together with your selected vehicle version. I am preparing your order summary and pro forma invoice now. Payment will remain pending until management confirms the payment method and verifies receipt.";
+      } else {
+        const labels:Record<string,string>={full_name:"name",email:"email address",phone:"phone number",country:"delivery country",city:"delivery city",address:"delivery address"};
+        const received=[...new Set(Object.keys(extractedDelivery).map(key=>labels[key]||key))];
+        const receivedText=received.length ? " I have noted: "+received.join(", ")+"." : "";
+        const next=missing.length ? " To complete your order, I still need your "+missing.join(", ")+"." : "";
+        reply="Thank you. Your information has been received and added to your vehicle enquiry."+receivedText+next+" Once those details are complete, I can prepare your pro forma invoice. Please do not send card details, passwords or one-time security codes in this chat.";
+      }
+    }
+
     if (!reply.trim()) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
       await admin.from("admin_notifications").insert({
@@ -341,14 +390,20 @@ Deno.serve(async (req: Request) => {
       if (vehicleContextError) throw vehicleContextError;
     }
 
-    if (Object.keys(extractedDelivery).length) {
-      const current = conversation.delivery_details && typeof conversation.delivery_details === "object"
-        ? conversation.delivery_details : {};
-      const merged = { ...current, ...extractedDelivery };
-      const { error: deliveryError } = await admin.from("support_conversations")
-        .update({ delivery_details: merged, updated_at: new Date().toISOString() })
-        .eq("id", conversationId);
+    if (Object.keys(extractedDelivery).length || variantMatch) {
+      const { error: deliveryError } = await admin.from("support_conversations").update({
+        delivery_details: mergedDetails,
+        vehicle_model: selectedVehicle?.model || selectedVehicle?.name || conversation.vehicle_model,
+        contact_phone: mergedDetails.phone || conversation.contact_phone,
+        updated_at: new Date().toISOString()
+      }).eq("id", conversationId);
       if (deliveryError) throw deliveryError;
+      await admin.from("customer_profiles").update({
+        display_name: mergedDetails.full_name || undefined,
+        phone: mergedDetails.phone || undefined,
+        email: mergedDetails.email || undefined,
+        updated_at: new Date().toISOString()
+      }).eq("id", user.id);
     }
 
     const { data: responseMessage, error: responseInsertError } = await admin
@@ -422,7 +477,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (intent === "payment" || intent === "payment_receipt") {
+    if (intent === "payment" || intent === "payment_receipt" || intent === "payment_method_confirmation") {
       await admin.from("admin_notifications").insert({
         type: "payment_review",
         title: "Payment enquiry requires verification",
