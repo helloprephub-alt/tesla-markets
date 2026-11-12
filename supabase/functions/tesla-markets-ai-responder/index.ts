@@ -675,7 +675,7 @@ Deno.serve(async (req: Request) => {
       }).eq("id", user.id);
     }
 
-    let proformaInvoice: { reference: string; amount: number; variant: string } | null = null;
+    let proformaInvoice: { reference: string; amount: number; variant: string; payment_url?: string | null } | null = null;
     if (["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && deliveryComplete && selectedVehicle && (hasVariant || variants.length <= 1)) {
       const selectedVariant = variants.find((variant: any) => cleanString(variant?.name,100) === cleanString(mergedDetails.selected_variant,100)) || variants[0];
       const variantPriceText = cleanString(selectedVariant?.price,80);
@@ -683,7 +683,7 @@ Deno.serve(async (req: Request) => {
       const finalAmount = variantPriceText ? (Number.isFinite(parsedVariantPrice) && parsedVariantPrice > 0 ? parsedVariantPrice : NaN) : Number(selectedVehicle.price_usd);
       if (Number.isFinite(finalAmount) && finalAmount > 0) {
         const { data: existingOrder, error: existingOrderError } = await admin.from("business_orders")
-          .select("id,order_reference,agreed_amount,item_description,status")
+          .select("id,order_reference,agreed_amount,item_description,status,payment_url")
           .eq("conversation_id", conversationId)
           .neq("status","cancelled")
           .order("created_at",{ascending:false})
@@ -694,7 +694,8 @@ Deno.serve(async (req: Request) => {
           proformaInvoice = {
             reference: existingOrder.order_reference,
             amount: Number(existingOrder.agreed_amount),
-            variant: existingOrder.item_description
+            variant: existingOrder.item_description,
+            payment_url: existingOrder.payment_url || null
           };
         } else {
           const { error: profileUpsertError } = await admin.from("customer_profiles").upsert({
@@ -782,6 +783,7 @@ Deno.serve(async (req: Request) => {
       const invoiceAmount = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(proformaInvoice.amount) + " USD";
       structuredData = {
         title:"Vehicle order summary",
+        payment_url:proformaInvoice.payment_url || null,
         subtitle:"PRO FORMA · AWAITING MANAGEMENT REVIEW",
         status:"Awaiting management approval",
         amount_label:"VEHICLE SUBTOTAL",
