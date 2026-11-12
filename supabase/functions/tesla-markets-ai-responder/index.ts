@@ -65,7 +65,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   const phone=text.match(/(?:\+?\d[\d ()-]{7,}\d)/);
   if(email)out.email=email[0].slice(0,200);
   if(phone)out.phone=phone[0].trim().slice(0,60);
-  const nameMatch=text.match(/\b(?:my name is|name is|i am|i\x27m|this is my details|my details are|these are my details|my details|nom est|me llamo|mein name ist)\s*[:,-]?\s+(.+?)(?=\s+(?:from|based in|located in|de|en|desde|aus)\s+|[,;\n]|$)/i);
+  const nameMatch=text.match(/\b(?:my full name is|my name is|name is|name|full name|i am|i\x27m|this is my details|my details are|these are my details|my details|nom est|me llamo|mein name ist)\s*[:,-]?\s+(.+?)(?=\s+(?:email|e-mail|phone|telephone|country|from|based in|located in|de|en|desde|aus)\s*[:=-]?|[,;\n]|$)/i);
   if(nameMatch?.[1])out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/\b(?:my address is|address is|delivery address is|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+)$/i);
   if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
@@ -413,8 +413,47 @@ Deno.serve(async (req: Request) => {
     if (!hasAddress) missing.push("full delivery address");
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
+    const investmentFlow = intent === "investment" || aiMemory.conversation_stage === "investment_collecting_details" || aiMemory.conversation_stage === "investment_awaiting_amount";
+    const investmentAmountMatch = customerMessage.body.match(/(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.\d{1,2})?)|\b([0-9][0-9,]*(?:\.\d{1,2})?)\s*(?:usd|dollars?)\b/i);
+    const investmentAmount = investmentAmountMatch ? Number((investmentAmountMatch[1] || investmentAmountMatch[2]).replace(/,/g,"")) : Number(aiMemory.investment_amount_usd || 0);
+    const investmentName = cleanString(mergedDetails.full_name,100);
+    const investmentEmail = cleanString(mergedDetails.email || conversation.visitor_email || user.email,200);
+    const investmentPhone = cleanString(mergedDetails.phone || conversation.contact_phone,60);
+    const investmentCountry = cleanString(mergedDetails.country,80);
+    const investmentDetailsComplete = !!(investmentName && investmentEmail && investmentPhone && investmentCountry);
+    let investmentEnquiryCreated = false;
 
-    if (hasPaymentIntent) {
+    if (investmentFlow) {
+      requiresManagement = true;
+      if (!investmentDetailsComplete) {
+        intent = "investment_collecting_details";
+        const missingInvestment = [!investmentName ? "full name" : "", !investmentEmail ? "email address" : "", !investmentPhone ? "phone number" : "", !investmentCountry ? "country" : ""].filter(Boolean);
+        reply = "Thank you for your interest in investing through Tesla Markets. Please provide your " + missingInvestment.join(", ") + ".";
+      } else if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
+        intent = "investment_awaiting_amount";
+        reply = "Thank you. I have recorded your contact details. Please enter the amount you would like to invest in USD (for example, $5,000).";
+      } else {
+        const { error: investmentInsertError } = await admin.from("investment_enquiries").insert({
+          customer_id: user.id,
+          opportunity: "Tesla Markets investment enquiry — $" + investmentAmount.toLocaleString("en-US") + " USD",
+          category: "investment",
+          customer_question: "Requested investment amount: $" + investmentAmount.toFixed(2) + " USD. Name: " + investmentName + ". Email: " + investmentEmail + ". Phone: " + investmentPhone + ". Country: " + investmentCountry + ". Conversation: " + conversationId,
+          status: "new"
+        });
+        if (investmentInsertError) throw investmentInsertError;
+        investmentEnquiryCreated = true;
+        intent = "investment_submitted";
+        reply = "Thank you. Your investment enquiry for $" + investmentAmount.toLocaleString("en-US") + " USD has been recorded. Please hold while Tesla Markets Management reviews your details and confirms the next steps and approved payment instructions. No payment has been confirmed or requested yet.";
+        await admin.from("admin_notifications").insert({
+          type: "investment_enquiry",
+          title: "New investment enquiry — $" + investmentAmount.toLocaleString("en-US") + " USD",
+          body: "Customer submitted an investment enquiry. Review their contact details and requested amount in the conversation.",
+          entity_type: "conversation",
+          entity_id: conversationId,
+          is_read: false
+        });
+      }
+    } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
     } else if (/^\\s*(okay|ok|yes|yeah|sure|proceed|continue|go ahead|sounds good|alright|all right|yes please)\\b/i.test(customerMessage.body) && selectedVehicle) {
@@ -477,7 +516,8 @@ Deno.serve(async (req: Request) => {
       vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
       selected_variant: mergedDetails.selected_variant || aiMemory.selected_variant || null,
       last_intent: intent,
-      pending_slot: nextPendingSlot,
+      pending_slot: investmentFlow ? (!investmentName ? "full_name" : !investmentEmail ? "email" : !investmentPhone ? "phone" : !investmentCountry ? "country" : !(investmentAmount > 0) ? "investment_amount" : "") : nextPendingSlot,
+      investment_amount_usd: investmentAmount > 0 && Number.isFinite(investmentAmount) ? investmentAmount : aiMemory.investment_amount_usd || null,
       last_customer_message: cleanString(customerMessage.body,500),
       last_customer_message_at: customerMessage.created_at,
       last_ai_response: cleanString(reply,1200),
@@ -491,7 +531,7 @@ Deno.serve(async (req: Request) => {
         address: !!cleanString(mergedDetails.address,240),
         selected_variant: !!cleanString(mergedDetails.selected_variant,100)
       },
-      conversation_stage: hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent === "purchase_ready" ? "collecting_delivery_details" : intent
+      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : investmentDetailsComplete ? "investment_awaiting_amount" : "investment_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent === "purchase_ready" ? "collecting_delivery_details" : intent
     };
     const { error: memoryWriteError } = await admin.from("ai_conversation_memory").upsert({
       conversation_id: conversationId,
@@ -520,7 +560,7 @@ Deno.serve(async (req: Request) => {
     }
 
     let proformaInvoice: { reference: string; amount: number; variant: string } | null = null;
-    if (deliveryComplete && selectedVehicle && (hasVariant || variants.length <= 1)) {
+    if (["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && deliveryComplete && selectedVehicle && (hasVariant || variants.length <= 1)) {
       const selectedVariant = variants.find((variant: any) => cleanString(variant?.name,100) === cleanString(mergedDetails.selected_variant,100)) || variants[0];
       const variantPriceText = cleanString(selectedVariant?.price,80);
       const parsedVariantPrice = Number(variantPriceText.replace(/[^0-9.]/g,""));
@@ -668,7 +708,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (intent === "investment") {
+    if (intent === "investment" || intent === "investment_submitted") {
       await admin.from("admin_notifications").insert({
         type: "investment_enquiry",
         title: "New investment enquiry",
