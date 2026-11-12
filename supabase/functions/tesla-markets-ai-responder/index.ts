@@ -442,7 +442,10 @@ Deno.serve(async (req: Request) => {
     const cartIntent = /(?:\b(add|put|include)\b.*\b(to (?:my )?(?:cart|basket)|\d{1,2}\s+(?:cybertruck|model|roadster|semi)|another|one|two|three)\b|\b(view|show)\b.*\b(cart|basket)\b)/i.test(customerMessage.body);
     const cartSummary = cartIntent && selectedVehicle ? (() => {
       const quantityMatch = customerMessage.body.match(/\b(\d{1,2})\b/);
-      const quantity = Math.max(1, Math.min(20, quantityMatch ? Number(quantityMatch[1]) : 1));
+      const quantityWord = customerMessage.body.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/i)?.[1]?.toLowerCase();
+      const quantityWords:Record<string,number>={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+      const requestedQuantity = quantityMatch ? Number(quantityMatch[1]) : quantityWord ? quantityWords[quantityWord] : 1;
+      const quantity = Math.max(1, Math.min(20, requestedQuantity));
       const current = priorCart.map((item:any)=>({...item}));
       const existing = current.find((item:any)=>item.slug===selectedVehicle.slug);
       if (existing) existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
@@ -865,7 +868,8 @@ Deno.serve(async (req: Request) => {
           ]},
           { title: "Availability", rows: [
             { label: "Listing status", value: cleanString(selectedVehicle.availability,80) || "To be confirmed" },
-            { label: "Availability note", value: cleanString(specs.availability_note,220) || "Management must confirm current market availability and delivery" }
+            { label: "Availability note", value: cleanString(specs.availability_note,220) || "Management must confirm current market availability and delivery" },
+            { label: "Image credit", value: cleanString(specs.image_credit,180) || "Image credit not available" }
           ]}
         ],
         disclaimer: "Specifications, prices, colours and availability depend on model year, trim and market. Items marked as preferences or management-supplied listings are not represented as confirmed factory specifications."
