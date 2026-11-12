@@ -97,6 +97,11 @@ function extractDelivery(text: string, pendingSlot = "") {
 function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any) {
   const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text, cleanString(conversation.ai_memory?.pending_slot,40));
   const has=(r:RegExp)=>r.test(t);
+  const previousAiReply=cleanString(conversation.ai_memory?.last_ai_response,1200) || String([...history].reverse().find((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response")?.body || "");
+  const affirmative=has(/^\\s*(yes|yeah|yep|sure|okay|ok|please do|go ahead|sounds good|alright|all right)\\b/);
+  const acceptsFullInfo=affirmative && /available versions and prices|performance details|delivery information|all the details|full information/i.test(previousAiReply);
+  const acceptsPurchase=affirmative && /would you like to proceed|ready to order|next steps/i.test(previousAiReply);
+
   const modelPattern=/\b(model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
   const explicitModel=text.match(modelPattern)?.[0];
   const priorModel=[...history].reverse().filter((row:any)=>row.sender_role==="customer").map((row:any)=>String(row.body||"").match(modelPattern)?.[0]).find(Boolean);
