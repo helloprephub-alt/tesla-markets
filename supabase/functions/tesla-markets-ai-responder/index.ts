@@ -101,6 +101,11 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const affirmative=has(/^\\s*(yes|yeah|yep|sure|okay|ok|please do|go ahead|sounds good|alright|all right)\\b/);
   const acceptsFullInfo=affirmative && /available versions and prices|performance details|delivery information|all the details|full information/i.test(previousAiReply);
   const acceptsPurchase=affirmative && /would you like to proceed|ready to order|next steps/i.test(previousAiReply);
+  const asksOfficial=has(/\\b(is this (the )?official|are you official|official website|is tesla markets official|is this legitimate|is this real|are you genuine)\\b/);
+  const asksIdentity=has(/\\b(who are you|what are you|are you (a )?(bot|ai|human)|are you real)\\b/);
+  const asksAddAnother=has(/\\b(add another|another car|one more car|also order|also buy|add (a )?car|include another|second car)\\b/);
+  const asksGeneralKnowledge=has(/\\b(what is|who is|where is|when is|why is|how does|how do|can you explain|tell me about)\\b/);
+
 
   const modelPattern=/\b(model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
   const explicitModel=text.match(modelPattern)?.[0];
@@ -119,7 +124,19 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const price=Number.isFinite(requestedVariantPrice)&&requestedVariantPrice>0 ? requestedVariantPrice : Number(vehicle?.price_usd), validPrice=Number.isFinite(price)&&price>0;
   const money=(n:number)=>new Intl.NumberFormat(lang==="fr"?"fr-FR":lang==="es"?"es-ES":lang==="de"?"de-DE":"en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(n);
   let intent="general", requiresManagement=false, reply="";
-  if(discount.mentionsDiscount){
+  if(asksOfficial){
+    intent="official_status";
+    reply="Yes. You are speaking with Tesla Markets through this website's official customer enquiry channel.";
+  } else if(asksIdentity){
+    intent="assistant_identity";
+    reply="I'm the Tesla Markets virtual customer assistant. I can help with general questions, vehicle information and your enquiries.";
+  } else if(asksAddAnother){
+    intent="add_vehicle_to_order";
+    const model=mentionedModel;
+    reply=model
+      ? "Absolutely. I can add the "+model+" as another vehicle in your enquiry. Would you like it included in the same order summary?"
+      : "Absolutely. You can enquire about more than one vehicle. Which model would you like to add? I'll keep your existing vehicle enquiry in context.";
+  } else if(discount.mentionsDiscount){
     intent="discount"; requiresManagement=discount.aboveLimit;
     if(validPrice&&!discount.aboveLimit){
       const after=Math.round(price*.97*100)/100;
@@ -229,6 +246,10 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     reply="Thank you. I’ve added those details to your enquiry. Is there anything else you’d like us to know?";
   } else {
     intent="unverified_or_unsupported"; requiresManagement=true;
+    if(asksGeneralKnowledge){
+      intent="general_knowledge";
+      reply="I can help explain that. Could you tell me a little more about what you mean so I can give you a useful and accurate answer?";
+    } else {
     const currentVehicle=conversation.vehicle_model || mentionedModel;
     const priorAssistant=[...history].reverse().find((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response");
     const previousPrompt=String(priorAssistant?.body||"").toLowerCase();
@@ -238,6 +259,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
       reply="I understand. I have kept your "+currentVehicle+" enquiry in context. Could you tell me a little more about what you would like to know? I will answer that directly rather than restart your enquiry.";
     } else {
       reply="Thanks for your message. I am here to help with vehicle enquiries, specifications, pricing, delivery and the buying process. What would you like to know?";
+    }
     }
   }
   return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||mentionedModel||null};
