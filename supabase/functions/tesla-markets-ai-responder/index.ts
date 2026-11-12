@@ -362,6 +362,25 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (proformaInvoice && !hasPaymentIntent) {
+      const amount = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(proformaInvoice.amount);
+      reply = [
+        "TESLA MARKETS — PRO FORMA INVOICE",
+        "Reference: " + proformaInvoice.reference,
+        "Customer: " + cleanString(mergedDetails.full_name,100),
+        "Vehicle: " + proformaInvoice.variant,
+        "Delivery: " + [mergedDetails.address,mergedDetails.city,mergedDetails.country].filter(Boolean).join(", "),
+        "Contact: " + [mergedDetails.email || user.email,mergedDetails.phone].filter(Boolean).join(" · "),
+        "Vehicle subtotal: " + amount + " USD",
+        "Taxes, delivery and other charges: To be confirmed by management.",
+        "PAYMENT STATUS: PENDING",
+        "Payment method: Awaiting management confirmation.",
+        "This is a pro forma invoice, not a payment receipt or confirmation of vehicle availability. Please wait for the official payment instructions from Tesla Markets Management."
+      ].join("\\n");
+      intent = "proforma_invoice_created";
+      requiresManagement = true;
+    }
+
     if (!reply.trim()) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
       await admin.from("admin_notifications").insert({
@@ -404,6 +423,87 @@ Deno.serve(async (req: Request) => {
         email: mergedDetails.email || undefined,
         updated_at: new Date().toISOString()
       }).eq("id", user.id);
+    }
+
+    let proformaInvoice: { reference: string; amount: number; variant: string } | null = null;
+    if (deliveryComplete && selectedVehicle && (hasVariant || variants.length <= 1)) {
+      const selectedVariant = variants.find((variant: any) => cleanString(variant?.name,100) === cleanString(mergedDetails.selected_variant,100)) || variants[0];
+      const variantPriceText = cleanString(selectedVariant?.price,80);
+      const parsedVariantPrice = Number(variantPriceText.replace(/[^0-9.]/g,""));
+      const finalAmount = Number.isFinite(parsedVariantPrice) && parsedVariantPrice > 0 ? parsedVariantPrice : Number(selectedVehicle.price_usd);
+      if (Number.isFinite(finalAmount) && finalAmount > 0) {
+        const { data: existingOrder, error: existingOrderError } = await admin.from("business_orders")
+          .select("id,order_reference,agreed_amount,item_description,status")
+          .eq("conversation_id", conversationId)
+          .neq("status","cancelled")
+          .order("created_at",{ascending:false})
+          .limit(1)
+          .maybeSingle();
+        if (existingOrderError) throw existingOrderError;
+        if (existingOrder) {
+          proformaInvoice = {
+            reference: existingOrder.order_reference,
+            amount: Number(existingOrder.agreed_amount),
+            variant: existingOrder.item_description
+          };
+        } else {
+          const { error: profileUpsertError } = await admin.from("customer_profiles").upsert({
+            id: user.id,
+            display_name: mergedDetails.full_name,
+            email: mergedDetails.email || user.email || null,
+            phone: mergedDetails.phone,
+            is_admin: false,
+            updated_at: new Date().toISOString()
+          },{onConflict:"id"});
+          if (profileUpsertError) throw profileUpsertError;
+
+          const { data: vehicleEnquiry, error: enquiryError } = await admin.from("vehicle_enquiries").insert({
+            customer_id: user.id,
+            vehicle_model: selectedVehicle.name,
+            configuration: {
+              selected_variant: cleanString(selectedVariant?.name,100),
+              selected_price_usd: finalAmount,
+              delivery_details: mergedDetails
+            },
+            customer_note: "Customer completed vehicle and delivery details through the Tesla Markets independent chat responder.",
+            status: "new"
+          }).select("id").single();
+          if (enquiryError) throw enquiryError;
+
+          const orderReference = "TM-PRO-" + new Date().toISOString().slice(0,10).replace(/-/g,"") + "-" + crypto.randomUUID().slice(0,6).toUpperCase();
+          const itemDescription = selectedVehicle.name + " · " + cleanString(selectedVariant?.name,100);
+          const { data: order, error: orderError } = await admin.from("business_orders").insert({
+            order_reference: orderReference,
+            customer_id: user.id,
+            conversation_id: conversationId,
+            vehicle_enquiry_id: vehicleEnquiry.id,
+            item_type: "vehicle",
+            item_description: itemDescription,
+            currency: "USD",
+            agreed_amount: finalAmount,
+            status: "awaiting_payment",
+            internal_notes: "Pro forma only. Payment method, taxes, delivery charges and final availability require management confirmation."
+          }).select("id,order_reference,agreed_amount,item_description,status").single();
+          if (orderError) throw orderError;
+          proformaInvoice = {
+            reference: order.order_reference,
+            amount: Number(order.agreed_amount),
+            variant: order.item_description
+          };
+          await admin.from("admin_notifications").insert({
+            type: "proforma_invoice_created",
+            title: "Vehicle pro forma invoice ready",
+            body: "A draft vehicle order is awaiting payment-method confirmation. Reference: " + orderReference + ". Review customer delivery details and confirm the final quotation.",
+            entity_type: "conversation",
+            entity_id: conversationId,
+            is_read: false
+          });
+        }
+      } else {
+        intent = "proforma_price_requires_confirmation";
+        requiresManagement = true;
+        reply = "Thank you. Your details have been received. Please hold while our management team confirms the exact price for this configuration and prepares your pro forma invoice. No payment is due until the final quotation and approved payment method are confirmed.";
+      }
     }
 
     const { data: responseMessage, error: responseInsertError } = await admin
