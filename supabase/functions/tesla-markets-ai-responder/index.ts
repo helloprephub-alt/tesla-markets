@@ -147,11 +147,15 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     const asksPrice=has(/\b(prices?|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
     const asksPerformance=has(/\b(performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy)\b/);
     const asksAll=has(/\b(all details|full details|everything|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/);
+    const specificPerformance=cleanString(specs.performance,240);
+    const specificRange=cleanString(specs.range,240);
+    const isPlaceholder=(value:string)=>!value||/\b(varies|variant-dependent|depends on|to be confirmed|must be confirmed|final production specification|final specification)\b/i.test(value);
+    const hasDetailedPerformance=!isPlaceholder(specificPerformance);
+    const hasDetailedRange=!isPlaceholder(specificRange);
     const lines:string[]=[];
     if(validPrice) lines.push("Published price: "+money(price));
     if(description) lines.push("Overview: "+description);
     if(specLines.length) lines.push(...specLines);
-    if(availability) lines.push("Published availability: "+availability);
     if(asksPrice){
       const variants=Array.isArray(specs.variants)?specs.variants.map((item:any)=>item.name+": "+item.price).join("; "):"";
       const priceNote=cleanString(specs.price_note,260);
@@ -159,9 +163,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
       else reply="";
     } else if(asksPerformance){
       const performanceLines=specLines.filter(line=>/performance|acceleration|top speed|speed|range|battery|charging|power|horsepower|torque|motor/i.test(line));
-      reply=performanceLines.length?"Published performance details for the "+name+": "+performanceLines.join("; "):"";
+      reply=hasDetailedPerformance&&hasDetailedRange&&performanceLines.length?"Published performance and range details for the "+name+": "+performanceLines.join("; "):"";
     } else if(asksAll){
-      reply=lines.length?"Complete published details for the "+name+": "+lines.join(" · "):"";
+      reply=hasDetailedPerformance&&hasDetailedRange&&lines.length?"Complete published details for the "+name+": "+lines.join(" · "):"";
     } else {
       reply=lines.length?"Published information for the "+name+": "+lines.join(" · "):"";
     }
