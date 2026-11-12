@@ -108,7 +108,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     reply=lang==="fr"?"Bien entendu. Bien entendu. Veuillez patienter un instant pendant que je vous mets en relation avec la personne la mieux placée pour vous aider.":
     lang==="es"?"Por supuesto. Por supuesto. Espere un momento mientras le pongo en contacto con la persona adecuada para ayudarle.":
     lang==="de"?"Selbstverständlich. Selbstverständlich. Bitte warten Sie einen Moment, während ich Sie mit der richtigen Ansprechperson verbinde.":
-    "Certainly. Certainly. Please give me a moment and I’ll arrange for the right person to continue with you here.";
+    "Certainly. I’ve notified our management team, and someone will continue with you here.";
   } else if(has(/\b(complaint|complain|problem|issue|disappointed|not received|broken|plainte|probleme|reclamacion|beschwerde)\b/)){
     intent="complaint"; requiresManagement=true;
     reply=lang==="fr"?"Merci de nous avoir signalé ce problème. Nous souhaitons l'examiner et vous aider. Je vais examiner cela pour vous. Vous pouvez partager la référence de commande, sans données de paiement sensibles.":
@@ -130,7 +130,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   } else if((vehicle || conversation.vehicle_model || mentionedModel) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const facts=[validPrice?money(price):"",cleanString(vehicle?.description,350),vehicle?.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
-    reply=facts?`Thank you for your interest in ${name}. Here is the information currently published: ${facts}. I’ll check the latest availability and delivery details for you. Would you like help selecting a configuration?`:`Thank you for your interest in ${name}. I’d be happy to help with the Model 3. Which version are you interested in? I’ll check the current details for you.`;
+    reply=facts?`Thanks for considering the ${name}. ${facts}. Would you like to know about its performance, range, features or delivery?`:`Thanks for your interest in the ${name}. I can help with its available configurations, performance, range, features, pricing and delivery. Which detail would you like first?`;
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="purchase_ready";
     reply=lang==="fr"?"Nous serons ravis de vous accompagner. Quel modèle et quelle configuration souhaitez-vous ? Nous recueillerons ensuite vos coordonnées et les informations de livraison nécessaires.":
@@ -139,7 +139,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     "We will be pleased to guide you through the next steps. Which model and configuration would you like? We can then collect your contact and delivery details progressively.";
   } else if(Object.keys(delivery).length){
     intent="delivery_details";
-    reply="Thank you. We have noted the details you provided in this conversation. I’ve noted those details. Is there anything else you’d like to add?";
+    reply="Thank you. I’ve added those details to your enquiry. Is there anything else you’d like us to know?";
   } else {
     intent="general"; requiresManagement=true;
     reply=lang==="fr"?"Merci pour votre message et votre intérêt pour Tesla Markets. Pour vous apporter une réponse exacte, pouvez-vous préciser votre question ou le modèle qui vous intéresse ?":
@@ -263,6 +263,7 @@ Deno.serve(async (req: Request) => {
       .eq("is_published", true);
     if (catalogueError) throw catalogueError;
 
+    const lastAutomatedReply = [...history].reverse().find((row: any) => row.sender_role === "management" && row.automated_type === "ai_response");
     const discount = detectDiscountRequest(customerMessage.body);
     const vehicle = matchVehicle(customerMessage.body, conversation.vehicle_model || "", catalogue || []);
     let reply = "";
@@ -275,6 +276,14 @@ Deno.serve(async (req: Request) => {
     intent = local.intent;
     requiresManagement = local.requiresManagement;
     extractedDelivery = local.delivery;
+
+    // Never emit the same automated sentence twice in a row. If the rules resolve
+    // to an identical answer, mark this message handled and leave the conversation quiet.
+    const canonical = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    if (lastAutomatedReply && canonical(lastAutomatedReply.body || "") === canonical(reply)) {
+      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
+      return json({ ok: true, skipped: true, reason: "identical_reply_prevented" }, 200, headers);
+    }
 
     if (local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
       const { error: vehicleContextError } = await admin.from("support_conversations")
