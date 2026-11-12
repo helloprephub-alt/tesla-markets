@@ -731,8 +731,8 @@ Deno.serve(async (req: Request) => {
             item_description: itemDescription,
             currency: "USD",
             agreed_amount: finalAmount,
-            status: "awaiting_payment",
-            internal_notes: "Pro forma only. Payment method, taxes, delivery charges and final availability require management confirmation."
+            status: "draft",
+            internal_notes: "Draft pro forma. Management must confirm vehicle availability, final quotation, taxes, delivery charges and approved payment method before requesting payment."
           }).select("id,order_reference,agreed_amount,item_description,status").single();
           if (orderError) throw orderError;
           proformaInvoice = {
@@ -783,7 +783,7 @@ Deno.serve(async (req: Request) => {
       structuredData = {
         title:"Vehicle order summary",
         subtitle:"PRO FORMA · AWAITING MANAGEMENT REVIEW",
-        status:"Payment pending",
+        status:"Awaiting management approval",
         amount_label:"VEHICLE SUBTOTAL",
         amount:invoiceAmount,
         fields_title:"Order information",
@@ -801,13 +801,13 @@ Deno.serve(async (req: Request) => {
             {label:"Country",value:cleanString(mergedDetails.country,80)}
           ]},
           {title:"Payment",rows:[
-            {label:"Payment status",value:"Pending — no payment received"},
-            {label:"Payment method",value:"Awaiting approved instructions from management"},
+            {label:"Payment status",value:"Awaiting management approval — no payment requested"},
+            {label:"Payment method",value:"To be provided after management approval"},
             {label:"Taxes and delivery",value:"Final charges to be confirmed"}
           ]}
         ],
-        note:"Your completed vehicle enquiry and draft order have been sent to Tesla Markets Management for review.",
-        disclaimer:"This is a pro forma summary, not a payment receipt or confirmed order. Do not transfer funds until management has verified the final amount and provided approved payment instructions."
+        note:"Your vehicle enquiry has been saved. Tesla Markets Management will confirm availability, the final quotation and approved payment instructions before you pay.",
+        disclaimer:"This is a draft pro forma, not a payment receipt or confirmed order. No payment is due until management approves the final amount and provides verified payment instructions."
       };
     } else if (cartSummary) {
       messageType = "cart_summary";
