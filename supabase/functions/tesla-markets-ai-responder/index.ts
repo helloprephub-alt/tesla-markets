@@ -143,7 +143,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="de"?"Vielen Dank für Ihre Nachricht und Ihr Interesse an Tesla Markets. Damit wir genau antworten können, teilen Sie uns bitte Ihre Frage oder das gewünschte Modell mit.":
     "Thank you for your message and your interest in Tesla Markets. To provide an accurate answer, could you share a little more detail about your question or the model you are considering?";
   }
-  return {reply,intent,requiresManagement,delivery,language:lang};
+  return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||conversation.vehicle_model||mentionedModel||null};
 }
 Deno.serve(async (req: Request) => {
   const headers = corsHeaders(req.headers.get("origin"));
@@ -271,6 +271,13 @@ Deno.serve(async (req: Request) => {
     intent = local.intent;
     requiresManagement = local.requiresManagement;
     extractedDelivery = local.delivery;
+
+    if (local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
+      const { error: vehicleContextError } = await admin.from("support_conversations")
+        .update({ vehicle_model: local.vehicleModel, updated_at: new Date().toISOString() })
+        .eq("id", conversationId);
+      if (vehicleContextError) throw vehicleContextError;
+    }
 
     if (Object.keys(extractedDelivery).length) {
       const current = conversation.delivery_details && typeof conversation.delivery_details === "object"
