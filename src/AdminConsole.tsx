@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { isCurrentUserAdmin, supabase, supabaseConfigured } from './lib/supabase';
-import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, Sun, Moon, Search, Bell, Plus, Upload, Pencil, ArrowUpRight, ChevronRight, Monitor, Smartphone, ListTodo, FileClock } from 'lucide-react';
+import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, Sun, Moon, Search, Bell, Plus, Upload, Pencil, ArrowUpRight, ChevronRight, Monitor, Smartphone, ListTodo, FileClock, Home, Grid2X2 } from 'lucide-react';
 import { AdminInbox } from './ChatWorkspace';
 
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
@@ -60,6 +60,15 @@ export function AdminConsole() {
   const [taskDue,setTaskDue]=useState('');
   const [section, setSection] = useState<Section>('overview');
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
+  const [moreOpen,setMoreOpen]=useState(false);
+  const [installedAppMode,setInstalledAppMode]=useState(()=>window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone));
+  useEffect(()=>{
+    const media=window.matchMedia('(display-mode: standalone)');
+    const update=()=>setInstalledAppMode(media.matches || Boolean((navigator as any).standalone));
+    media.addEventListener?.('change',update);
+    window.addEventListener('appinstalled',update);
+    return()=>{media.removeEventListener?.('change',update);window.removeEventListener('appinstalled',update);};
+  },[]);
   const [collapsedGroups,setCollapsedGroups]=useState<string[]>([]);
   const [adminTheme,setAdminTheme]=useState<'light'|'dark'|'auto'>(()=>{const saved=localStorage.getItem('tesla-admin-theme');return saved==='dark'||saved==='auto'?saved:'light';});
   const [systemTheme,setSystemTheme]=useState<'light'|'dark'>(()=>window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
@@ -536,6 +545,18 @@ export function AdminConsole() {
         <div style={{minWidth:220,flex:"1 1 240px"}}><b>App notifications</b><p style={{margin:"4px 0 0",fontSize:13,opacity:.75}}>Receive customer message alerts on this phone, even when the app is closed.</p>{notificationStatus&&<small role="status">{notificationStatus}</small>}</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{pushSubscribed?<button className="btn btn-outline" type="button" disabled={pushBusy} onClick={()=>void disablePhoneNotifications()}>{pushBusy?"Please wait…":"Turn off notifications"}</button>:<button className="btn btn-dark" type="button" disabled={pushBusy} onClick={()=>void enablePhoneNotifications()}>{pushBusy?"Please wait…":"Enable app notifications"}</button>}{!isInstalled&&<button className="btn btn-outline" type="button" onClick={()=>void installAdminApp()}>Install app</button>}</div>
       </section>
+      {installedAppMode&&<nav className="admin-app-bottom-nav" aria-label="App navigation">
+        <button type="button" className={section==='overview'?'active':''} onClick={()=>{setSection('overview');setMoreOpen(false);}}><Home size={21}/><span>Home</span></button>
+        <button type="button" className={section==='messages'?'active':''} onClick={()=>{setSection('messages');setMoreOpen(false);}}><MessageCircle size={21}/><span>Inbox</span></button>
+        <button type="button" className={section==='customers'?'active':''} onClick={()=>{setSection('customers');setMoreOpen(false);}}><Users size={21}/><span>Customers</span></button>
+        <button type="button" className={moreOpen?'active':''} onClick={()=>setMoreOpen(value=>!value)}><Grid2X2 size={21}/><span>More</span></button>
+      </nav>}
+      {installedAppMode&&moreOpen&&<div className="admin-app-more-backdrop" onClick={()=>setMoreOpen(false)}>
+        <section className="admin-app-more-sheet" role="dialog" aria-modal="true" aria-label="More management sections" onClick={event=>event.stopPropagation()}>
+          <div className="admin-app-more-heading"><div><b>More</b><small>All management tools</small></div><button type="button" onClick={()=>setMoreOpen(false)} aria-label="Close more menu"><X size={20}/></button></div>
+          <div className="admin-app-more-grid">{nav.filter(item=>!['overview','messages','customers'].includes(item.id)).map(item=>{const Icon=item.icon;return <button type="button" key={item.id} className={section===item.id?'active':''} onClick={()=>{setSection(item.id);setMoreOpen(false);}}><Icon size={20}/><span>{item.label}</span><ChevronRight size={16}/></button>})}</div>
+        </section>
+      </div>}
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
         <div className="admin-console-brand"><span className="admin-brand-mark admin-tesla-mark">T</span><div><b>TESLA MARKETS</b><small>MANAGEMENT CONSOLE</small></div></div>
