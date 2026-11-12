@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { supabase, isCurrentUserAdmin } from './lib/supabase';
 import { ArrowLeft, BadgeCheck, CheckCheck, FileImage, LoaderCircle, LockKeyhole, MessageCircle, Moon, Plus, RefreshCw, Send, ShieldCheck, Sun, X } from 'lucide-react';
 
-type Message = { id: string; sender: 'visitor'|'admin'; text: string; attachmentUrl?: string|null; createdAt: number };
+type Message = { id: string; sender: 'visitor'|'admin'; text: string; attachmentUrl?: string|null; messageType?: string; structuredData?: any; createdAt: number };
 type Thread = { id: string; visitorName: string; visitorEmail: string; enquiryType?:string; enquirySource?:string; vehicleModel?:string; phone?:string; updatedAt: number; lastMessage: string; status?: string; responderPaused?: boolean };
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Something went wrong. Please try again.';
 const timeLabel = (stamp:number) => new Date(stamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
@@ -56,12 +56,12 @@ async function ensureCustomerSession(details?:{name:string;email:string;phone:st
 }
 
 async function fetchMessages(conversationId:string, viewerId:string):Promise<Message[]> {
-  const { data, error } = await supabase.from('support_messages').select('id,sender_id,sender_role,body,attachment_path,created_at').eq('conversation_id',conversationId).order('created_at',{ascending:true});
+  const { data, error } = await supabase.from('support_messages').select('id,sender_id,sender_role,body,attachment_path,created_at,message_type,structured_data').eq('conversation_id',conversationId).order('created_at',{ascending:true});
   if (error) throw error;
   return Promise.all((data||[]).map(async row=>{
     let attachmentUrl:string|null=null;
     if(row.attachment_path){ const {data:asset}=await supabase.storage.from('support-attachments').createSignedUrl(row.attachment_path,3600); attachmentUrl=asset?.signedUrl||null; }
-    return { id:row.id, sender:row.sender_role==='management'?'admin':'visitor', text:row.body||'', attachmentUrl, createdAt:new Date(row.created_at).getTime() };
+    return { id:row.id, sender:row.sender_role==='management'?'admin':'visitor', text:row.body||'', attachmentUrl, messageType:row.message_type||'text', structuredData:row.structured_data||null, createdAt:new Date(row.created_at).getTime() };
   }));
 }
 
@@ -73,6 +73,26 @@ async function uploadAttachment(file:File,userId:string,conversationId:string) {
   const {error}=await supabase.storage.from('support-attachments').upload(path,file,{contentType:file.type,upsert:false});
   if(error) throw error;
   return path;
+}
+
+
+function RichMessageCard({type,data}:{type?:string;data?:any}) {
+  if(!type || type==='text' || !data || typeof data!=='object') return null;
+  const rows=(value:any)=>Array.isArray(value)?value.filter((x:any)=>x&&typeof x.label==='string'&&x.value!==undefined):[];
+  const title=String(data.title|| (type==='vehicle_card'?'Vehicle information':type==='investment_summary'?'Investment enquiry summary':type==='customer_details'?'Customer information':'Tesla Markets information'));
+  const metrics=rows(data.metrics), fields=rows(data.fields);
+  const sections=Array.isArray(data.sections)?data.sections.filter((x:any)=>x&&typeof x.title==='string'):[];
+  return <article className={'tm-rich-card tm-rich-card-'+type}>
+    <div className="tm-rich-card-top"><span className="tm-rich-card-brand">TESLA MARKETS</span>{data.status&&<span className={'tm-rich-card-status '+(String(data.status).toLowerCase().includes('pending')?'pending':'')}>{String(data.status).toUpperCase()}</span>}</div>
+    {data.image_url&&<img className="tm-rich-card-image" src={String(data.image_url)} alt={title} loading="lazy"/>}
+    <div className="tm-rich-card-heading"><h3>{title}</h3>{data.subtitle&&<p>{String(data.subtitle)}</p>}</div>
+    {data.amount&&<div className="tm-rich-card-amount"><span>{String(data.amount_label||'AMOUNT')}</span><strong>{String(data.amount)}</strong></div>}
+    {metrics.length>0&&<div className="tm-rich-card-metrics">{metrics.map((item:any,i:number)=><div className="tm-rich-card-metric" key={i}><strong>{String(item.value)}</strong><span>{String(item.label)}</span></div>)}</div>}
+    {fields.length>0&&<section className="tm-rich-card-section"><h4>{String(data.fields_title||'Customer information')}</h4><dl>{fields.map((item:any,i:number)=><div key={i}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>}
+    {sections.map((section:any,i:number)=><section className="tm-rich-card-section" key={i}><h4>{section.title}</h4><dl>{rows(section.rows).map((item:any,j:number)=><div key={j}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>)}
+    {data.note&&<p className="tm-rich-card-note">{String(data.note)}</p>}
+    {data.disclaimer&&<p className="tm-rich-card-disclaimer">{String(data.disclaimer)}</p>}
+  </article>;
 }
 
 export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void; language?: PublicLanguage }) {
@@ -153,7 +173,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
   return <section className="chat-fullscreen customer-chat-screen">
     <header className="chat-appbar"><button onClick={onBack} aria-label={tr("Back to website")}><ArrowLeft size={18}/><span>{tr("Back")}</span></button><div className="chat-appbar-brand"><ManagementAvatar className="chat-brand-avatar"/><div><b>Tesla Markets Management <BadgeCheck className="chat-verified-badge" size={16} fill="#1685e8" color="#1685e8" aria-label="Verified management profile"/></b></div></div><ThemeToggle className="chat-theme-toggle"/></header>
     <div className="chat-full-body"><div className="chat-conversation-shell">
-      <div className="chat-panel live-chat-panel"><div ref={messagesRef} onScroll={e=>{const el=e.currentTarget;nearBottomRef.current=el.scrollHeight-el.scrollTop-el.clientHeight<90;}} className="chat-messages live-chat-messages"><div className="chat-day-divider"><span>{tr("Conversation started")}</span></div>{context&&<div className="chat-context-card"><b>{tr("About your enquiry")}</b><span>{context}</span></div>}{messages.map(m=><div key={m.id} className={'chat-message-row '+(m.sender==='visitor'?'mine':'theirs')}><div className={'chat-bubble '+(m.sender==='visitor'?'you':'team')}>{m.text&&<p>{m.text}</p>}{m.attachmentUrl&&<a href={m.attachmentUrl} target="_blank" rel="noreferrer"><img className="chat-attachment" src={m.attachmentUrl} alt="Shared attachment"/></a>}<small>{m.sender==='admin'?tr('Tesla Markets Management'):tr('You')} · {timeLabel(m.createdAt)} {m.sender==='visitor'&&<CheckCheck size={12}/>}</small></div></div>)}</div>{isTyping&&<><style>{`@keyframes tmTypingBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}.tm-typing-bubble{display:flex;align-items:center;gap:5px;padding:13px 16px;min-width:64px}.tm-typing-bubble i{display:block;width:7px;height:7px;border-radius:50%;background:#87919b;animation:tmTypingBounce 1.05s infinite}.tm-typing-bubble i:nth-child(2){animation-delay:.15s}.tm-typing-bubble i:nth-child(3){animation-delay:.3s}`}</style><div className="chat-message-row theirs"><div className="chat-bubble team tm-typing-bubble" aria-label="Tesla Markets is typing"><i/><i/><i/></div></div></>}
+      <div className="chat-panel live-chat-panel"><div ref={messagesRef} onScroll={e=>{const el=e.currentTarget;nearBottomRef.current=el.scrollHeight-el.scrollTop-el.clientHeight<90;}} className="chat-messages live-chat-messages"><div className="chat-day-divider"><span>{tr("Conversation started")}</span></div>{context&&<div className="chat-context-card"><b>{tr("About your enquiry")}</b><span>{context}</span></div>}{messages.map(m=><div key={m.id} className={'chat-message-row '+(m.sender==='visitor'?'mine':'theirs')}><div className={'chat-bubble '+(m.sender==='visitor'?'you':'team')}>{m.messageType&&m.messageType!=='text'&&<RichMessageCard type={m.messageType} data={m.structuredData}/ >}{m.messageType&&m.messageType!=='text'&&<RichMessageCard type={m.messageType} data={m.structuredData}/ >}{m.text&&<p>{m.text}</p>}{m.attachmentUrl&&<a href={m.attachmentUrl} target="_blank" rel="noreferrer"><img className="chat-attachment" src={m.attachmentUrl} alt="Shared attachment"/></a>}<small>{m.sender==='admin'?tr('Tesla Markets Management'):tr('You')} · {timeLabel(m.createdAt)} {m.sender==='visitor'&&<CheckCheck size={12}/>}</small></div></div>)}</div>{isTyping&&<><style>{`@keyframes tmTypingBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}.tm-typing-bubble{display:flex;align-items:center;gap:5px;padding:13px 16px;min-width:64px}.tm-typing-bubble i{display:block;width:7px;height:7px;border-radius:50%;background:#87919b;animation:tmTypingBounce 1.05s infinite}.tm-typing-bubble i:nth-child(2){animation-delay:.15s}.tm-typing-bubble i:nth-child(3){animation-delay:.3s}`}</style><div className="chat-message-row theirs"><div className="chat-bubble team tm-typing-bubble" aria-label="Tesla Markets is typing"><i/><i/><i/></div></div></>}
       {images.length>0&&<div className="chat-image-previews" aria-label={images.length+' images selected'}><div className="chat-image-preview-heading">{images.length} {tr(images.length===1?'image selected':'images selected')}</div><div className="chat-image-preview-list">{images.map((file,index)=><div className="chat-image-preview-item" key={file.name+'-'+file.size+'-'+file.lastModified}><FileImage size={13}/><span>{file.name}</span><button type="button" onClick={()=>setImages(current=>current.filter((_,i)=>i!==index))} aria-label={'Remove '+file.name}><X size={13}/></button></div>)}</div></div>}{(problem||booting)&&<p className="chat-error" role="status">{problem||tr('Opening secure chat…')}</p>}
       <form className="chat-compose live-chat-compose" onSubmit={send}><div className="chat-attach-wrap"><button type="button" className={'chat-plus-button '+(attachOpen?'active':'')} onClick={()=>setAttachOpen(!attachOpen)} aria-label={tr('Add attachments')}><Plus size={19}/></button>{attachOpen&&<div className="chat-attach-menu"><button type="button" onClick={()=>document.getElementById('customer-chat-file')?.click()}><FileImage size={17}/> {tr('Choose images')}</button><small>{tr("Select multiple JPG, PNG, WEBP or GIF images. Each image can be up to 3 MB.")}</small></div>}<input id="customer-chat-file" className="chat-file-input" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>{const selected=Array.from(e.target.files||[]);setImages(current=>[...current,...selected.filter(file=>!current.some(existing=>existing.name===file.name&&existing.size===file.size&&existing.lastModified===file.lastModified))]);setAttachOpen(false);e.currentTarget.value='';}}/></div><textarea value={draft} rows={1} onChange={e=>setDraft(e.target.value)} placeholder={tr("Type a message…")} aria-label={tr('Write your message')} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/><button className="chat-send-button" disabled={busy||booting||(!draft.trim()&&!images.length)} aria-label="Send message">{busy?<LoaderCircle className="spin" size={18}/>:<Send size={17}/>}</button></form>
       </div></div></div>
