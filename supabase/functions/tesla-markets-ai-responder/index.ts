@@ -342,7 +342,62 @@ ${JSON.stringify(vehicleFacts)}`;
       is_read: false,
     });
 
-    if (requiresManagement || intent === "investment" || intent === "complaint" || intent === "human_handover" || discount.aboveLimit) {
+    if (Object.keys(extractedDelivery).length) {
+      await admin.from("admin_notifications").insert({
+        type: "delivery_details_received",
+        title: "Customer delivery information received",
+        body: `Customer ${conversation.visitor_email || "website visitor"} provided delivery information. Review the secure conversation.`,
+        entity_type: "conversation",
+        entity_id: conversationId,
+        is_read: false,
+      });
+    }
+
+    if (discount.aboveLimit) {
+      await admin.from("admin_notifications").insert({
+        type: "discount_approval_request",
+        title: "Additional vehicle discount requires approval",
+        body: `Customer ${conversation.visitor_email || "website visitor"} requested a discount above the automatic 3% limit.`,
+        entity_type: "conversation",
+        entity_id: conversationId,
+        is_read: false,
+      });
+    }
+
+    if (intent === "investment") {
+      await admin.from("admin_notifications").insert({
+        type: "investment_enquiry",
+        title: "New investment enquiry",
+        body: `Customer ${conversation.visitor_email || "website visitor"} submitted an investment-related question. Management review is required.`,
+        entity_type: "conversation",
+        entity_id: conversationId,
+        is_read: false,
+      });
+    }
+
+    if (intent === "purchase_ready" || intent === "vehicle_purchase") {
+      await admin.from("admin_notifications").insert({
+        type: "purchase_ready",
+        title: "Customer is ready to proceed with a vehicle",
+        body: `Customer ${conversation.visitor_email || "website visitor"} appears ready to proceed. Review the conversation and delivery requirements.`,
+        entity_type: "conversation",
+        entity_id: conversationId,
+        is_read: false,
+      });
+    }
+
+    if (intent === "payment" || intent === "payment_receipt") {
+      await admin.from("admin_notifications").insert({
+        type: "payment_review",
+        title: "Payment enquiry requires verification",
+        body: `Customer ${conversation.visitor_email || "website visitor"} raised a payment-related question. Verify records before confirming payment.`,
+        entity_type: "conversation",
+        entity_id: conversationId,
+        is_read: false,
+      });
+    }
+
+    if (requiresManagement || intent === "complaint" || intent === "human_handover" || intent === "fraud_concern") {
       await admin.from("admin_notifications").insert({
         type: "ai_escalation",
         title: "AI enquiry requires management review",
