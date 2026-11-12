@@ -68,8 +68,12 @@ function extractDelivery(text: string) {
 function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any) {
   const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text);
   const has=(r:RegExp)=>r.test(t);
-  const mentionedModel=text.match(/\b(model\s*[3ysx]|cybertruck|roadster|semi)\b/i)?.[0];
-  const name=vehicle?.name||vehicle?.model||conversation.vehicle_model||mentionedModel||"your selected vehicle";
+  const modelPattern=/\b(model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
+  const explicitModel=text.match(modelPattern)?.[0];
+  const priorModel=[...history].reverse().filter((row:any)=>row.sender_role==="customer").map((row:any)=>String(row.body||"").match(modelPattern)?.[0]).find(Boolean);
+  const rawModel=explicitModel||conversation.vehicle_model||priorModel||null;
+  const mentionedModel=rawModel ? (/cyber\s*truck/i.test(rawModel)?"Cybertruck":/roadster/i.test(rawModel)?"Roadster":/semi/i.test(rawModel)?"Tesla Semi":rawModel.replace(/\s+/g," ").replace(/\bmodel\s*([3ysx])\b/i,(_,v)=>"Model "+String(v).toUpperCase())) : undefined;
+  const name=vehicle?.name||vehicle?.model||mentionedModel||"your selected vehicle";
   const price=Number(vehicle?.price_usd), validPrice=Number.isFinite(price)&&price>0;
   const money=(n:number)=>new Intl.NumberFormat(lang==="fr"?"fr-FR":lang==="es"?"es-ES":lang==="de"?"de-DE":"en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(n);
   let intent="general", requiresManagement=false, reply="";
@@ -125,7 +129,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     "We will be pleased to assist with delivery. Costs, timelines and eligible destinations must be confirmed for the specific vehicle and address. Which country and city would you like the vehicle delivered to?";
   } else if((vehicle || conversation.vehicle_model || mentionedModel) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
-    const facts=[validPrice?money(price):"",cleanString(vehicle.description,350),vehicle.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
+    const facts=[validPrice?money(price):"",cleanString(vehicle?.description,350),vehicle?.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
     reply=facts?`Thank you for your interest in ${name}. Here is the information currently published: ${facts}. I’ll check the latest availability and delivery details for you. Would you like help selecting a configuration?`:`Thank you for your interest in ${name}. I’d be happy to help with the Model 3. Which version are you interested in? I’ll check the current details for you.`;
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="purchase_ready";
@@ -143,7 +147,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="de"?"Vielen Dank für Ihre Nachricht und Ihr Interesse an Tesla Markets. Damit wir genau antworten können, teilen Sie uns bitte Ihre Frage oder das gewünschte Modell mit.":
     "Thank you for your message and your interest in Tesla Markets. To provide an accurate answer, could you share a little more detail about your question or the model you are considering?";
   }
-  return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||conversation.vehicle_model||mentionedModel||null};
+  return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||mentionedModel||null};
 }
 Deno.serve(async (req: Request) => {
   const headers = corsHeaders(req.headers.get("origin"));
