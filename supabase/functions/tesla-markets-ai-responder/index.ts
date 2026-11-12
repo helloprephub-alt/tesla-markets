@@ -151,7 +151,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="es"?"Para preparar la entrega, indique su nombre completo, correo electrónico, teléfono, país, ciudad y dirección de entrega. Nuestro equipo confirmará las condiciones.":
     lang==="de"?"Bitte nennen Sie für die Lieferanfrage Ihren vollständigen Namen, Ihre E-Mail-Adresse, Telefonnummer, das Land, die Stadt und die Lieferadresse. Unser Team bestätigt anschließend die Einzelheiten.":
     "To prepare your delivery enquiry, please share your full name, email address, phone number, delivery country, city and full delivery address. Our team will confirm the delivery arrangements.";
-  } else if((vehicle || conversation.vehicle_model || mentionedModel) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
+  } else if((vehicle || conversation.vehicle_model || mentionedModel) && (requestedVariant || has(/\b(price|prices|pricing|cost|how much|usd|dollar|performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy|specification|specifications|features|colours?|colors?|wheels?|details|information|overview|delivery|availability|available|version|variants?)\b/)) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const modelKey = canonicalVehicle(mentionedModel || conversation.vehicle_model || name);
     const specs = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
@@ -213,7 +213,16 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     reply="Thank you. I’ve added those details to your enquiry. Is there anything else you’d like us to know?";
   } else {
     intent="unverified_or_unsupported"; requiresManagement=true;
-    reply="Thank you for your message. I want to make sure you receive accurate information rather than an unverified answer. Please hold while our management team reviews your enquiry. We will respond here.";
+    const currentVehicle=conversation.vehicle_model || mentionedModel;
+    const priorAssistant=[...history].reverse().find((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response");
+    const previousPrompt=String(priorAssistant?.body||"").toLowerCase();
+    if(currentVehicle && previousPrompt.includes("would you like") && /\b(yes|yeah|sure|okay|ok|please)\b/i.test(text)) {
+      reply="Of course. I am following your enquiry for the "+currentVehicle+". You can ask me about its price, versions, performance, delivery or the buying process. What would you like to know first?";
+    } else if(currentVehicle) {
+      reply="I understand. I have kept your "+currentVehicle+" enquiry in context. Could you tell me a little more about what you would like to know? I will answer that directly rather than restart your enquiry.";
+    } else {
+      reply="Thanks for your message. I am here to help with vehicle enquiries, specifications, pricing, delivery and the buying process. What would you like to know?";
+    }
   }
   return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||mentionedModel||null};
 }
@@ -351,7 +360,7 @@ Deno.serve(async (req: Request) => {
     const selectedVehicle = vehicle || matchVehicle("", conversation.vehicle_model || "", catalogue || []);
     const selectedSpecs = selectedVehicle?.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
-    const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); }) || (priorDetails.selected_variant ? variants.find((variant:any)=>normalized(cleanString(variant?.name,100))===normalized(cleanString(priorDetails.selected_variant,100))) : null);
+    const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); }); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); }) || (priorDetails.selected_variant ? variants.find((variant:any)=>normalized(cleanString(variant?.name,100))===normalized(cleanString(priorDetails.selected_variant,100))) : null);
     if (variantMatch) mergedDetails.selected_variant = cleanString(variantMatch.name,100);
     if (selectedVehicle && !mergedDetails.selected_variant && variants.length === 1) mergedDetails.selected_variant = cleanString(variants[0].name,100);
     const hasPaymentIntent = /\b(payment|payment method|payment options|how do i pay|where do i pay|pay now|transfer|bank details|paiement|pago|zahlung)\b/i.test(normalized(customerMessage.body));
@@ -374,7 +383,7 @@ Deno.serve(async (req: Request) => {
     if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
-    } else if (/^\\s*(okay|ok|yes|yeah|sure|proceed|continue|go ahead|sounds good|alright|all right|yes please|yes all information)\\b/i.test(customerMessage.body) && selectedVehicle) {
+    } else if (/^\\s*(okay|ok|yes|yeah|sure|proceed|continue|go ahead|sounds good|alright|all right|yes please)\\b/i.test(customerMessage.body) && selectedVehicle) {
       intent = "customer_details_progress";
       const needs = missing.length ? missing.join(", ") : "confirmation of your preferred vehicle version";
       reply = "Certainly. I have kept your " + selectedVehicle.name + " enquiry open. To move to the next step, please provide your " + needs + ". I will prepare the pro forma invoice once the required details are complete.";
@@ -407,7 +416,7 @@ Deno.serve(async (req: Request) => {
     // Never emit the same automated sentence twice in a row. If the rules resolve
     // to an identical answer, mark this message handled and leave the conversation quiet.
     const canonical = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-    if (lastAutomatedReply && canonical(lastAutomatedReply.body || "") === canonical(reply)) {
+    if (history.some((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response" && canonical(row.body||"")===canonical(reply))) {
       const isVehicleInfo = intent === "vehicle_enquiry" || intent === "unverified_vehicle_information";
       reply = isVehicleInfo
         ? "I have already shared the published information available for the " + (selectedVehicle?.name || conversation.vehicle_model || "vehicle") + " above. Which particular detail would you like me to clarify?"
