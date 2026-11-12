@@ -108,12 +108,10 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="es"?"Gracias por su interés en Tesla Markets. Nuestro equipo estará encantado de explicarle la información disponible y guiarle en los próximos pasos. ¿Qué le gustaría saber?":
     lang==="de"?"Vielen Dank für Ihr Interesse an Tesla Markets. Unser Team informiert Sie gerne über die verfügbaren Informationen und begleitet Sie bei den nächsten Schritten. Was möchten Sie wissen?":
     "Thanks for your interest in Tesla Markets! Our team would be happy to walk you through the available information and guide you through the next steps. What would you like to know?";
-  } else if(has(/\b(payment|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
+  } else if(has(/\b(payment|payment method|payment options|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
     intent="payment"; requiresManagement=true;
-    reply=lang==="fr"?"Merci. Je peux vérifier cela pour vous. Veuillez transmettre uniquement la référence de transaction ou le reçu via le chat sécurisé. Ne communiquez jamais vos numéros de carte, mots de passe ou codes de sécurité. Le paiement sera confirmé après vérification.":
-    lang==="es"?"Gracias. Puedo comprobarlo para usted. Comparta únicamente la referencia de transacción o el recibo mediante el chat seguro. Nunca envíe números de tarjeta, contraseñas ni códigos de seguridad. El pago se confirma después de verificarlo.":
-    lang==="de"?"Vielen Dank. Ich prüfe das gerne für Sie. Senden Sie bitte nur die Transaktionsreferenz oder den Beleg über den sicheren Chat. Teilen Sie niemals Kartennummern, Passwörter oder Sicherheitscodes. Die Zahlung wird erst nach Prüfung bestätigt.":
-    "Thank you. I can help you with that. Please share the transaction reference or receipt here so I can check the status. For your security, never send card numbers, passwords or security codes.";
+    // Payment instructions are never guessed or repeated by the automatic responder.
+    reply="";
   } else if(has(/\b(human|person|agent|manager|representative|real person|speak to someone|conseiller|personne|persona|mitarbeiter)\b/)){
     intent="human_handover"; requiresManagement=true;
     reply=lang==="fr"?"Bien entendu. Bien entendu. Veuillez patienter un instant pendant que je vous mets en relation avec la personne la mieux placée pour vous aider.":
@@ -141,22 +139,31 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   } else if((vehicle || conversation.vehicle_model || mentionedModel) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const modelKey = canonicalVehicle(mentionedModel || conversation.vehicle_model || name);
-    const modelIntro: Record<string,string> = {
-      "Model 3": "the Model 3 electric sedan",
-      "Model Y": "the Model Y electric SUV",
-      "Cybertruck": "the all-electric Cybertruck pickup",
-      "Roadster": "the Roadster sports car",
-      "Tesla Semi": "the Tesla Semi electric truck"
-    };
-    const subject = modelIntro[modelKey] || name;
-    const facts=[validPrice?money(price):"",cleanString(vehicle?.description,350),vehicle?.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
+    const specs = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
+    const label = (key:string) => key.replace(/[_-]+/g," ").replace(/\b\w/g,(ch:string)=>ch.toUpperCase());
+    const specLines = Object.entries(specs).filter(([,value])=>value!==null&&value!==undefined&&String(value).trim()!=="").map(([key,value])=>label(key)+": "+(typeof value==="object"?JSON.stringify(value):String(value)));
+    const description = cleanString(vehicle?.description,900);
+    const availability = cleanString(vehicle?.availability,120);
     const asksPrice=has(/\b(price|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
     const asksPerformance=has(/\b(performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy)\b/);
-    if(asksPrice && validPrice) reply="The currently published price for the "+name+" is "+money(price)+". Would you like help comparing its configurations?";
-    else if(asksPrice) reply="I can help with pricing for the "+name+". Please give me a moment to confirm the latest listed price. Are you considering a particular configuration?";
-    else if(asksPerformance && facts) reply="Here are the published details for the "+name+": "+facts+". Would you like to know more about its configuration or availability?";
-    else if(asksPerformance) reply="I’d be happy to walk you through the "+name+"'s performance, driving range and charging features. Please give me a moment to confirm the exact specifications. Is there a particular feature you’re interested in?";
-    else reply=facts ? "Thanks for your interest in "+subject+". "+facts+". Would you like to know about its configurations, performance or delivery?" : "Thanks for your interest in "+subject+". I can help with its design, configurations, performance, range, pricing and delivery. Which detail would you like to explore first?";
+    const asksAll=has(/\b(all details|full details|everything|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/);
+    const lines:string[]=[];
+    if(validPrice) lines.push("Published price: "+money(price));
+    if(description) lines.push("Overview: "+description);
+    if(specLines.length) lines.push(...specLines);
+    if(availability) lines.push("Published availability: "+availability);
+    if(asksPrice){
+      if(validPrice) reply="The published price for the "+name+" is "+money(price)+".";
+      else reply="";
+    } else if(asksPerformance){
+      const performanceLines=specLines.filter(line=>/performance|acceleration|top speed|speed|range|battery|charging|power|horsepower|torque|motor/i.test(line));
+      reply=performanceLines.length?"Published performance details for the "+name+": "+performanceLines.join("; "):"";
+    } else if(asksAll){
+      reply=lines.length?"Complete published details for the "+name+": "+lines.join(" · "):"";
+    } else {
+      reply=lines.length?"Published information for the "+name+": "+lines.join(" · "):"";
+    }
+    if(!reply){intent="unverified_vehicle_information";requiresManagement=true;}
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="purchase_ready";
     reply=lang==="fr"?"Nous serons ravis de vous accompagner. Quel modèle et quelle configuration souhaitez-vous ? Nous recueillerons ensuite vos coordonnées et les informations de livraison nécessaires.":
@@ -167,11 +174,8 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     intent="delivery_details";
     reply="Thank you. I’ve added those details to your enquiry. Is there anything else you’d like us to know?";
   } else {
-    intent="general"; requiresManagement=true;
-    reply=lang==="fr"?"Merci pour votre message et votre intérêt pour Tesla Markets. Pour vous apporter une réponse exacte, pouvez-vous préciser votre question ou le modèle qui vous intéresse ?":
-    lang==="es"?"Gracias por su mensaje e interés en Tesla Markets. Para ofrecerle una respuesta precisa, ¿podría concretar su pregunta o indicar el modelo que le interesa?":
-    lang==="de"?"Vielen Dank für Ihre Nachricht und Ihr Interesse an Tesla Markets. Damit wir genau antworten können, teilen Sie uns bitte Ihre Frage oder das gewünschte Modell mit.":
-    "Thank you for your message and your interest in Tesla Markets. To provide an accurate answer, could you share a little more detail about your question or the model you are considering?";
+    intent="unverified_or_unsupported"; requiresManagement=true;
+    reply="";
   }
   return {reply,intent,requiresManagement,delivery,language:lang,vehicleModel:vehicle?.model||vehicle?.name||mentionedModel||null};
 }
@@ -302,6 +306,19 @@ Deno.serve(async (req: Request) => {
     intent = local.intent;
     requiresManagement = local.requiresManagement;
     extractedDelivery = local.delivery;
+
+    if (!reply.trim()) {
+      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
+      await admin.from("admin_notifications").insert({
+        type: "ai_silent_handover",
+        title: "Customer question needs a verified management answer",
+        body: `Customer ${conversation.visitor_email || "website visitor"} · ${intent} · No automated answer sent because verified information is unavailable.`,
+        entity_type: "conversation",
+        entity_id: conversationId,
+        is_read: false,
+      });
+      return json({ ok: true, silent: true, intent }, 200, headers);
+    }
 
     // Never emit the same automated sentence twice in a row. If the rules resolve
     // to an identical answer, mark this message handled and leave the conversation quiet.
