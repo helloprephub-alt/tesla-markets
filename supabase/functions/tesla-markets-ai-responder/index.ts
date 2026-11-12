@@ -436,6 +436,13 @@ Deno.serve(async (req: Request) => {
     if (!hasAddress) missing.push("full delivery address");
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
+    const priorPurchaseStage = cleanString(aiMemory.conversation_stage,80);
+    if (intent === "vehicle_variant_selected" && priorPurchaseStage === "purchase_collecting_details") {
+      intent = "customer_details_progress";
+      reply = deliveryComplete
+        ? "Thank you. Your vehicle version is selected and your saved delivery details are complete. I am preparing your pro forma order summary for management review."
+        : "Thank you. I have selected that vehicle version. To complete your enquiry, please provide: " + missing.join(", ") + ". You can send the remaining details together in one message.";
+    }
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
     const cartIntent = /(?:\b(add|put|include)\b.*\b(to (?:my )?(?:cart|basket)|\d{1,2}\s+(?:cybertruck|model|roadster|semi)|another|one|two|three)\b|\b(view|show)\b.*\b(cart|basket)\b)/i.test(customerMessage.body);
     const cartSummary = cartIntent && selectedVehicle ? (() => {
@@ -551,7 +558,7 @@ Deno.serve(async (req: Request) => {
       intent = "customer_details_progress";
       const needs = missing.length ? missing.join(", ") : "confirmation of your preferred vehicle version";
       reply = "Certainly. I have kept your " + selectedVehicle.name + " enquiry open. To move to the next step, please provide your " + needs + ". I will prepare the pro forma invoice once the required details are complete.";
-    } else if (((Object.keys(extractedDelivery).length > 0) && ["general","delivery_details","unverified_or_unsupported","greeting"].includes(intent)) || (variantMatch && !discount.mentionsDiscount)) {
+    } else if (((Object.keys(extractedDelivery).length > 0) && ["general","delivery_details","unverified_or_unsupported","greeting","vehicle_variant_selected"].includes(intent)) || (variantMatch && !discount.mentionsDiscount)) {
       intent = "customer_details_progress"; requiresManagement = true;
       if (deliveryComplete && (hasVariant || variants.length <= 1)) {
         reply = "Thank you. I have received and recorded your contact and delivery details, together with your selected vehicle version. I am preparing your order summary and pro forma invoice now. Payment will remain pending until management confirms the payment method and verifies receipt.";
@@ -623,7 +630,7 @@ Deno.serve(async (req: Request) => {
       ...aiMemory,
       selected_vehicle: local.vehicleModel || conversation.vehicle_model || null,
       vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
-      selected_variant: mergedDetails.selected_variant || aiMemory.selected_variant || null,
+      selected_variant: mergedDetails.selected_variant || null,
       last_intent: intent,
       pending_slot: investmentFlow ? (!(investmentAmount > 0) ? "investment_amount" : !investmentName ? "full_name" : !investmentEmail ? "email" : !investmentPhone ? "phone" : !investmentCountry ? "country" : !investmentAddress ? "address" : "") : nextPendingSlot,
       investment_amount_usd: investmentAmount > 0 && Number.isFinite(investmentAmount) ? investmentAmount : aiMemory.investment_amount_usd || null,
@@ -640,7 +647,7 @@ Deno.serve(async (req: Request) => {
         address: !!cleanString(mergedDetails.address,240),
         selected_variant: !!cleanString(mergedDetails.selected_variant,100)
       },
-      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : intent === "investment_awaiting_amount" ? "investment_awaiting_amount" : "investment_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent === "purchase_ready" ? "collecting_delivery_details" : intent
+      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : intent === "investment_awaiting_amount" ? "investment_awaiting_amount" : "investment_collecting_details") : intent === "proforma_invoice_created" ? "vehicle_order_submitted" : ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage) || ["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && priorPurchaseStage === "purchase_collecting_details") ? (priorPurchaseStage === "vehicle_order_submitted" ? "vehicle_order_submitted" : "purchase_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent
     };
     const { error: memoryWriteError } = await admin.from("ai_conversation_memory").upsert({
       conversation_id: conversationId,
