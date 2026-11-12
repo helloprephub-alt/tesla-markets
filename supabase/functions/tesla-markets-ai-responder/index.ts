@@ -88,7 +88,7 @@ function extractDelivery(text: string, pendingSlot = "") {
       const countries=["United States of America","United States","USA","U.S.A.","United Kingdom","UK","Nigeria","Canada","France","Germany","Australia","United Arab Emirates","UAE"];
       const found=countries.find(country=>location.toLowerCase().includes(country.toLowerCase()));
       if(found&&!out.country)out.country=found;
-      const rest=found?location.replace(new RegExp(found.replace(/[.*+?^$()|[\]\\]/g,"\\$&"),"i"),"").trim():location;
+      const rest=found?location.replace(new RegExp(found.replace(/[.*+?^$()|[\]\\]/g,"\$&"),"i"),"").trim():location;
       if(rest&&!out.city&&rest.length<80)out.city=rest.replace(/^,|,$/g,"").trim();
     }
   }
@@ -98,13 +98,13 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text, cleanString(conversation.ai_memory?.pending_slot,40));
   const has=(r:RegExp)=>r.test(t);
   const previousAiReply=cleanString(conversation.ai_memory?.last_ai_response,1200) || String([...history].reverse().find((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response")?.body || "");
-  const affirmative=has(/^\\s*(yes|yeah|yep|sure|okay|ok|please do|go ahead|sounds good|alright|all right)\\b/);
+  const affirmative=has(/^\s*(yes|yeah|yep|sure|okay|ok|please do|go ahead|sounds good|alright|all right)\b/);
   const acceptsFullInfo=affirmative && /available versions and prices|performance details|delivery information|all the details|full information/i.test(previousAiReply);
   const acceptsPurchase=affirmative && /would you like to proceed|ready to order|next steps/i.test(previousAiReply);
-  const asksOfficial=has(/\\b(is this (the )?official|are you official|official website|is tesla markets official|is this legitimate|is this real|are you genuine)\\b/);
-  const asksIdentity=has(/\\b(who are you|what are you|are you (a )?(bot|ai|human)|are you real)\\b/);
-  const asksAddAnother=has(/\\b(add another|another car|one more car|also order|also buy|add (a )?car|include another|second car)\\b/);
-  const asksGeneralKnowledge=has(/\\b(what is|who is|where is|when is|why is|how does|how do|can you explain|tell me about)\\b/);
+  const asksOfficial=has(/\b(is this (the )?official|are you official|official website|is tesla markets official|is this legitimate|is this real|are you genuine)\b/);
+  const asksIdentity=has(/\b(who are you|what are you|are you (a )?(bot|ai|human)|are you real)\b/);
+  const asksAddAnother=has(/\b(add another|another car|one more car|also order|also buy|add (a )?car|include another|second car)\b/);
+  const asksGeneralKnowledge=has(/\b(what is|who is|where is|when is|why is|how does|how do|can you explain|tell me about)\b/);
 
 
   const modelPattern=/\b(model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
@@ -356,18 +356,11 @@ Deno.serve(async (req: Request) => {
     conversation.ai_memory = aiMemory;
 
 
-    const { data: managementReplies, error: managementRepliesError } = await admin
-      .from("support_messages")
-      .select("id,automated_type")
-      .eq("conversation_id", conversationId)
-      .eq("sender_role", "management")
-      .gt("created_at", customerMessage.created_at)
-      .limit(10);
-    if (managementRepliesError) throw managementRepliesError;
-    if ((managementReplies || []).some((row: any) => row.automated_type === null || row.automated_type === "ai_response")) {
-      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      return json({ ok: true, skipped: true, reason: "management_already_replied" }, 200, headers);
-    }
+    // Do not suppress this customer message merely because a management reply
+    // exists later in the conversation timeline. Messages can arrive rapidly,
+    // so a reply to an earlier message may be timestamped after this one.
+    // Idempotency is enforced per message_id by ai_responder_runs and
+    // duplicate reply protection is enforced per conversation by the DB trigger.
 
     const { data: catalogue, error: catalogueError } = await admin
       .from("vehicle_catalog")
@@ -419,6 +412,10 @@ Deno.serve(async (req: Request) => {
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
     const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); });
     if (variantMatch) mergedDetails.selected_variant = cleanString(variantMatch.name,100);
+    const storedVariant = cleanString(mergedDetails.selected_variant,100);
+    if (storedVariant && (!variants.length || !variants.some((variant:any) => normalized(cleanString(variant?.name,100)) === normalized(storedVariant)))) {
+      delete mergedDetails.selected_variant;
+    }
     if (selectedVehicle && !mergedDetails.selected_variant && variants.length === 1) mergedDetails.selected_variant = cleanString(variants[0].name,100);
     const hasPaymentIntent = /\b(payment|payment method|payment options|how do i pay|where do i pay|pay now|transfer|bank details|paiement|pago|zahlung)\b/i.test(normalized(customerMessage.body));
     const hasName = !!cleanString(mergedDetails.full_name,100);
@@ -466,7 +463,7 @@ Deno.serve(async (req: Request) => {
     const priorInvestmentStage = cleanString(aiMemory.conversation_stage, 80);
     const investmentStages = ["investment_awaiting_amount","investment_collecting_details","investment_confirming_details"];
     const investmentFlow = intent === "investment" || investmentStages.includes(priorInvestmentStage);
-    const investmentAmountMatch = customerMessage.body.match(/(?:\\$|usd\\s*)\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)|\\b([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s*(?:usd|dollars?)\\b/i) || (priorInvestmentStage === "investment_awaiting_amount" && /^\\s*[0-9][0-9,]*(?:\\.[0-9]{1,2})?\\s*$/.test(customerMessage.body) ? [customerMessage.body.trim(), customerMessage.body.trim().replace(/,/g,""), undefined] as any : null);
+    const investmentAmountMatch = customerMessage.body.match(/(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)|\b([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?:usd|dollars?)\b/i) || (priorInvestmentStage === "investment_awaiting_amount" && /^\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?\s*$/.test(customerMessage.body) ? [customerMessage.body.trim(), customerMessage.body.trim().replace(/,/g,""), undefined] as any : null);
     const startingNewInvestment = intent === "investment" && priorInvestmentStage === "investment_submitted";
     const investmentAmount = investmentAmountMatch ? Number((investmentAmountMatch[1] || investmentAmountMatch[2]).replace(/,/g,"")) : startingNewInvestment ? 0 : Number(aiMemory.investment_amount_usd || 0);
     const investmentName = cleanString(mergedDetails.full_name,100);
@@ -476,8 +473,8 @@ Deno.serve(async (req: Request) => {
     const investmentCity = cleanString(mergedDetails.city,80);
     const investmentAddress = cleanString(mergedDetails.address,240);
     const investmentDetailsComplete = !!(investmentName && investmentEmail && investmentPhone && investmentCountry && investmentAddress);
-    const saysConfirm = /^(yes|yeah|yep|sure|okay|ok|please do|go ahead|confirm|confirmed|proceed|submit|send it|that's correct|that is correct)[.!\\s]*$/i.test(customerMessage.body.trim());
-    const saysCorrectDetails = /\\b(correct|update|change|new email|new phone|wrong|not correct)\\b/i.test(customerMessage.body);
+    const saysConfirm = /^(yes|yeah|yep|sure|okay|ok|please do|go ahead|confirm|confirmed|proceed|submit|send it|that's correct|that is correct)[.!\s]*$/i.test(customerMessage.body.trim());
+    const saysCorrectDetails = /\b(correct|update|change|new email|new phone|wrong|not correct)\b/i.test(customerMessage.body);
     let investmentEnquiryCreated = false;
     let investmentShareEstimate: number | null = null;
     let investmentSharePrice: number | null = null;
@@ -549,7 +546,7 @@ Deno.serve(async (req: Request) => {
     } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
-    } else if (/^\\s*(okay|ok|yes|yeah|sure|proceed|continue|go ahead|sounds good|alright|all right|yes please)\\b/i.test(customerMessage.body) && selectedVehicle) {
+    } else if (/^\s*(okay|ok|yes|yeah|sure|proceed|continue|go ahead|sounds good|alright|all right|yes please)\b/i.test(customerMessage.body) && selectedVehicle) {
       intent = "customer_details_progress";
       const needs = missing.length ? missing.join(", ") : "confirmation of your preferred vehicle version";
       reply = "Certainly. I have kept your " + selectedVehicle.name + " enquiry open. To move to the next step, please provide your " + needs + ". I will prepare the pro forma invoice once the required details are complete.";
@@ -573,36 +570,47 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!reply.trim()) {
-      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      await admin.from("support_conversations").update({ responder_paused: true, updated_at: new Date().toISOString() }).eq("id", conversationId);
-      await admin.from("ai_follow_up_queue").update({due_at:null,updated_at:new Date().toISOString()}).eq("conversation_id",conversationId);
-      const { data: existingHandover } = await admin.from("admin_notifications").select("id").eq("type","ai_silent_handover").eq("entity_type","conversation").eq("entity_id",conversationId).eq("is_read",false).limit(1).maybeSingle();
-      if (!existingHandover) await admin.from("admin_notifications").insert({
-        type: "ai_silent_handover",
-        title: "AI paused — management response required",
-        body: `Customer ${conversation.visitor_email || "website visitor"} · ${intent} · The AI could not prepare a reliable answer, so it sent nothing and paused this conversation for management.`,
-        entity_type: "conversation", entity_id: conversationId, is_read: false,
-      });
-      return json({ ok: true, silent: true, paused: true, intent }, 200, headers);
+      // Recovery path: resolve a vehicle directly from the customer's latest
+      // question and the live catalogue before allowing a silent handover.
+      const latestText = normalized(customerMessage.body);
+      const fallbackVehicle = vehicle || (catalogue || []).find((item:any) => {
+        const aliases = [item.name, item.model, item.slug].filter(Boolean)
+          .map((value:any) => normalized(String(value).replace(/-/g," ")));
+        return aliases.some((alias:string) => alias && (latestText.includes(alias) || latestText.replace(/\s+/g,"").includes(alias.replace(/\s+/g,""))));
+      }) || null;
+      const asksVehiclePrice = /\b(price|prices|pricing|cost|how much|usd|dollar)\b/i.test(customerMessage.body);
+      const asksVehicleInfo = /\b(information|details|features|specifications|specs|range|battery|performance|speed|availability|available)\b/i.test(customerMessage.body);
+      if (fallbackVehicle && asksVehiclePrice) {
+        const fallbackSpecs = fallbackVehicle.specifications && typeof fallbackVehicle.specifications === "object" ? fallbackVehicle.specifications : {};
+        const fallbackVariants = Array.isArray(fallbackSpecs.variants) ? fallbackSpecs.variants : [];
+        const variantLines = fallbackVariants.map((item:any) => cleanString(item?.name,100) + ": " + cleanString(item?.price,80)).filter((line:string) => !line.startsWith(": "));
+        const startingPrice = Number(fallbackVehicle.price_usd);
+        reply = "Published pricing for the " + cleanString(fallbackVehicle.name || fallbackVehicle.model,100) + ": " +
+          (variantLines.length ? variantLines.join("; ") : Number.isFinite(startingPrice) && startingPrice > 0 ? new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(startingPrice) : "Please ask management for a confirmed quotation") +
+          ". These are catalogue guide prices; final configuration, availability, taxes and delivery must be confirmed by management.";
+        intent = "vehicle_price";
+        requiresManagement = true;
+      } else if (fallbackVehicle && asksVehicleInfo) {
+        reply = "Thank you for your question about the " + cleanString(fallbackVehicle.name || fallbackVehicle.model,100) + ". " +
+          cleanString(fallbackVehicle.description,700) +
+          " I can also help with its published versions and prices, features, or delivery enquiry.";
+        intent = "vehicle_information";
+      } else {
+        // Every distinct customer message receives a useful acknowledgement.
+        // Do not mark an unanswered run as completed or silently swallow it.
+        reply = "Thank you for your message. I can help with Tesla vehicle information, published prices and versions, delivery enquiries, and general questions. I have kept your current enquiry open. What would you like to know next?";
+        intent = "general_followup";
+        requiresManagement = true;
+      }
     }
 
-    // Conversation-wide duplicate check. The database trigger is the final atomic
-    // barrier; this pre-check avoids unnecessary insert attempts for older replies.
-    const canonical = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-    const canonicalReply = canonical(reply);
+    // Idempotency is scoped to this exact customer message. Similar answers to
+    // distinct enquiries are allowed; the database trigger uses the same message ID.
     const { data: priorReply } = await admin.from("ai_sent_reply_registry")
-      .select("id").eq("conversation_id",conversationId).eq("canonical_text",canonicalReply).maybeSingle();
-    if (priorReply || history.some((row:any)=>row.sender_role==="management" && ["ai_response","automated_reply"].includes(row.automated_type) && canonical(row.body||"")===canonicalReply)) {
+      .select("id").eq("conversation_id",conversationId).eq("source_message_id",messageId).maybeSingle();
+    if (priorReply) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      await admin.from("support_conversations").update({ responder_paused: true, updated_at: new Date().toISOString() }).eq("id", conversationId);
-      await admin.from("ai_follow_up_queue").update({due_at:null,updated_at:new Date().toISOString()}).eq("conversation_id",conversationId);
-      const { data: existingDuplicate } = await admin.from("admin_notifications").select("id").eq("type","ai_duplicate_blocked").eq("entity_type","conversation").eq("entity_id",conversationId).eq("is_read",false).limit(1).maybeSingle();
-      if (!existingDuplicate) await admin.from("admin_notifications").insert({
-        type:"ai_duplicate_blocked",title:"AI paused — duplicate reply blocked",
-        body:"The AI attempted to repeat a reply already sent in this customer conversation. No duplicate was sent. Management can continue the conversation.",
-        entity_type:"conversation",entity_id:conversationId,is_read:false
-      });
-      return json({ ok: true, silent: true, paused: true, duplicate_reply: true, intent }, 200, headers);
+      return json({ ok: true, duplicate: true, intent }, 200, headers);
     }
 
     if (local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
@@ -766,7 +774,39 @@ Deno.serve(async (req: Request) => {
 
     let messageType = "text";
     let structuredData: Record<string, any> | null = null;
-    if (cartSummary) {
+    if (proformaInvoice) {
+      messageType = "proforma_invoice";
+      const invoiceAmount = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(proformaInvoice.amount) + " USD";
+      structuredData = {
+        title:"Vehicle order summary",
+        subtitle:"PRO FORMA · AWAITING MANAGEMENT REVIEW",
+        status:"Payment pending",
+        amount_label:"VEHICLE SUBTOTAL",
+        amount:invoiceAmount,
+        fields_title:"Order information",
+        fields:[
+          {label:"Order reference",value:proformaInvoice.reference},
+          {label:"Vehicle and version",value:proformaInvoice.variant},
+          {label:"Customer",value:cleanString(mergedDetails.full_name,100)},
+          {label:"Email address",value:cleanString(mergedDetails.email || conversation.visitor_email || user.email,200)},
+          {label:"Phone number",value:cleanString(mergedDetails.phone || conversation.contact_phone,60)}
+        ],
+        sections:[
+          {title:"Delivery details",rows:[
+            {label:"Address",value:cleanString(mergedDetails.address,240)},
+            {label:"City",value:cleanString(mergedDetails.city,80)},
+            {label:"Country",value:cleanString(mergedDetails.country,80)}
+          ]},
+          {title:"Payment",rows:[
+            {label:"Payment status",value:"Pending — no payment received"},
+            {label:"Payment method",value:"Awaiting approved instructions from management"},
+            {label:"Taxes and delivery",value:"Final charges to be confirmed"}
+          ]}
+        ],
+        note:"Your completed vehicle enquiry and draft order have been sent to Tesla Markets Management for review.",
+        disclaimer:"This is a pro forma summary, not a payment receipt or confirmed order. Do not transfer funds until management has verified the final amount and provided approved payment instructions."
+      };
+    } else if (cartSummary) {
       messageType = "cart_summary";
       const cartTotal = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
       structuredData = {
@@ -815,6 +855,39 @@ Deno.serve(async (req: Request) => {
         }],
         disclaimer: "This record confirms an enquiry only. It is not a share purchase, payment request, payment receipt or guaranteed investment return."
       };
+    } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && !proformaInvoice) {
+      const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
+      const purchaseVariants = Array.isArray(purchaseSpecs.variants) ? purchaseSpecs.variants : [];
+      const purchaseImages = Array.isArray(selectedVehicle.images) ? selectedVehicle.images : [];
+      const purchaseImage = typeof purchaseImages[0] === "string" ? purchaseImages[0] : ({ "model-3":"/resources/model-3-1.jpg", "model-y":"/resources/model-y-1.jpg", "cybertruck":"/resources/cybertruck-1.jpg", "roadster":"/resources/roadster-1.jpg", "semi":"/resources/semi-1.jpg" } as Record<string,string>)[String(selectedVehicle.slug||"")] || null;
+      const chosenVariant = purchaseVariants.find((variant:any) => normalized(cleanString(variant?.name,100)) === normalized(cleanString(mergedDetails.selected_variant,100)));
+      messageType = "vehicle_purchase_prompt";
+      structuredData = {
+        title: "Continue with " + cleanString(selectedVehicle.name,100),
+        subtitle: "VEHICLE ENQUIRY · DETAILS REQUIRED",
+        image_url: purchaseImage,
+        amount_label: "SELECTED VEHICLE PRICE",
+        amount: chosenVariant ? cleanString(chosenVariant.price,80) : (selectedVehicle.price_usd ? "$" + Number(selectedVehicle.price_usd).toLocaleString("en-US") + " USD" : "Management quotation required"),
+        fields_title: "Customer information already saved",
+        fields: [
+          { label:"Full name", value:cleanString(mergedDetails.full_name,100) || "Still needed" },
+          { label:"Email address", value:cleanString(mergedDetails.email || conversation.visitor_email || user.email,200) || "Still needed" },
+          { label:"Phone number", value:cleanString(mergedDetails.phone || conversation.contact_phone,60) || "Still needed" },
+          { label:"Delivery country", value:cleanString(mergedDetails.country,80) || "Still needed" },
+          { label:"Delivery city", value:cleanString(mergedDetails.city,80) || "Still needed" },
+          { label:"Delivery address", value:cleanString(mergedDetails.address,240) || "Still needed" }
+        ],
+        sections: [
+          { title:"Vehicle and version", rows:[
+            { label:"Vehicle", value:cleanString(selectedVehicle.name,100) },
+            { label:"Preferred version", value:cleanString(mergedDetails.selected_variant,100) || (purchaseVariants.length ? "Please choose a version" : "Standard configuration") },
+            ...purchaseVariants.map((variant:any)=>({label:cleanString(variant?.name,80),value:cleanString(variant?.price,80)})).filter((variant:any)=>variant.label&&variant.value)
+          ]},
+          { title:"Still required", rows:missing.map((item:string)=>({label:item,value:"Please provide"}))}
+        ],
+        note:"Send all outstanding information together in one message. Details already saved do not need to be repeated.",
+        disclaimer:"This creates a vehicle enquiry and draft pro forma only. Payment remains pending until management confirms availability, final charges and approved payment instructions."
+      };
     } else if (Object.keys(extractedDelivery).length > 0 && !investmentEnquiryCreated) {
       messageType = "customer_details";
       structuredData = {
@@ -832,12 +905,14 @@ Deno.serve(async (req: Request) => {
         ],
         note:"These details are saved with this conversation. The customer does not need to submit the same information again unless something changes."
       };
-    }  else if (selectedVehicle && ["vehicle_enquiry","vehicle_information","vehicle_specs","general"].includes(intent) && (vehicle || /\\b(cybertruck|roadster|model ?[3ysx]|tesla semi|semi)\\b/i.test(customerMessage.body))) {
+    }  else if (selectedVehicle && ["vehicle_enquiry","vehicle_information","vehicle_specs","vehicle_price","general"].includes(intent) && (vehicle || /\b(cybertruck|roadster|model ?[3ysx]|tesla semi|semi)\b/i.test(customerMessage.body))) {
       const specs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
       const variants = Array.isArray(specs.variants) ? specs.variants : [];
       const colours = Array.isArray(specs.colors) ? specs.colors.join(", ") : cleanString(specs.colors,300);
       const features = Array.isArray(specs.features) ? specs.features.join(" · ") : cleanString(specs.features,500);
       const images = Array.isArray(selectedVehicle.images) ? selectedVehicle.images : [];
+      const fallbackVehicleImages:Record<string,string>={"model-3":"/resources/model-3-1.jpg","model-y":"/resources/model-y-1.jpg","cybertruck":"/resources/cybertruck-1.jpg","roadster":"/resources/roadster-1.jpg","semi":"/resources/semi-1.jpg"};
+      const vehicleImage = typeof images[0] === "string" ? images[0] : fallbackVehicleImages[String(selectedVehicle.slug||"")] || null;
       const metrics = [
         specs.acceleration_0_60 ? { label: "⚡ 0–60 mph", value: String(specs.acceleration_0_60) } : null,
         specs.top_speed ? { label: "🏁 Top speed", value: String(specs.top_speed) } : null,
@@ -848,7 +923,7 @@ Deno.serve(async (req: Request) => {
       structuredData = {
         title: cleanString(selectedVehicle.name,100),
         subtitle: cleanString(specs.subtitle,160) || cleanString(selectedVehicle.description,220),
-        image_url: typeof images[0] === "string" ? images[0] : null,
+        image_url: vehicleImage,
         metrics,
         sections: [
           { title: "Pricing and versions", rows: [
