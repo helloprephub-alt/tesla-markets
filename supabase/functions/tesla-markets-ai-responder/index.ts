@@ -27,12 +27,23 @@ function detectDiscountRequest(text: string) {
   const requestedPercent = percent ? Number(percent[1].replace(",", ".")) : null;
   return { mentionsDiscount, requestedPercent, aboveLimit: requestedPercent !== null && requestedPercent > 3 };
 }
+function canonicalVehicle(value: string) {
+  const t = normalized(value).replace(/[^a-z0-9]+/g, " ").trim();
+  if (/\bcyber ?truck\b/.test(t)) return "Cybertruck";
+  if (/\broadster\b/.test(t)) return "Roadster";
+  if (/\b(tesla )?semi\b/.test(t)) return "Tesla Semi";
+  const model = t.match(/\bmodel ?([3ysx])\b/);
+  if (model) return "Model " + model[1].toUpperCase();
+  return "";
+}
 function matchVehicle(text: string, conversationModel: string, catalogue: any[]) {
-  const haystack = normalized(conversationModel + " " + text);
-  return catalogue.find((vehicle) =>
-    [vehicle.name, vehicle.model, vehicle.slug].filter(Boolean)
-      .some((value: string) => haystack.includes(normalized(String(value))))
-  ) || null;
+  const selected = canonicalVehicle(text) || canonicalVehicle(conversationModel);
+  if (!selected) return null;
+  return catalogue.find((vehicle) => {
+    const names = [vehicle.name, vehicle.model, vehicle.slug].filter(Boolean)
+      .map((value: string) => canonicalVehicle(String(value)) || String(value).toLowerCase().replace(/-/g, " "));
+    return names.some((value: string) => value.toLowerCase() === selected.toLowerCase());
+  }) || null;
 }
 
 
@@ -129,8 +140,23 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     "We will be pleased to assist with delivery. Costs, timelines and eligible destinations must be confirmed for the specific vehicle and address. Which country and city would you like the vehicle delivered to?";
   } else if((vehicle || conversation.vehicle_model || mentionedModel) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
+    const modelKey = canonicalVehicle(mentionedModel || conversation.vehicle_model || name);
+    const modelIntro: Record<string,string> = {
+      "Model 3": "the Model 3 electric sedan",
+      "Model Y": "the Model Y electric SUV",
+      "Cybertruck": "the all-electric Cybertruck pickup",
+      "Roadster": "the Roadster sports car",
+      "Tesla Semi": "the Tesla Semi electric truck"
+    };
+    const subject = modelIntro[modelKey] || name;
     const facts=[validPrice?money(price):"",cleanString(vehicle?.description,350),vehicle?.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
-    reply=facts?`Thanks for considering the ${name}. ${facts}. Would you like to know about its performance, range, features or delivery?`:`Thanks for your interest in the ${name}. I can help with its available configurations, performance, range, features, pricing and delivery. Which detail would you like first?`;
+    const asksPrice=has(/\b(price|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
+    const asksPerformance=has(/\b(performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy)\b/);
+    if(asksPrice && validPrice) reply="The currently published price for the "+name+" is "+money(price)+". Would you like help comparing its configurations?";
+    else if(asksPrice) reply="I can help with pricing for the "+name+". Please give me a moment to confirm the latest listed price. Are you considering a particular configuration?";
+    else if(asksPerformance && facts) reply="Here are the published details for the "+name+": "+facts+". Would you like to know more about its configuration or availability?";
+    else if(asksPerformance) reply="I’d be happy to walk you through the "+name+"'s performance, driving range and charging features. Please give me a moment to confirm the exact specifications. Is there a particular feature you’re interested in?";
+    else reply=facts ? "Thanks for your interest in "+subject+". "+facts+". Would you like to know about its configurations, performance or delivery?" : "Thanks for your interest in "+subject+". I can help with its design, configurations, performance, range, pricing and delivery. Which detail would you like to explore first?";
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="purchase_ready";
     reply=lang==="fr"?"Nous serons ravis de vous accompagner. Quel modèle et quelle configuration souhaitez-vous ? Nous recueillerons ensuite vos coordonnées et les informations de livraison nécessaires.":
