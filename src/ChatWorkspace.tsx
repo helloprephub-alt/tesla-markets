@@ -92,7 +92,7 @@ function RichMessageCard({type,data,onAddToCart,onBuyNow}:{type?:string;data?:an
     {sections.map((section:any,i:number)=><section className="tm-rich-card-section" key={i}><h4>{section.title}</h4><dl>{rows(section.rows).map((item:any,j:number)=><div key={j}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>)}
     {type==='vehicle_card'&&onBuyNow&&<button type="button" className="tm-buy-now-button" onClick={onBuyNow}>Start purchase</button>}{type==='vehicle_card'&&onAddToCart&&<button type="button" className="tm-add-cart-button" onClick={onAddToCart}>Add to cart</button>}
     {data.note&&<p className="tm-rich-card-note">{String(data.note)}</p>}
-    {data.disclaimer&&<p className="tm-rich-card-disclaimer">{String(data.disclaimer)}</p>}
+    {type==='payment_card'&&typeof data.payment_url==='string'&&/^https:\/\//i.test(data.payment_url)&&<a className="tm-buy-now-button" href={data.payment_url} target="_blank" rel="noopener noreferrer">Pay securely</a>}{data.disclaimer&&<p className="tm-rich-card-disclaimer">{String(data.disclaimer)}</p>}
   </article>;
 }
 
