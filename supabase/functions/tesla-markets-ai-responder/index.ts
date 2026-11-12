@@ -74,11 +74,12 @@ function extractDelivery(text: string, pendingSlot = "") {
   // If the assistant previously asked for one specific field, accept a natural,
   // unlabelled answer instead of asking the customer to repeat the label.
   const plain=text.trim().replace(/[.!?]+$/,"");
-  if(pendingSlot==="full_name" && !out.full_name && /^[\\p{L}][\\p{L} .'’-]{2,98}$/u.test(plain) && !/^(yes|no|okay|ok|sure|hello|hi|thanks|thank you)$/i.test(plain)) out.full_name=plain;
-  if(pendingSlot==="country" && !out.country && /^[\\p{L} .'-]{2,70}$/u.test(plain)) out.country=plain;
-  if(pendingSlot==="city" && !out.city && /^[\\p{L} .'-]{2,70}$/u.test(plain)) out.city=plain;
+  if(pendingSlot==="full_name" && !out.full_name && plain.split(/\s+/).length>=2 && plain.split(/\s+/).length<=5 && /^[\p{L}][\p{L} .’'-]{2,98}$/u.test(plain) && !/^(yes|no|okay|ok|sure|hello|hi|thanks|thank you|i need|i want|can you|please|actually|what about|how about)/i.test(plain)) out.full_name=plain;
+  if(pendingSlot==="country" && !out.country && /^(united states|united states of america|usa|u\.s\.a\.|united kingdom|uk|nigeria|canada|france|germany|australia|ireland|spain|italy|netherlands|south africa|united arab emirates|uae)$/i.test(plain)) out.country=plain;
+  if(pendingSlot==="city" && !out.city && plain.split(/\s+/).length<=4 && /^[\p{L} .'-]{2,70}$/u.test(plain) && !/^(yes|no|okay|ok|sure|thanks|thank you|i need|i want|can you|please|actually|what about|how about)/i.test(plain)) out.city=plain;
   if(pendingSlot==="address" && !out.address && plain.length>=6 && /[0-9]/.test(plain)) out.address=plain.slice(0,240);
-  if(pendingSlot==="phone" && !out.phone && /(?:\\+?\\d[\\d ()-]{7,}\\d)/.test(plain)) out.phone=plain.match(/(?:\\+?\\d[\\d ()-]{7,}\\d)/)?.[0]?.trim().slice(0,60)||"";
+  if(pendingSlot==="phone" && !out.phone && /(?:\+?\d[\d ()-]{7,}\d)/.test(plain)) out.phone=plain.match(/(?:\+?\d[\d ()-]{7,}\d)/)?.[0]?.trim().slice(0,60)||"";
+
   if(pendingSlot==="email" && !out.email && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i.test(plain)) out.email=plain.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i)?.[0]||"";
 
   if(!out.country || !out.city){
@@ -408,7 +409,7 @@ Deno.serve(async (req: Request) => {
       intent = "customer_details_progress";
       const needs = missing.length ? missing.join(", ") : "confirmation of your preferred vehicle version";
       reply = "Certainly. I have kept your " + selectedVehicle.name + " enquiry open. To move to the next step, please provide your " + needs + ". I will prepare the pro forma invoice once the required details are complete.";
-    } else if (Object.keys(extractedDelivery).length || (variantMatch && !discount.mentionsDiscount)) {
+    } else if (((Object.keys(extractedDelivery).length > 0) && ["general","delivery_details","unverified_or_unsupported","greeting"].includes(intent)) || (variantMatch && !discount.mentionsDiscount)) {
       intent = "customer_details_progress"; requiresManagement = true;
       if (deliveryComplete && (hasVariant || variants.length <= 1)) {
         reply = "Thank you. I have received and recorded your contact and delivery details, together with your selected vehicle version. I am preparing your order summary and pro forma invoice now. Payment will remain pending until management confirms the payment method and verifies receipt.";
@@ -419,6 +420,12 @@ Deno.serve(async (req: Request) => {
         const next=missing.length ? " To complete your order, I still need your "+missing.join(", ")+"." : "";
         reply="Thank you. Your information has been received and added to your vehicle enquiry."+receivedText+next+" Once those details are complete, I can prepare your pro forma invoice. Please do not send card details, passwords or one-time security codes in this chat.";
       }
+    }
+
+    if (Object.keys(extractedDelivery).length && reply.trim() && !["customer_details_progress","payment_method_confirmation"].includes(intent)) {
+      const savedLabels:Record<string,string>={full_name:"your name",email:"your email address",phone:"your phone number",address:"your delivery address",country:"your delivery country",city:"your delivery city"};
+      const saved=Object.keys(extractedDelivery).map(key=>savedLabels[key]||key);
+      reply += "\n\nI have also noted " + saved.join(", ") + " on your enquiry.";
     }
 
     if (!reply.trim()) {
