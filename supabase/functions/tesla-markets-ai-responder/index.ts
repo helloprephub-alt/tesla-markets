@@ -362,25 +362,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (proformaInvoice && !hasPaymentIntent) {
-      const amount = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(proformaInvoice.amount);
-      reply = [
-        "TESLA MARKETS — PRO FORMA INVOICE",
-        "Reference: " + proformaInvoice.reference,
-        "Customer: " + cleanString(mergedDetails.full_name,100),
-        "Vehicle: " + proformaInvoice.variant,
-        "Delivery: " + [mergedDetails.address,mergedDetails.city,mergedDetails.country].filter(Boolean).join(", "),
-        "Contact: " + [mergedDetails.email || user.email,mergedDetails.phone].filter(Boolean).join(" · "),
-        "Vehicle subtotal: " + amount + " USD",
-        "Taxes, delivery and other charges: To be confirmed by management.",
-        "PAYMENT STATUS: PENDING",
-        "Payment method: Awaiting management confirmation.",
-        "This is a pro forma invoice, not a payment receipt or confirmation of vehicle availability. Please wait for the official payment instructions from Tesla Markets Management."
-      ].join("\\n");
-      intent = "proforma_invoice_created";
-      requiresManagement = true;
-    }
-
     if (!reply.trim()) {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
       await admin.from("admin_notifications").insert({
@@ -504,6 +485,25 @@ Deno.serve(async (req: Request) => {
         requiresManagement = true;
         reply = "Thank you. Your details have been received. Please hold while our management team confirms the exact price for this configuration and prepares your pro forma invoice. No payment is due until the final quotation and approved payment method are confirmed.";
       }
+    }
+
+    if (proformaInvoice && !hasPaymentIntent) {
+      const amount = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(proformaInvoice.amount);
+      reply = [
+        "TESLA MARKETS — PRO FORMA INVOICE",
+        "Reference: " + proformaInvoice.reference,
+        "Customer: " + cleanString(mergedDetails.full_name,100),
+        "Vehicle: " + proformaInvoice.variant,
+        "Delivery: " + [mergedDetails.address,mergedDetails.city,mergedDetails.country].filter(Boolean).join(", "),
+        "Contact: " + [mergedDetails.email || user.email,mergedDetails.phone].filter(Boolean).join(" · "),
+        "Vehicle subtotal: " + amount + " USD",
+        "Taxes, delivery and other charges: To be confirmed by management.",
+        "PAYMENT STATUS: PENDING",
+        "Payment method: Awaiting management confirmation.",
+        "This is a pro forma invoice, not a payment receipt or confirmation of vehicle availability. Please wait for the official payment instructions from Tesla Markets Management."
+      ].join("\n");
+      intent = "proforma_invoice_created";
+      requiresManagement = true;
     }
 
     const { data: responseMessage, error: responseInsertError } = await admin
