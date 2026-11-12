@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { publicText, supportedPublicLanguages, type PublicLanguage } from './public-i18n';
-import { ChatWorkspace, GeneratedGallery } from './ChatWorkspace';
+import { ChatWorkspace, GeneratedGallery, ThemeToggle } from './ChatWorkspace';
 import { AdminConsole } from './AdminConsole';
 import { VehicleExperience } from './VehicleExperience';
 import {
@@ -296,8 +296,10 @@ function App() {
               {t(({home:'home',shop:'vehicles',markets:'investments',about:'about',faq:'faqs',contact:'contact',chat:'support'} as Record<string,string>)[item.page]||item.label)}
             </button>
           ))}
+          <ThemeToggle className="mobile-theme-toggle" />
         </nav>
         <div className="nav-actions">
+          <ThemeToggle className="desktop-theme-toggle" />
           <button className="language-trigger" type="button" onClick={()=>{setLanguageOpen(true);setMenuOpen(false);}} aria-label="Change language"><svg className="language-globe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/><path d="M2.8 12h18.4M12 2.8c2.4 2.5 3.5 5.6 3.5 9.2s-1.1 6.7-3.5 9.2c-2.4-2.5-3.5-5.6-3.5-9.2S9.6 5.3 12 2.8Z"/><path d="M5 6.5h14M5 17.5h14"/></svg><span className="language-trigger-name">{currentLanguageName}</span><ChevronDown size={13}/></button>
           <button className="btn btn-outline btn-small" onClick={() => go('shop')}>Browse vehicles <ArrowUpRight size={15} /></button>
         </div>

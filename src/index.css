@@ -2002,3 +2002,44 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .admin-console-standalone .admin-auth-full .btn-dark{background:#c51d26;border-color:#c51d26}
 @media(max-width:1050px){.admin-console-standalone{grid-template-columns:1fr}.admin-console-standalone .admin-shell{grid-template-columns:1fr}.admin-console-standalone .admin-console-side{position:fixed;z-index:55;left:0;top:74px;width:285px;height:calc(100vh - 74px);transform:translateX(-105%);transition:transform .22s}.admin-console-standalone .admin-console-side.is-open,.admin-console-standalone .admin-console-side[aria-hidden=false]{transform:translateX(0)}.admin-console-standalone .admin-mobile-menu{display:grid}.admin-console-standalone .admin-console-brand{min-width:0}.admin-console-standalone .admin-topbar{padding:0 14px}.admin-console-standalone .admin-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.admin-console-standalone .admin-topbar{height:64px;gap:10px}.admin-console-standalone .admin-shell{min-height:calc(100vh - 64px)}.admin-console-standalone .admin-console-side{top:64px;height:calc(100vh - 64px)}.admin-console-standalone .admin-console-brand b{font-size:11px}.admin-console-standalone .admin-console-brand small{font-size:8px}.admin-console-standalone .admin-topbar-right{gap:5px}.admin-console-standalone .admin-secure-label,.admin-console-standalone .admin-topbar-email,.admin-console-standalone .admin-view-toggle{display:none}.admin-console-standalone .admin-console-main{padding:20px 13px 34px}.admin-console-standalone .admin-console-header{align-items:flex-start;flex-direction:column}.admin-console-standalone .admin-page-actions{width:100%;justify-content:space-between}.admin-console-standalone .tm-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.admin-console-standalone .tm-kpi-card{padding:13px;min-height:105px;gap:8px}.admin-console-standalone .tm-kpi-card strong{font-size:21px}.admin-console-standalone .tm-kpi-card em{font-size:8px}.admin-console-standalone .tm-kpi-icon{width:30px;height:30px}.admin-console-standalone .tm-dashboard-grid{grid-template-columns:1fr}.admin-console-standalone .tm-dashboard-card,.admin-console-standalone .admin-console-panel{padding:15px}.admin-console-standalone .admin-table-wrap{overflow-x:auto}.admin-console-standalone .admin-record-table{min-width:650px}.admin-console-standalone .admin-install-card{padding:9px 12px!important}.admin-console-standalone .admin-install-card p{font-size:10px!important}.admin-console-standalone .admin-auth-full{padding:28px 22px}}
+
+
+/* Tesla Markets shared light/dark appearance */
+.theme-toggle-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:0 11px;border:1px solid var(--line,#dfe5e8);border-radius:999px;background:var(--paper,#fff);color:var(--ink,#17232b);font-size:11px;font-weight:700;white-space:nowrap;transition:background .2s,border-color .2s,color .2s}
+.theme-toggle-button:hover{border-color:var(--red,#c92f35);transform:translateY(-1px)}
+.mobile-theme-toggle{display:none}.chat-theme-toggle{margin-left:auto;flex:0 0 auto}
+:root[data-theme="dark"]{color-scheme:dark;background:#0a1016;color:#e8eef2;--ink:#edf2f5;--muted:#a1adb6;--line:#2b3944;--paper:#121c25;--dark:#080d12}
+:root[data-theme="dark"] body,:root[data-theme="dark"] .app-shell{background:#0a1016!important;color:#e8eef2}
+:root[data-theme="dark"] .topbar,:root[data-theme="dark"] .mobile-menu,:root[data-theme="dark"] .global-page-back{background:#111b24!important;border-color:#2b3944!important;color:#e8eef2!important}
+:root[data-theme="dark"] .nav-links button,:root[data-theme="dark"] .nav-actions button:not(.btn),:root[data-theme="dark"] .mobile-menu{color:#dce5ea}
+:root[data-theme="dark"] .app-shell h1,:root[data-theme="dark"] .app-shell h2,:root[data-theme="dark"] .app-shell h3,:root[data-theme="dark"] .app-shell h4,:root[data-theme="dark"] .app-shell strong,:root[data-theme="dark"] .app-shell b{color:#edf2f5}
+:root[data-theme="dark"] .app-shell p,:root[data-theme="dark"] .app-shell small,:root[data-theme="dark"] .app-shell label{color:#aab6bf}
+:root[data-theme="dark"] .app-shell :is(.section-light,.home-model-preview,.vehicle-store,.page-hero,.language-dialog,.faq-section,.contact-section,.how-section,.about-section){background-color:#0e1720!important;color:#e8eef2}
+:root[data-theme="dark"] .app-shell :is([class*="card"],[class*="panel"],[class*="tile"],[class*="faq"],[class*="form"]){background-color:#121d27;border-color:#2b3944;color:#e8eef2}
+:root[data-theme="dark"] .app-shell :is(input,textarea,select){background:#101a23!important;color:#edf2f5!important;border-color:#34434f!important}
+:root[data-theme="dark"] .app-shell :is(.btn-outline,.btn-ghost){color:#edf2f5;border-color:#46545f}
+:root[data-theme="dark"] .app-shell :is(.topbar,.nav-wrap,.footer,.site-footer){border-color:#293742}
+:root[data-theme="dark"] .app-shell :is(.section-dark,.home-investment-strip){background:#080e14!important}
+:root[data-theme="dark"] .theme-toggle-button{background:#17232d;border-color:#35434e;color:#edf2f5}
+:root[data-theme="dark"] .customer-chat-screen{background:#0a1016!important;color:#e8eef2}
+:root[data-theme="dark"] .customer-chat-screen .chat-appbar,:root[data-theme="dark"] .customer-chat-screen .live-chat-compose{background:#101a23!important;border-color:#2b3944!important;color:#edf2f5}
+:root[data-theme="dark"] .customer-chat-screen .live-chat-messages{background:#0b131b!important}
+:root[data-theme="dark"] .customer-chat-screen .chat-bubble.team{background:#17232d!important;border-color:#2e3b46!important;color:#edf2f5}
+:root[data-theme="dark"] .customer-chat-screen .chat-bubble.you{background:#16382c!important;color:#e7f5ed}
+:root[data-theme="dark"] .customer-chat-screen .chat-bubble small{color:#a3b0b9}
+:root[data-theme="dark"] .customer-chat-screen .chat-day-divider span,:root[data-theme="dark"] .customer-chat-screen .chat-context-card{background:#17232d!important;border-color:#2e3b46!important;color:#dce5ea}
+:root[data-theme="dark"] .customer-chat-screen .chat-compose textarea,:root[data-theme="dark"] .customer-chat-screen .chat-compose input:not([type=file]){background:#1a2731!important;color:#f1f5f7!important}
+:root[data-theme="dark"] .customer-chat-screen .chat-plus-button{background:#26343e!important;color:#f1f5f7}
+:root[data-theme="dark"] .customer-chat-screen .chat-attach-menu,:root[data-theme="dark"] .customer-chat-screen .chat-attach-menu button{background:#17232d!important;color:#edf2f5;border-color:#35434e}
+:root[data-theme="dark"] .customer-chat-screen .chat-image-previews{background:#17232d!important;color:#dce5ea}
+:root[data-theme="dark"] .admin-inbox-layout{background:#111b24!important;border-color:#2b3944!important}
+:root[data-theme="dark"] .admin-thread-list,:root[data-theme="dark"] .admin-conversation,:root[data-theme="dark"] .admin-conversation-head,:root[data-theme="dark"] .admin-compose{background:#111b24!important;border-color:#2b3944!important;color:#edf2f5}
+:root[data-theme="dark"] .admin-chat-messages{background:#0b131b!important}
+:root[data-theme="dark"] .admin-thread,:root[data-theme="dark"] .admin-thread-copy b{background:#111b24!important;color:#edf2f5!important;border-color:#293742}
+:root[data-theme="dark"] .admin-thread:hover,:root[data-theme="dark"] .admin-thread.selected{background:#1a2934!important}
+:root[data-theme="dark"] .admin-thread-copy small,:root[data-theme="dark"] .admin-thread-copy>span,:root[data-theme="dark"] .admin-conversation-head small{color:#a3b0b9!important}
+:root[data-theme="dark"] .admin-compose input,:root[data-theme="dark"] .admin-compose textarea{background:#1a2731!important;color:#f1f5f7!important;border-color:#35434e}
+:root[data-theme="dark"] .admin-chat-messages .chat-bubble.team{background:#17232d!important;color:#edf2f5;border-color:#35434e}
+:root[data-theme="dark"] .admin-chat-messages .chat-bubble.you{background:#16382c!important;color:#e7f5ed}
+@media(max-width:860px){.desktop-theme-toggle{display:none}.mobile-theme-toggle{display:inline-flex;margin:12px 0 6px;align-self:flex-start}}
+@media(max-width:600px){.theme-toggle-button{min-height:34px;padding:0 9px;font-size:10px}.chat-theme-toggle{margin-left:auto}.customer-chat-screen .chat-appbar{gap:7px}.customer-chat-screen .chat-appbar-brand{margin-right:auto}.customer-chat-screen .chat-appbar-brand b{font-size:11px}}

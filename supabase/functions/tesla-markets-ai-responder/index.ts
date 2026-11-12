@@ -68,7 +68,7 @@ function extractDelivery(text: string) {
 function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any) {
   const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text);
   const has=(r:RegExp)=>r.test(t);
-  const mentionedModel=text.match(/\\b(model\\s*[3ysx]|cybertruck|roadster|semi)\\b/i)?.[0];
+  const mentionedModel=text.match(/\b(model\s*[3ysx]|cybertruck|roadster|semi)\b/i)?.[0];
   const name=vehicle?.name||vehicle?.model||conversation.vehicle_model||mentionedModel||"your selected vehicle";
   const price=Number(vehicle?.price_usd), validPrice=Number.isFinite(price)&&price>0;
   const money=(n:number)=>new Intl.NumberFormat(lang==="fr"?"fr-FR":lang==="es"?"es-ES":lang==="de"?"de-DE":"en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(n);
@@ -95,9 +95,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     "Of course. I’d be happy to help you understand the investment information available. Please give me a moment to check the relevant details. Investment values can rise or fall, and returns are never guaranteed.";
   } else if(has(/\b(payment|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
     intent="payment"; requiresManagement=true;
-    reply=lang==="fr"?"Merci. Notre équipe peut vous aider à vérifier le paiement. Veuillez transmettre uniquement la référence de transaction ou le reçu via le chat sécurisé. Ne communiquez jamais vos numéros de carte, mots de passe ou codes de sécurité. Le paiement sera confirmé après vérification.":
-    lang==="es"?"Gracias. Nuestro equipo puede ayudarle a verificar el pago. Comparta únicamente la referencia de transacción o el recibo mediante el chat seguro. Nunca envíe números de tarjeta, contraseñas ni códigos de seguridad. El pago se confirma después de verificarlo.":
-    lang==="de"?"Vielen Dank. Unser Team hilft Ihnen gerne bei der Zahlungsprüfung. Senden Sie bitte nur die Transaktionsreferenz oder den Beleg über den sicheren Chat. Teilen Sie niemals Kartennummern, Passwörter oder Sicherheitscodes. Die Zahlung wird erst nach Prüfung bestätigt.":
+    reply=lang==="fr"?"Merci. Je peux vérifier cela pour vous. Veuillez transmettre uniquement la référence de transaction ou le reçu via le chat sécurisé. Ne communiquez jamais vos numéros de carte, mots de passe ou codes de sécurité. Le paiement sera confirmé après vérification.":
+    lang==="es"?"Gracias. Puedo comprobarlo para usted. Comparta únicamente la referencia de transacción o el recibo mediante el chat seguro. Nunca envíe números de tarjeta, contraseñas ni códigos de seguridad. El pago se confirma después de verificarlo.":
+    lang==="de"?"Vielen Dank. Ich prüfe das gerne für Sie. Senden Sie bitte nur die Transaktionsreferenz oder den Beleg über den sicheren Chat. Teilen Sie niemals Kartennummern, Passwörter oder Sicherheitscodes. Die Zahlung wird erst nach Prüfung bestätigt.":
     "Thank you. I can help you with that. Please share the transaction reference or receipt here so I can check the status. For your security, never send card numbers, passwords or security codes.";
   } else if(has(/\b(human|person|agent|manager|representative|real person|speak to someone|conseiller|personne|persona|mitarbeiter)\b/)){
     intent="human_handover"; requiresManagement=true;
@@ -107,9 +107,9 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     "Certainly. Certainly. Please give me a moment and I’ll arrange for the right person to continue with you here.";
   } else if(has(/\b(complaint|complain|problem|issue|disappointed|not received|broken|plainte|probleme|reclamacion|beschwerde)\b/)){
     intent="complaint"; requiresManagement=true;
-    reply=lang==="fr"?"Merci de nous avoir signalé ce problème. Nous souhaitons l'examiner et vous aider. Votre message a été transmis à la direction. Vous pouvez partager la référence de commande, sans données de paiement sensibles.":
+    reply=lang==="fr"?"Merci de nous avoir signalé ce problème. Nous souhaitons l'examiner et vous aider. Je vais examiner cela pour vous. Vous pouvez partager la référence de commande, sans données de paiement sensibles.":
     lang==="es"?"Gracias por informarnos. Queremos revisar el asunto y ayudarle. Su mensaje se ha señalado para la atención de la dirección. Puede compartir la referencia del pedido, sin datos de pago confidenciales.":
-    lang==="de"?"Vielen Dank für Ihren Hinweis. Wir möchten den Vorgang prüfen und Ihnen weiterhelfen. Ihre Nachricht wurde an das Management weitergeleitet. Bitte senden Sie keine sensiblen Zahlungsdaten.":
+    lang==="de"?"Vielen Dank für Ihren Hinweis. Wir möchten den Vorgang prüfen und Ihnen weiterhelfen. Ich prüfe das gerne für Sie. Bitte senden Sie keine sensiblen Zahlungsdaten.":
     "Thank you for bringing this to our attention. We appreciate the opportunity to review it and help. I’m sorry this has happened. Please give me a moment to look into this and help you with the next step.";
   } else if(has(/\b(hello|hi|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo)\b/)&&t.split(/\s+/).length<9){
     intent="greeting";
@@ -126,7 +126,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   } else if((vehicle || conversation.vehicle_model || mentionedModel) && !has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="vehicle_enquiry";
     const facts=[validPrice?money(price):"",cleanString(vehicle.description,350),vehicle.specifications&&typeof vehicle.specifications==="object"?JSON.stringify(vehicle.specifications).slice(0,350):""].filter(Boolean).join(" · ");
-    reply=facts?`Thank you for your interest in ${name}. Here is the information currently published: ${facts}. Our team will confirm availability and delivery details. Would you like help selecting a configuration?`:`Thank you for your interest in ${name}. I’d be happy to help with the Model 3. Which version are you interested in? I’ll check the current details for you.`;
+    reply=facts?`Thank you for your interest in ${name}. Here is the information currently published: ${facts}. I’ll check the latest availability and delivery details for you. Would you like help selecting a configuration?`:`Thank you for your interest in ${name}. I’d be happy to help with the Model 3. Which version are you interested in? I’ll check the current details for you.`;
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/)){
     intent="purchase_ready";
     reply=lang==="fr"?"Nous serons ravis de vous accompagner. Quel modèle et quelle configuration souhaitez-vous ? Nous recueillerons ensuite vos coordonnées et les informations de livraison nécessaires.":
@@ -135,7 +135,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     "We will be pleased to guide you through the next steps. Which model and configuration would you like? We can then collect your contact and delivery details progressively.";
   } else if(Object.keys(delivery).length){
     intent="delivery_details";
-    reply="Thank you. We have noted the details you provided in this conversation. Our team will review the delivery information and confirm any remaining requirements.";
+    reply="Thank you. We have noted the details you provided in this conversation. I’ve noted those details. Is there anything else you’d like to add?";
   } else {
     intent="general"; requiresManagement=true;
     reply=lang==="fr"?"Merci pour votre message et votre intérêt pour Tesla Markets. Pour vous apporter une réponse exacte, pouvez-vous préciser votre question ou le modèle qui vous intéresse ?":
