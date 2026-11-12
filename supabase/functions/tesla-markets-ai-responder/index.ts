@@ -68,7 +68,8 @@ function extractDelivery(text: string) {
 function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any) {
   const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text);
   const has=(r:RegExp)=>r.test(t);
-  const name=vehicle?.name||vehicle?.model||conversation.vehicle_model||"your selected vehicle";
+  const mentionedModel=text.match(/\\b(model\\s*[3ysx]|cybertruck|roadster|semi)\\b/i)?.[0];
+  const name=vehicle?.name||vehicle?.model||conversation.vehicle_model||mentionedModel||"your selected vehicle";
   const price=Number(vehicle?.price_usd), validPrice=Number.isFinite(price)&&price>0;
   const money=(n:number)=>new Intl.NumberFormat(lang==="fr"?"fr-FR":lang==="es"?"es-ES":lang==="de"?"de-DE":"en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(n);
   let intent="general", requiresManagement=false, reply="";
