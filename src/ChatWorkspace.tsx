@@ -156,7 +156,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     if(busy||!threadId||!viewerId)return;
     setBusy(true);setProblem('');
     try{
-      const {data:insertedMessage,error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:messageText,attachment_path:null,attachment_name:null,attachment_mime:null}).select('id').single();
+      const {data:insertedMessage,error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:messageText}).select('id').single();
       if(error)throw error;
       await runIndependentResponder(insertedMessage.id,messageText);
     }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
@@ -173,7 +173,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
         const textMessage=insertedRows?.find(row=>typeof row.body==='string'&&row.body.trim());
         if(textMessage){await runIndependentResponder(textMessage.id,draft.trim());}
       }else{
-        const {data:insertedMessage,error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:draft.trim(),attachment_path:null,attachment_name:null,attachment_mime:null}).select('id').single();
+        const {data:insertedMessage,error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:draft.trim()}).select('id').single();
         if(error)throw error;
         await runIndependentResponder(insertedMessage.id,draft.trim());
       }
@@ -212,7 +212,7 @@ export function AdminInbox() {
   useEffect(()=>{if(!user)return;void loadThreads();const t=window.setInterval(()=>void loadThreads(),6000);return()=>window.clearInterval(t);},[user?.id]);
   const loadMessages=async()=>{if(!selected||!user)return;try{setMessages(await fetchMessages(selected,user.id));}catch(e){setProblem(errorText(e));}};
   useEffect(()=>{if(!selected)return;void loadMessages();const t=window.setInterval(()=>void loadMessages(),3500);return()=>window.clearInterval(t);},[selected,user?.id]);
-  const reply=async(e:FormEvent)=>{e.preventDefault();if((!draft.trim()&&!images.length)||busy||!selected||!user)return;setBusy(true);setProblem('');try{const uploaded=await Promise.all(images.map(file=>uploadAttachment(file,user.id,selected)));const rows=images.length?images.map((file,index)=>({conversation_id:selected,sender_id:user.id,sender_role:'management',body:index===0?draft.trim():'',attachment_path:uploaded[index],attachment_name:file.name,attachment_mime:file.type})): [{conversation_id:selected,sender_id:user.id,sender_role:'management',body:draft.trim(),attachment_path:null,attachment_name:null,attachment_mime:null}];const {error}=await supabase.from('support_messages').insert(rows);if(error){if((error as any).code==='PGRST116'||/duplicate_management_reply_blocked/i.test(error.message||'')){setProblem('This message was blocked because the same message has already been sent to a customer. Please write a new, specific reply.');return;}throw error;}const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);if(pauseError)throw pauseError;setDraft('');setImages([]);await loadMessages();await loadThreads();}catch(e){setProblem(errorText(e));}finally{setBusy(false);}};
+  const reply=async(e:FormEvent)=>{e.preventDefault();if((!draft.trim()&&!images.length)||busy||!selected||!user)return;setBusy(true);setProblem('');try{const uploaded=await Promise.all(images.map(file=>uploadAttachment(file,user.id,selected)));const rows=images.length?images.map((file,index)=>({conversation_id:selected,sender_id:user.id,sender_role:'management',body:index===0?draft.trim():'',attachment_path:uploaded[index],attachment_name:file.name,attachment_mime:file.type})): [{conversation_id:selected,sender_id:user.id,sender_role:'management',body:draft.trim()}];const {error}=await supabase.from('support_messages').insert(rows);if(error){if((error as any).code==='PGRST116'||/duplicate_management_reply_blocked/i.test(error.message||'')){setProblem('This message was blocked because the same message has already been sent to a customer. Please write a new, specific reply.');return;}throw error;}const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);if(pauseError)throw pauseError;setDraft('');setImages([]);await loadMessages();await loadThreads();}catch(e){setProblem(errorText(e));}finally{setBusy(false);}};
   const sendFormattedCard=async()=>{
     if(!selected||!user||busy||!cardTitle.trim())return;
     const rows=cardRows.split('\\n').map(line=>line.split('|')).filter(parts=>parts.length>=2&&parts[0].trim()&&parts.slice(1).join('|').trim()).map(parts=>({label:parts[0].trim().slice(0,80),value:parts.slice(1).join('|').trim().slice(0,400)}));
