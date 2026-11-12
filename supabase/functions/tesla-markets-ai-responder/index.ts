@@ -65,7 +65,7 @@ function extractDelivery(text: string) {
   const phone=text.match(/(?:\+?\d[\d ()-]{7,}\d)/);
   if(email)out.email=email[0].slice(0,200);
   if(phone)out.phone=phone[0].trim().slice(0,60);
-  const nameMatch=text.match(/\b(?:my name is|name is|i am|i\x27m|nom est|me llamo|mein name ist)\s+(.+?)(?=\s+(?:from|based in|located in|de|en|desde|aus)\s+|[,;\n]|$)/i);
+  const nameMatch=text.match(/\b(?:my name is|name is|i am|i\x27m|this is my details|my details are|these are my details|my details|nom est|me llamo|mein name ist)\s*[:,-]?\s+(.+?)(?=\s+(?:from|based in|located in|de|en|desde|aus)\s+|[,;\n]|$)/i);
   if(nameMatch?.[1])out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/\b(?:my address is|address is|delivery address is|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+)$/i);
   if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
@@ -92,7 +92,15 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const rawModel=explicitModel||conversation.vehicle_model||priorModel||null;
   const mentionedModel=rawModel ? (/cyber\s*truck/i.test(rawModel)?"Cybertruck":/roadster/i.test(rawModel)?"Roadster":/semi/i.test(rawModel)?"Tesla Semi":rawModel.replace(/\s+/g," ").replace(/\bmodel\s*([3ysx])\b/i,(_,v)=>"Model "+String(v).toUpperCase())) : undefined;
   const name=vehicle?.name||vehicle?.model||mentionedModel||"your selected vehicle";
-  const price=Number(vehicle?.price_usd), validPrice=Number.isFinite(price)&&price>0;
+  const specsForVariant = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
+  const listedVariants = Array.isArray(specsForVariant.variants) ? specsForVariant.variants : [];
+  const requestedVariant = listedVariants.find((item:any) => {
+    const variantName=cleanString(item?.name,100);
+    return variantName && normalized(text).includes(normalized(variantName));
+  }) || null;
+  const requestedVariantPriceText=cleanString(requestedVariant?.price,80);
+  const requestedVariantPrice=requestedVariantPriceText ? Number(requestedVariantPriceText.replace(/[^0-9.]/g,"")) : NaN;
+  const price=Number.isFinite(requestedVariantPrice)&&requestedVariantPrice>0 ? requestedVariantPrice : Number(vehicle?.price_usd), validPrice=Number.isFinite(price)&&price>0;
   const money=(n:number)=>new Intl.NumberFormat(lang==="fr"?"fr-FR":lang==="es"?"es-ES":lang==="de"?"de-DE":"en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(n);
   let intent="general", requiresManagement=false, reply="";
   if(discount.mentionsDiscount){
@@ -153,7 +161,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     const availability = cleanString(vehicle?.availability,120);
     const asksPrice=has(/\b(prices?|pricing|cost|how much|usd|dollar|prix|precio|preis)\b/);
     const asksPerformance=has(/\b(performance|acceleration|speed|range|battery|charging|horsepower|torque|autonomy)\b/);
-    const asksAll=has(/\b(all details|full details|everything|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/);
+    const asksAll=has(/\b(all details|all information|yes all|everything|full details|complete details|full specifications|specifications|specs|tell me all|more details|details about|overview)\b/);
     const specificPerformance=cleanString(specs.performance,240);
     const specificRange=cleanString(specs.range,240);
     const isPlaceholder=(value:string)=>!value||/\b(varies|variant-dependent|depends on|to be confirmed|must be confirmed|final production specification|final specification)\b/i.test(value);
@@ -163,7 +171,11 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     if(validPrice) lines.push("Published price: "+money(price));
     if(description) lines.push("Overview: "+description);
     if(specLines.length) lines.push(...specLines);
-    if(asksPrice){
+    if (requestedVariant && !asksPrice && !asksPerformance && !asksAll && !discount.mentionsDiscount) {
+      intent="vehicle_variant_selected";
+      const variantPrice=cleanString(requestedVariant.price,80);
+      reply="Understood — you are interested in the "+cleanString(requestedVariant.name,100)+" version of the "+name+"."+(variantPrice ? " The published starting price supplied for this version is "+variantPrice+"." : " Its final price still needs management confirmation.")+" Would you like to proceed with this version?";
+    } else if(asksPrice){
       const variants=Array.isArray(specs.variants)?specs.variants.map((item:any)=>item.name+": "+item.price).join("; "):"";
       const priceNote=cleanString(specs.price_note,260);
       if(validPrice) reply="Published pricing for the "+name+": "+(variants||money(price))+". "+(priceNote||"Final quotation and availability are confirmed individually.");
@@ -339,7 +351,7 @@ Deno.serve(async (req: Request) => {
     const selectedVehicle = vehicle || matchVehicle("", conversation.vehicle_model || "", catalogue || []);
     const selectedSpecs = selectedVehicle?.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
-    const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); });
+    const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); }) || (priorDetails.selected_variant ? variants.find((variant:any)=>normalized(cleanString(variant?.name,100))===normalized(cleanString(priorDetails.selected_variant,100))) : null);
     if (variantMatch) mergedDetails.selected_variant = cleanString(variantMatch.name,100);
     if (selectedVehicle && !mergedDetails.selected_variant && variants.length === 1) mergedDetails.selected_variant = cleanString(variants[0].name,100);
     const hasPaymentIntent = /\b(payment|payment method|payment options|how do i pay|where do i pay|pay now|transfer|bank details|paiement|pago|zahlung)\b/i.test(normalized(customerMessage.body));
@@ -362,7 +374,7 @@ Deno.serve(async (req: Request) => {
     if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
-    } else if (/^\\s*(okay|ok|yes|yeah|sure|proceed|continue|go ahead|sounds good|alright|all right)\\b/i.test(customerMessage.body) && selectedVehicle) {
+    } else if (/^\\s*(okay|ok|yes|yeah|sure|proceed|continue|go ahead|sounds good|alright|all right|yes please|yes all information)\\b/i.test(customerMessage.body) && selectedVehicle) {
       intent = "customer_details_progress";
       const needs = missing.length ? missing.join(", ") : "confirmation of your preferred vehicle version";
       reply = "Certainly. I have kept your " + selectedVehicle.name + " enquiry open. To move to the next step, please provide your " + needs + ". I will prepare the pro forma invoice once the required details are complete.";
@@ -396,8 +408,10 @@ Deno.serve(async (req: Request) => {
     // to an identical answer, mark this message handled and leave the conversation quiet.
     const canonical = (value: string) => value.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
     if (lastAutomatedReply && canonical(lastAutomatedReply.body || "") === canonical(reply)) {
-      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      return json({ ok: true, skipped: true, reason: "identical_reply_prevented" }, 200, headers);
+      const isVehicleInfo = intent === "vehicle_enquiry" || intent === "unverified_vehicle_information";
+      reply = isVehicleInfo
+        ? "I have already shared the published information available for the " + (selectedVehicle?.name || conversation.vehicle_model || "vehicle") + " above. Which particular detail would you like me to clarify?"
+        : "I have noted your latest message and kept your enquiry open. What would you like me to help you with next?";
     }
 
     if (local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
