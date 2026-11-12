@@ -469,8 +469,21 @@ Deno.serve(async (req: Request) => {
           intent = "investment_confirming_details";
           reply = "Please send the corrected details, including your full name, email address, phone number and country. I will update the information before proceeding.";
         } else if (saysConfirm) {
-          intent = "investment_awaiting_amount";
-          reply = "Thank you. Your contact information is confirmed for this enquiry. Tell me the amount in USD that you would like to calculate, or ask me to explain how Tesla shares work.";
+          if (investmentAmount > 0 && Number.isFinite(investmentAmount)) {
+            const quoteResponse = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/TSLA?range=1d&interval=1m", { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0 TeslaMarketsEnquiry/1.0" }, signal: AbortSignal.timeout(6000) });
+            if (!quoteResponse.ok) throw new Error("Market quote unavailable");
+            const quotePayload = await quoteResponse.json();
+            const quote = quotePayload?.chart?.result?.[0];
+            const sharePrice = Number(quote?.meta?.regularMarketPrice);
+            const quoteTime = Number(quote?.meta?.regularMarketTime);
+            if (!Number.isFinite(sharePrice) || sharePrice <= 0 || !Number.isFinite(quoteTime)) throw new Error("Invalid market quote");
+            const quoteDate = new Date(quoteTime * 1000).toISOString().replace("T"," ").replace(".000Z"," UTC");
+            intent = "investment_awaiting_confirmation";
+            reply = "Your contact information is confirmed. At the latest available TSLA quote of $" + sharePrice.toFixed(2) + " USD per share (as of " + quoteDate + "; source: Yahoo Finance), $" + investmentAmount.toLocaleString("en-US") + " USD represents approximately " + (investmentAmount/sharePrice).toFixed(4) + " shares before fees. Fractional-share availability depends on the broker.\\n\\nWould you like me to submit an investment enquiry for $" + investmentAmount.toLocaleString("en-US") + " USD to Tesla Markets Management? Reply yes to confirm. This chat does not execute share purchases.";
+          } else {
+            intent = "investment_awaiting_amount";
+            reply = "Thank you. Your contact information is confirmed for this enquiry. Tell me the amount in USD that you would like to calculate, or ask me to explain how Tesla shares work.";
+          }
         } else if (Object.keys(extractedDelivery).length) {
           intent = "investment_awaiting_amount";
           reply = "Thank you. I have checked and recorded the contact information you provided. Your details are complete. Tell me the amount in USD you would like to calculate, or ask me to explain how Tesla shares work.";
