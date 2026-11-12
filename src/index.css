@@ -2074,3 +2074,14 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .chat-bubble:has(.tm-rich-card){max-width:min(100%,470px);width:100%}
 .chat-bubble:has(.tm-rich-card)>p{white-space:pre-wrap}
 @media(max-width:480px){.tm-rich-card{padding:12px;border-radius:15px}.tm-rich-card-heading h3{font-size:17px}.tm-rich-card-metric strong{font-size:17px}}
+
+
+.tm-admin-compose-tools{display:flex;justify-content:flex-end;padding:7px 12px 0}
+.tm-admin-compose-tools button{border:1px solid var(--border,#d9dee5);background:var(--card,#fff);color:var(--foreground,#17191c);border-radius:9px;padding:8px 11px;font-size:11px;font-weight:700}
+.tm-card-composer{margin:10px 12px;padding:13px;border:1px solid var(--border,#d9dee5);border-radius:13px;background:var(--card,#fff);display:grid;gap:9px}
+.tm-card-composer>b{font-size:13px}
+.tm-card-composer input,.tm-card-composer textarea{width:100%;min-width:0;border:1px solid var(--border,#d9dee5);border-radius:9px;padding:10px 11px;background:var(--background,#fff);color:var(--foreground,#17191c);font:inherit;font-size:12px}
+.tm-card-composer textarea{resize:vertical}
+.tm-card-composer>div{display:flex;justify-content:flex-end;gap:8px}
+.tm-card-composer button{border:1px solid var(--border,#d9dee5);border-radius:8px;padding:8px 12px;background:var(--muted,#f3f5f7);color:var(--foreground,#17191c);font-size:11px;font-weight:700}
+.tm-card-composer button:last-child{background:#17191c;color:white;border-color:#17191c}
