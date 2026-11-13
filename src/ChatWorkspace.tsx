@@ -5,9 +5,9 @@ import { ArrowLeft, BadgeCheck, CheckCheck, FileImage, LoaderCircle, LockKeyhole
 
 type Message = { id: string; sender: 'visitor'|'admin'; text: string; attachmentUrl?: string|null; messageType?: string; structuredData?: any; createdAt: number };
 type Thread = { id: string; visitorName: string; visitorEmail: string; enquiryType?:string; enquirySource?:string; vehicleModel?:string; phone?:string; updatedAt: number; lastMessage: string; status?: string; responderPaused?: boolean };
-type VehicleCheckoutDraft = { title:string; slug:string; mode:'cart'|'purchase'; variants:{name:string;price:string}[] };
-type VehicleCheckoutForm = { fullName:string; email:string; phone:string; country:string; city:string; address:string; variant:string; instructions:string };
-const emptyVehicleCheckoutForm:VehicleCheckoutForm={fullName:'',email:'',phone:'',country:'',city:'',address:'',variant:'',instructions:''};
+type VehicleCheckoutDraft = { title:string; slug:string; mode:'cart'|'purchase'; variants:{name:string;price:string}[]; colors:string[]; wheels:string[] };
+type VehicleCheckoutForm = { fullName:string; email:string; phone:string; country:string; city:string; address:string; variant:string; color:string; wheels:string; instructions:string };
+const emptyVehicleCheckoutForm:VehicleCheckoutForm={fullName:'',email:'',phone:'',country:'',city:'',address:'',variant:'',color:'',wheels:'',instructions:''};
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Something went wrong. Please try again.';
 const timeLabel = (stamp:number) => new Date(stamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
@@ -80,13 +80,19 @@ async function uploadAttachment(file:File,userId:string,conversationId:string) {
 
 
 function RichMessageCard({type,data,onAddToCart,onBuyNow,onSelectVariant}:{type?:string;data?:any;onAddToCart?:(data:any)=>void;onBuyNow?:(data:any)=>void;onSelectVariant?:(variant:string,data:any)=>void}) {
+  const [selectedColor,setSelectedColor]=useState(String(data?.selected_color||""));
+  const [selectedWheels,setSelectedWheels]=useState(String(data?.selected_wheels||""));
+  const customization=data?.customization&&typeof data.customization==="object"?data.customization:{};
+  const colorOptions=Array.isArray(customization.colors)?customization.colors.filter((value:any)=>typeof value==="string"&&value.trim()):[];
+  const wheelOptions=Array.isArray(customization.wheels)?customization.wheels.filter((value:any)=>typeof value==="string"&&value.trim()):[];
+  const configuredData={...data,selected_color:selectedColor||null,selected_wheels:selectedWheels||null};
   if(!type || type==='text' || !data || typeof data!=='object') return null;
   const rows=(value:any)=>Array.isArray(value)?value.filter((x:any)=>x&&typeof x.label==='string'&&x.value!==undefined):[];
   const title=String(data.title|| (type==='vehicle_card'?'Vehicle information':type==='investment_summary'?'Investment enquiry summary':type==='customer_details'?'Customer information':'Tesla Markets information'));
   const slug=String(data.vehicle_slug||(/cybertruck/i.test(title)?'cybertruck':/roadster/i.test(title)?'roadster':/semi/i.test(title)?'semi':/model\s*3/i.test(title)?'model-3':/model\s*y/i.test(title)?'model-y':''));
   const fallbackImage=slug?'/resources/'+slug+'-1.jpg':'';
   const imageUrl=typeof data.image_url==='string'&&data.image_url.trim()?data.image_url:fallbackImage;
-  const galleryCounts:Record<string,number>={'model-3':5,'model-y':5,'cybertruck':9,'roadster':6,'semi':10};
+  const galleryCounts:Record<string,number>={'model-3':5,'model-y':5,'cybertruck':10,'roadster':5,'semi':10};
   const gallery=Array.isArray(data.gallery_urls)&&data.gallery_urls.length?data.gallery_urls.filter((url:any)=>typeof url==='string'&&url.trim()):Array.from({length:galleryCounts[slug]||0},(_,index)=>'/resources/'+slug+'-'+(index+1)+'.jpg');
   const metrics=rows(data.metrics), fields=rows(data.fields);
   const sections=Array.isArray(data.sections)?data.sections.filter((x:any)=>x&&typeof x.title==='string'):[];
@@ -96,10 +102,11 @@ function RichMessageCard({type,data,onAddToCart,onBuyNow,onSelectVariant}:{type?
     {gallery.length>1&&<div className="tm-rich-card-gallery">{gallery.slice(1,4).map((url:string,index:number)=><img key={url} src={url} alt={title+' gallery '+(index+2)} loading="lazy" decoding="async" onError={event=>{event.currentTarget.style.display='none';}}/>)}</div>}
     <div className="tm-rich-card-heading"><h3>{title}</h3>{data.subtitle&&<p>{String(data.subtitle)}</p>}</div>
     {data.amount&&<div className="tm-rich-card-amount"><span>{String(data.amount_label||'AMOUNT')}</span><strong>{String(data.amount)}</strong></div>}
+    {(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&(colorOptions.length>0||wheelOptions.length>0)&&<section className="tm-rich-card-section tm-vehicle-customisation"><h4>Customise your vehicle</h4>{colorOptions.length>0&&<div className="tm-custom-option"><label htmlFor={'tm-color-'+slug}>Preferred exterior colour</label><select id={'tm-color-'+slug} value={selectedColor} onChange={event=>setSelectedColor(event.target.value)}><option value="">Choose a colour</option>{colorOptions.map((value:string,i:number)=><option key={i} value={value}>{value}</option>)}</select></div>}{wheelOptions.length>0&&<div className="tm-custom-option"><label htmlFor={'tm-wheel-'+slug}>Preferred wheels</label><select id={'tm-wheel-'+slug} value={selectedWheels} onChange={event=>setSelectedWheels(event.target.value)}><option value="">Choose wheels</option>{wheelOptions.map((value:string,i:number)=><option key={i} value={value}>{value}</option>)}</select></div>}<p>Preferences are subject to the selected version, market availability and management confirmation.</p></section>}
     {metrics.length>0&&<div className="tm-rich-card-metrics">{metrics.map((item:any,i:number)=><div className="tm-rich-card-metric" key={i}><strong>{String(item.value)}</strong><span>{String(item.label)}</span></div>)}</div>}
     {fields.length>0&&<section className="tm-rich-card-section"><h4>{String(data.fields_title||'Customer information')}</h4><dl>{fields.map((item:any,i:number)=><div key={i}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>}
     {sections.map((section:any,i:number)=><section className="tm-rich-card-section" key={i}><h4>{section.title}</h4><dl>{rows(section.rows).map((item:any,j:number)=><div key={j}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>)}
-    {(type==='vehicle_purchase_prompt'||type==='vehicle_card')&&Array.isArray(data.purchase_variants)&&data.purchase_variants.length>1&&!data.selected_variant&&<section className="tm-rich-card-section"><h4>Choose your preferred version</h4><div className="tm-variant-choice-list">{data.purchase_variants.map((variant:any,i:number)=><button type="button" className="tm-variant-choice" key={variant.name||i} onClick={()=>onSelectVariant?.(String(variant.name),data)}><span><b>{String(variant.name)}</b><small>{String(variant.price||'Price to be confirmed')}</small></span><strong>Select</strong></button>)}</div></section>}{(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onBuyNow&&(!(Array.isArray(data.purchase_variants)&&data.purchase_variants.length>1&&!data.selected_variant))&&<button type="button" className="tm-buy-now-button" onClick={()=>onBuyNow(data)}>{type==='vehicle_purchase_prompt'?'Continue purchase':'Start purchase'}</button>}{(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onAddToCart&&(!(Array.isArray(data.purchase_variants)&&data.purchase_variants.length>1&&!data.selected_variant))&&<button type="button" className="tm-add-cart-button" onClick={()=>onAddToCart(data)}>Add to cart</button>}
+    {(type==='vehicle_purchase_prompt'||type==='vehicle_card')&&Array.isArray(data.purchase_variants)&&data.purchase_variants.length>1&&!data.selected_variant&&<section className="tm-rich-card-section"><h4>Choose your preferred version</h4><div className="tm-variant-choice-list">{data.purchase_variants.map((variant:any,i:number)=><button type="button" className="tm-variant-choice" key={variant.name||i} onClick={()=>onSelectVariant?.(String(variant.name),data)}><span><b>{String(variant.name)}</b><small>{String(variant.price||'Price to be confirmed')}</small></span><strong>Select</strong></button>)}</div></section>}{(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onBuyNow&&(!(Array.isArray(data.purchase_variants)&&data.purchase_variants.length>1&&!data.selected_variant))&&<button type="button" className="tm-buy-now-button" onClick={()=>onBuyNow(configuredData)}>{type==='vehicle_purchase_prompt'?'Continue purchase':'Start purchase'}</button>}{(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onAddToCart&&(!(Array.isArray(data.purchase_variants)&&data.purchase_variants.length>1&&!data.selected_variant))&&<button type="button" className="tm-add-cart-button" onClick={()=>onAddToCart(configuredData)}>Add to cart</button>}
     {data.note&&<p className="tm-rich-card-note">{String(data.note)}</p>}
     {type==='payment_card'&&typeof data.payment_url==='string'&&/^https:\/\//i.test(data.payment_url)&&<a className="tm-buy-now-button" href={data.payment_url} target="_blank" rel="noopener noreferrer">Pay securely</a>}{data.disclaimer&&<p className="tm-rich-card-disclaimer">{String(data.disclaimer)}</p>}
   </article>;
@@ -188,10 +195,13 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
       city:field('Delivery city'),
       address:field('Delivery address'),
       variant:variants.length===1?variants[0].name:(variants.some((item:any)=>item.name===savedVariant)?savedVariant:''),
+      color:String(data?.selected_color||''),
+      wheels:String(data?.selected_wheels||''),
       instructions:''
     });
     setProblem('');
-    setVehicleCheckout({title,slug,mode,variants});
+    const customization=data?.customization&&typeof data.customization==='object'?data.customization:{};
+    setVehicleCheckout({title,slug,mode,variants,colors:Array.isArray(customization.colors)?customization.colors:[],wheels:Array.isArray(customization.wheels)?customization.wheels:[]});
   };
   const submitVehicleCheckout=async(event:FormEvent)=>{
     event.preventDefault();
@@ -214,6 +224,8 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
         vehicleCheckout.mode==='cart'?'Add '+vehicleCheckout.title+' to my cart.':'',
         'I want to buy '+vehicleCheckout.title+'.',
         form.variant?'Vehicle version: '+form.variant:'',
+        form.color?'Preferred exterior colour: '+form.color:'',
+        form.wheels?'Preferred wheels: '+form.wheels:'',
         'Full name: '+form.fullName.trim(),
         'Email: '+form.email.trim(),
         'Phone: '+form.phone.trim(),
@@ -259,6 +271,8 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
         <header className="tm-checkout-head"><div><span className="tm-checkout-eyebrow">TESLA MARKETS · SECURE ENQUIRY</span><h2 id="tm-checkout-title">{vehicleCheckout.mode==='cart'?'Add to cart':'Start your purchase'}</h2><p>{vehicleCheckout.title}</p></div><button type="button" onClick={()=>setVehicleCheckout(null)} disabled={checkoutSubmitting||busy} aria-label="Close checkout"><X size={20}/></button></header>
         <form className="tm-checkout-form" onSubmit={submitVehicleCheckout}>
           {vehicleCheckout.variants.length>1&&<label>Preferred vehicle version<select required value={vehicleCheckoutForm.variant} onChange={event=>setVehicleCheckoutForm(current=>({...current,variant:event.target.value}))}><option value="">Select a version</option>{vehicleCheckout.variants.map(item=><option key={item.name} value={item.name}>{item.name} · {item.price}</option>)}</select></label>}
+          {vehicleCheckout.colors.length>0&&<label>Preferred exterior colour <span>(subject to availability)</span><select value={vehicleCheckoutForm.color} onChange={event=>setVehicleCheckoutForm(current=>({...current,color:event.target.value}))}><option value="">Choose a colour</option>{vehicleCheckout.colors.map((value,i)=><option key={i} value={value}>{value}</option>)}</select></label>}
+          {vehicleCheckout.wheels.length>0&&<label>Preferred wheels <span>(subject to availability)</span><select value={vehicleCheckoutForm.wheels} onChange={event=>setVehicleCheckoutForm(current=>({...current,wheels:event.target.value}))}><option value="">Choose wheels</option>{vehicleCheckout.wheels.map((value,i)=><option key={i} value={value}>{value}</option>)}</select></label>}
           <div className="tm-checkout-section-title">Your contact details</div>
           <div className="tm-checkout-grid"><label>Full name<input required autoComplete="name" value={vehicleCheckoutForm.fullName} onChange={event=>setVehicleCheckoutForm(current=>({...current,fullName:event.target.value}))} placeholder="Enter your full name"/></label><label>Email address<input required type="email" autoComplete="email" value={vehicleCheckoutForm.email} onChange={event=>setVehicleCheckoutForm(current=>({...current,email:event.target.value}))} placeholder="you@example.com"/></label><label>Phone number<input required type="tel" inputMode="tel" autoComplete="tel" value={vehicleCheckoutForm.phone} onChange={event=>setVehicleCheckoutForm(current=>({...current,phone:event.target.value}))} placeholder="Include country code"/></label></div>
           <div className="tm-checkout-section-title">Delivery address</div>
