@@ -192,7 +192,9 @@ export function AdminConsole() {
         const message = payload.new as { id?: string; body?: string; sender_role?: string };
         if (message.sender_role !== 'customer') return;
         void load();
-        // The server-side database webhook sends background push. Realtime only refreshes the open dashboard.
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_notifications' }, () => {
+        if (active) void load();
       })
       .subscribe((status) => { if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setNotificationStatus('Live message connection interrupted. Refresh the admin app to reconnect.'); });
     return () => { active = false; void supabase.removeChannel(channel); };
