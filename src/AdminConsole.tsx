@@ -18,8 +18,8 @@ type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment
 const catalogue = [
   { name: 'Model 3', count: 5, first: '/resources/model-3-1.jpg' },
   { name: 'Model Y', count: 5, first: '/resources/model-y-1.jpg' },
-  { name: 'Cybertruck', count: 9, first: '/resources/cybertruck-1.jpg' },
-  { name: 'Roadster', count: 6, first: '/resources/roadster-1.jpg' },
+  { name: 'Cybertruck', count: 10, first: '/resources/cybertruck-1.jpg' },
+  { name: 'Roadster', count: 5, first: '/resources/roadster-1.jpg' },
   { name: 'Tesla Semi', count: 10, first: '/resources/semi-1.jpg' },
 ];
 const statusOptions = ['open', 'pending', 'closed'];
