@@ -2206,3 +2206,10 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-rich-card-investment_progress .tm-rich-card-note,.tm-rich-card-investment_summary .tm-rich-card-note{padding:13px;border:1px solid #e5eaf0;border-radius:14px;background:#f1f4f7;color:#394957;font-size:12px;line-height:1.6}
 .tm-rich-card-investment_progress .tm-rich-card-disclaimer,.tm-rich-card-investment_summary .tm-rich-card-disclaimer{font-size:10px;line-height:1.65;color:#78838e}
 @media(max-width:480px){.tm-rich-card-investment_progress,.tm-rich-card-investment_summary{padding:15px;border-radius:19px}.tm-rich-card-investment_progress .tm-rich-card-heading h3,.tm-rich-card-investment_summary .tm-rich-card-heading h3{font-size:20px}.tm-rich-card-investment_progress .tm-rich-card-amount strong,.tm-rich-card-investment_summary .tm-rich-card-amount strong{font-size:26px}}
+
+.tm-vehicle-customisation{margin-top:14px;padding:16px!important;border:1px solid #e5e9ee!important;border-radius:16px;background:linear-gradient(145deg,#fbfcfd,#f4f6f8)}
+.tm-vehicle-customisation h4{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#9d252d;margin:0 0 13px}
+.tm-custom-option{display:grid;gap:7px;margin:10px 0}
+.tm-custom-option label{font-size:12px;font-weight:700;color:#35414d}
+.tm-custom-option select,.tm-checkout-form select{width:100%;min-height:44px;padding:10px 12px;border:1px solid #d9dfe5;border-radius:10px;background:#fff;color:#1c2732;font:inherit}
+.tm-vehicle-customisation p{margin:10px 0 0;font-size:10px;line-height:1.55;color:#77818b}
