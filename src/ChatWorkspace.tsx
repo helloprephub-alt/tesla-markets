@@ -79,7 +79,7 @@ async function uploadAttachment(file:File,userId:string,conversationId:string) {
 }
 
 
-function RichMessageCard({type,data,onAddToCart,onBuyNow,onSelectVariant}:{type,data,onAddToCart,onBuyNow,onSelectVariant}:{type?:string;data?:any;onAddToCart?:(data:any)=>void;onBuyNow?:(data:any)=>void;onSelectVariant?:(variant:string,data:any)=>void}) {
+function RichMessageCard({type,data,onAddToCart,onBuyNow,onSelectVariant}:{type?:string;data?:any;onAddToCart?:(data:any)=>void;onBuyNow?:(data:any)=>void;onSelectVariant?:(variant:string,data:any)=>void}) {
   if(!type || type==='text' || !data || typeof data!=='object') return null;
   const rows=(value:any)=>Array.isArray(value)?value.filter((x:any)=>x&&typeof x.label==='string'&&x.value!==undefined):[];
   const title=String(data.title|| (type==='vehicle_card'?'Vehicle information':type==='investment_summary'?'Investment enquiry summary':type==='customer_details'?'Customer information':'Tesla Markets information'));
