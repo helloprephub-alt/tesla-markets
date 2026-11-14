@@ -334,17 +334,40 @@ Deno.serve(async (req: Request) => {
     const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Verified broker onboarding)\b/i);
     if (paymentChoice) {
       const amountMatch = customerMessage.body.match(/\$[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
+      const currentDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
+      const previousLock = currentDetails.payment_lock && typeof currentDetails.payment_lock === "object" ? currentDetails.payment_lock : {};
+      const paymentLockNext = {
+        status: "pending", method: paymentChoice[1],
+        amount: amountMatch?.[0] || previousLock.amount || "Amount to be confirmed",
+        vehicle: cleanString(conversation.vehicle_model,100) || cleanString(customerMessage.body.match(/for (.+?)\. Amount:/i)?.[1],100) || "Tesla Markets order",
+        kind: /investment/i.test(customerMessage.body) ? "investment" : "vehicle",
+        created_at: previousLock.created_at || new Date().toISOString()
+      };
+      const { error: lockError } = await admin.from("support_conversations").update({ delivery_details: { ...currentDetails, payment_lock: paymentLockNext }, updated_at: new Date().toISOString() }).eq("id", conversationId);
+      if (lockError) throw lockError;
       const { error: notificationError } = await admin.from("admin_notifications").insert({
-        type: "payment_method_selected",
-        title: "Customer selected a payment method",
-        body: [conversation.visitor_email || "Website visitor", cleanString(conversation.vehicle_model,100), amountMatch?.[0] || "Amount to confirm", paymentChoice[1]].filter(Boolean).join(" · ").slice(0,240),
-        entity_type: "conversation",
-        entity_id: conversationId,
-        is_read: false
+        type: "payment_method_selected", title: "Customer selected a payment method",
+        body: [conversation.visitor_email || "Website visitor", paymentLockNext.vehicle, paymentLockNext.amount, paymentChoice[1]].filter(Boolean).join(" · ").slice(0,240),
+        entity_type: "conversation", entity_id: conversationId, is_read: false
       });
       if (notificationError) throw notificationError;
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      return json({ ok: true, management_handoff: true, payment_method: paymentChoice[1] }, 200, headers);
+      return json({ ok: true, management_handoff: true, payment_method: paymentChoice[1], payment_status: "pending" }, 200, headers);
+    }
+
+    const savedPaymentLock = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
+    if (savedPaymentLock?.status === "pending") {
+      const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
+      const reminder = "Your payment is still pending. Your selected payment method and amount remain unchanged while Tesla Markets Management verifies the payment. This conversation cannot start a second checkout or change the pending amount. Please wait for management to confirm the payment status.";
+      const { data: responseMessage, error: responseError } = await admin.from("support_messages").insert({
+        conversation_id: conversationId, sender_id: managementProfile.id, sender_role: "management",
+        body: reminder, automated_type: "ai_response", message_type: "payment_pending",
+        structured_data: { status: "Payment pending", method: savedPaymentLock.method, amount: savedPaymentLock.amount, vehicle: savedPaymentLock.vehicle, source_message_id: messageId }
+      }).select("id").single();
+      if (responseError) throw responseError;
+      await admin.from("ai_responder_runs").update({ status: "completed", response_message_id: responseMessage.id, updated_at: new Date().toISOString() }).eq("message_id", messageId);
+      return json({ ok: true, payment_locked: true, response_message_id: responseMessage.id }, 200, headers);
     }
 
     const { data: settingsRow, error: settingsError } = await admin
