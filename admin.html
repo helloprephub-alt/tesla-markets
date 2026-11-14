@@ -11,6 +11,16 @@
     <link rel="icon" type="image/svg+xml" href="/icons/admin-icon.svg" />
     <link rel="apple-touch-icon" href="/icons/admin-icon.svg" />
     <meta name="application-name" content="Tesla Markets Admin" />
+    <script>
+      (() => {
+        const url = new URL(window.location.href);
+        if (!url.searchParams.has('page')) {
+          url.searchParams.set('page', 'admin');
+          url.searchParams.set('app', 'tesla-markets-admin');
+          window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
