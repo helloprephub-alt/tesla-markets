@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <circle cx="256" cy="256" r="250" fill="#d71920"/>
-  <g transform="translate(36 28) scale(.86)">
-    <path fill="#fff" d="M256 54c-79 0-150 13-204 39l26 47c48-19 107-29 178-29s130 10 178 29l26-47C406 67 335 54 256 54zm-144 111 42 61h48l-21-61zm288 0h-69l-21 61h48zM220 165l36 276 36-276z"/>
-    <g fill="#fff" font-family="Arial,sans-serif" font-size="48" font-weight="300" letter-spacing="12"><text x="256" y="490" text-anchor="middle">TESLA</text></g>
-  </g>
-</svg>
