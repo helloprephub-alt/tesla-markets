@@ -2451,3 +2451,99 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
  .admin-inbox-layout .admin-thread-list{max-height:calc(100dvh - 160px)!important}
  .admin-console-premium .admin-console-main nav[aria-label="AI management sections"] button{min-height:32px!important;padding:5px 6px!important;font-size:9px!important}
 }
+
+
+/* Tesla Markets compact UI system — WhatsApp-scale typography */
+.admin-console.admin-console-standalone{font-size:10px!important}
+.admin-console.admin-console-standalone .admin-console-main{padding:8px 9px 58px!important}
+.admin-console.admin-console-standalone .admin-console-header{gap:7px!important;margin:0 0 8px!important}
+.admin-console.admin-console-standalone .admin-console-header h1{font-size:16px!important;line-height:1.15!important;margin:2px 0!important}
+.admin-console.admin-console-standalone .admin-console-header p,
+.admin-console.admin-console-standalone .admin-console-header .eyebrow,
+.admin-console.admin-console-standalone .admin-breadcrumb{font-size:9px!important;line-height:1.25!important}
+.admin-console.admin-console-standalone .admin-console-panel,
+.admin-console.admin-console-standalone .tm-dashboard-card{padding:8px!important;margin:6px 0!important;border-radius:9px!important}
+.admin-console.admin-console-standalone h2{font-size:13px!important;line-height:1.2!important}
+.admin-console.admin-console-standalone h3{font-size:11px!important;line-height:1.2!important}
+.admin-console.admin-console-standalone p,
+.admin-console.admin-console-standalone label,
+.admin-console.admin-console-standalone small,
+.admin-console.admin-console-standalone td,
+.admin-console.admin-console-standalone th,
+.admin-console.admin-console-standalone li{font-size:9px!important;line-height:1.35!important}
+.admin-console.admin-console-standalone button,
+.admin-console.admin-console-standalone input,
+.admin-console.admin-console-standalone select,
+.admin-console.admin-console-standalone textarea{font-size:10px!important}
+.admin-console.admin-console-standalone .btn{min-height:29px!important;padding:5px 8px!important;font-size:9px!important}
+.admin-console.admin-console-standalone .admin-console-side{font-size:10px!important}
+.admin-console.admin-console-standalone .admin-console-side button{min-height:30px!important;padding:6px 8px!important;font-size:9px!important}
+.admin-console.admin-console-standalone .tm-kpi-card{min-height:58px!important;padding:6px!important;gap:3px!important}
+.admin-console.admin-console-standalone .tm-kpi-card strong{font-size:15px!important}
+.admin-console.admin-console-standalone .tm-kpi-card small{font-size:8px!important}
+.admin-console.admin-console-standalone .tm-kpi-card em{font-size:7px!important}
+.admin-console.admin-console-standalone .admin-console-stats article{padding:6px!important}
+.admin-console.admin-console-standalone .admin-console-stats strong{font-size:16px!important}
+.admin-console.admin-console-standalone .admin-console-stats span,
+.admin-console.admin-console-standalone .admin-console-stats small{font-size:8px!important}
+.admin-inbox-layout{min-width:0!important;gap:0!important;overflow:hidden!important}
+.admin-conversation{min-width:0!important;min-height:0!important;overflow:hidden!important}
+.admin-conversation-head{min-height:42px!important;padding:4px 7px!important;gap:5px!important}
+.admin-conversation-head .admin-thread-avatar{width:25px!important;height:25px!important;min-width:25px!important;font-size:9px!important}
+.admin-conversation-head b{font-size:10px!important}
+.admin-conversation-head small{font-size:7px!important;line-height:1.15!important}
+.admin-conversation-head>button:not(.admin-mobile-back){min-height:27px!important;max-width:100px!important;padding:4px 6px!important;font-size:8px!important}
+.admin-conversation-head .admin-mobile-back{min-height:29px!important;padding:4px 7px!important;font-size:9px!important}
+.admin-chat-messages{padding:6px 6px!important;gap:4px!important}
+.admin-chat-messages .chat-message-row{margin:1px 0!important}
+.admin-chat-messages .chat-bubble{max-width:80%!important;padding:6px 8px!important;border-radius:11px!important;font-size:9px!important;line-height:1.32!important}
+.admin-chat-messages .chat-bubble p{font-size:9px!important;line-height:1.35!important;margin:0!important}
+.admin-chat-messages .chat-bubble small{font-size:7px!important;margin-top:3px!important}
+.admin-chat-messages .tm-rich-card{padding:8px!important;border-radius:10px!important;box-shadow:0 2px 8px rgba(18,35,45,.07)!important}
+.admin-chat-messages .tm-rich-card-top{gap:6px!important;padding-bottom:6px!important}
+.admin-chat-messages .tm-rich-card-brand{font-size:8px!important;letter-spacing:.12em!important}
+.admin-chat-messages .tm-rich-card-status{font-size:7px!important;padding:4px 6px!important;border-radius:20px!important}
+.admin-chat-messages .tm-rich-card h3{font-size:12px!important;line-height:1.2!important;margin:5px 0!important}
+.admin-chat-messages .tm-rich-card p,
+.admin-chat-messages .tm-rich-card dd,
+.admin-chat-messages .tm-rich-card dt,
+.admin-chat-messages .tm-rich-card-note,
+.admin-chat-messages .tm-rich-card-disclaimer{font-size:8px!important;line-height:1.35!important}
+.admin-chat-messages .tm-rich-card-image{height:86px!important;max-height:100px!important}
+.admin-chat-messages .tm-rich-card-gallery{gap:4px!important;margin:5px 0!important}
+.admin-chat-messages .tm-rich-card-gallery img{height:40px!important;border-radius:5px!important}
+.admin-chat-messages .tm-rich-card-fields{gap:0!important;margin-top:6px!important}
+.admin-chat-messages .tm-rich-card-fields>div{padding:5px 0!important;gap:6px!important}
+.admin-chat-messages .tm-rich-card-fields dt{font-size:8px!important}
+.admin-chat-messages .tm-rich-card-fields dd{font-size:9px!important}
+.admin-chat-messages .tm-rich-card-amount{padding:8px!important;margin:7px 0!important;border-radius:8px!important}
+.admin-chat-messages .tm-rich-card-amount strong{font-size:19px!important}
+.admin-chat-messages .tm-rich-card-amount span{font-size:7px!important;letter-spacing:.1em!important}
+.admin-chat-messages .tm-rich-card-note{background:#f5f7f9!important;color:#596773!important;border:1px solid #e7edf1!important;border-radius:7px!important;padding:7px 8px!important;margin:7px 0 0!important}
+.tm-admin-action-drawer{flex:0 0 auto;max-height:min(38dvh,260px);overflow:auto;padding:7px 8px 6px;background:#f7f9fa;border-top:1px solid #e4e9ec;box-shadow:0 -5px 16px rgba(22,35,45,.06)}
+.tm-admin-action-drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.tm-admin-action-drawer-head b{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#697680}
+.tm-admin-action-drawer-head button{border:0;background:transparent;color:#56636c;font-size:9px;padding:4px 7px}
+.tm-admin-compose-tools{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important;padding:0!important;overflow:visible!important}
+.tm-admin-compose-tools select{grid-column:1/-1;min-width:0;width:100%;height:29px!important;min-height:29px!important;padding:4px 7px!important;font-size:9px!important;border-radius:7px!important}
+.tm-admin-compose-tools button,.tm-admin-attach-action{min-width:0;min-height:29px!important;padding:4px 6px!important;font-size:8px!important;line-height:1.2!important;white-space:normal!important;overflow-wrap:anywhere;border:1px solid #dce3e8!important;border-radius:7px!important;background:#fff!important;color:#29343c!important}
+.tm-card-composer{margin:6px 0!important;padding:7px!important;gap:5px!important;border-radius:8px!important;box-shadow:none!important}
+.tm-card-composer>b{font-size:10px!important}
+.tm-card-composer input,.tm-card-composer select,.tm-card-composer textarea{min-height:28px!important;padding:5px 7px!important;font-size:9px!important;border-radius:6px!important}
+.tm-card-composer textarea{min-height:40px!important}
+.tm-card-composer button{min-height:27px!important;padding:4px 7px!important;font-size:8px!important}
+.admin-compose{gap:5px!important;padding:5px 7px!important;min-height:43px!important;border-top:1px solid #e7ecef!important}
+.admin-compose .chat-plus-button,.admin-compose .chat-send-button{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important}
+.admin-compose .tm-admin-actions-toggle{background:#edf1f3!important;color:#26343c!important}
+.admin-compose input[aria-label="Type a reply"]{height:33px!important;min-height:33px!important;padding:0 10px!important;font-size:10px!important;min-width:0!important}
+.admin-chat-error{margin:3px 6px!important;padding:6px 8px!important;font-size:9px!important}
+@media(max-width:700px){
+ .admin-inbox-layout{display:block!important;height:auto!important;max-height:none!important}
+ .admin-inbox-layout .admin-conversation{height:calc(100dvh - 142px)!important;max-height:calc(100dvh - 142px)!important;min-height:0!important;display:none;flex-direction:column}
+ .admin-inbox-layout.show-conversation .admin-conversation{display:flex!important}
+ .admin-inbox-layout.show-conversation .admin-chat-messages{flex:1 1 auto;min-height:0;overflow-y:auto}
+ .admin-inbox-layout .admin-conversation-head{flex:0 0 auto}
+ .admin-inbox-layout .tm-admin-action-drawer{flex:0 0 auto}
+ .admin-inbox-layout .admin-compose{flex:0 0 auto}
+ .admin-inbox-layout .admin-thread-list{max-height:calc(100dvh - 150px)!important}
+}
