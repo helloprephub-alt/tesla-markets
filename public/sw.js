@@ -5,8 +5,8 @@ self.addEventListener('push',event=>{
   try{payload=event.data?.json()||{};}catch{payload={body:event.data?.text()||'A customer sent a new message.'};}
   event.waitUntil(self.registration.showNotification(payload.title||'Tesla Markets Management', {
     body:payload.body||'A customer sent a new message.',
-    icon:'/icons/admin-logo.jpg',
-    badge:'/icons/admin-logo.jpg',
+    icon:'/icons/admin-app-icon.svg',
+    badge:'/icons/admin-app-icon.svg',
     tag:payload.tag||'tesla-customer-message',
     renotify:true,
     data:{url:payload.url||'/admin.html?page=admin&app=tesla-markets-admin',conversationId:payload.conversationId||null},
