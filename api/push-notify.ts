@@ -59,5 +59,10 @@ export default async function handler(request: IncomingRequest, response: Server
   ));
   const sent = results.filter(result => result.status === 'fulfilled').length;
   const failed = results.length - sent;
-  return send(200, { ok: true, sent, failed });
+  const failureCodes = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+    .map(result => {
+      const reason = result.reason as { statusCode?: number; code?: string; message?: string };
+      return { statusCode: reason?.statusCode || null, code: reason?.code || null, message: String(reason?.message || 'Push delivery failed').slice(0,180) };
+    });
+  return send(200, { ok: failed === 0, sent, failed, failureCodes });
 }
