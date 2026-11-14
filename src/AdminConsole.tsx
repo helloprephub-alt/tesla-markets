@@ -99,6 +99,7 @@ export function AdminConsole() {
   const [savingContent,setSavingContent] = useState(false);
   const [savingInvestment,setSavingInvestment] = useState(false);
   const [installPrompt,setInstallPrompt] = useState<any>(null);
+  const [showInstallCard,setShowInstallCard] = useState(false);
   const [isInstalled,setIsInstalled] = useState(false);
   const [notificationPermission,setNotificationPermission] = useState<NotificationPermission>(typeof Notification==='undefined'?'denied':Notification.permission);
   const [notificationStatus,setNotificationStatus] = useState('');
@@ -113,12 +114,13 @@ export function AdminConsole() {
     setIsInstalled(alreadyInstalled);
     const onInstallPrompt = (event: Event) => {
       event.preventDefault();
-      if (!alreadyInstalled && localStorage.getItem('tesla-admin-install-dismissed') !== 'true') setInstallPrompt(event as any);
+      if (!alreadyInstalled && localStorage.getItem('tesla-admin-install-dismissed') !== 'true') { setInstallPrompt(event as any); setShowInstallCard(true); }
     };
     const onInstalled = () => {
       setIsInstalled(true);
       setInstalledAppMode(true);
       setInstallPrompt(null);
+      setShowInstallCard(false);
       localStorage.setItem('tesla-admin-installed', 'true');
       localStorage.removeItem('tesla-admin-install-dismissed');
       setNotificationStatus('Tesla Markets Management is installed on this device.');
@@ -127,6 +129,13 @@ export function AdminConsole() {
     window.addEventListener('appinstalled', onInstalled);
     if ('serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js').catch(() => setNotificationStatus('App worker could not be registered. Refresh and try again.'));
     return () => { window.removeEventListener('beforeinstallprompt', onInstallPrompt); window.removeEventListener('appinstalled', onInstalled); };
+  }, []);
+
+  useEffect(() => {
+    const installed = window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone) || localStorage.getItem('tesla-admin-installed') === 'true';
+    if (installed || localStorage.getItem('tesla-admin-install-dismissed') === 'true') return;
+    const timer = window.setTimeout(() => setShowInstallCard(true), 1100);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -695,14 +704,14 @@ export function AdminConsole() {
           <footer className="admin-console-footer">Signed in as {user.email} · Private management session · <a href="#home">Open public website</a></footer>
         </main>
       </div>
-      {installPrompt && !isInstalled && !installedAppMode && <div className="tm-install-overlay" role="presentation">
+      {showInstallCard && !isInstalled && !installedAppMode && <div className="tm-install-overlay" role="presentation">
         <section className="tm-install-dialog" role="dialog" aria-modal="true" aria-labelledby="tm-install-title">
           <img src="/icons/admin-app-icon.svg" alt="" className="tm-install-icon"/>
           <div className="tm-install-eyebrow">TESLA MARKETS · PRIVATE MANAGEMENT</div>
           <h2 id="tm-install-title">Install your management app</h2>
           <p>Keep your customer inbox, vehicle enquiries, AI management and dashboard together in a dedicated app on this device.</p>
-          <button type="button" className="tm-install-primary" onClick={()=>void installAdminApp()}>Install app</button>
-          <button type="button" className="tm-install-later" onClick={()=>{localStorage.setItem('tesla-admin-install-dismissed','true');setInstallPrompt(null);}}>Not now</button>
+          {installPrompt ? <button type="button" className="tm-install-primary" onClick={()=>void installAdminApp()}>Install app</button> : <><p className="tm-install-help">If Android does not show an install button, open your browser menu ⋮ and choose <b>Install app</b> or <b>Add to Home screen</b>.</p><button type="button" className="tm-install-primary" onClick={()=>{setNotificationStatus('Open Chrome menu ⋮ and choose Install app or Add to Home screen.');setShowInstallCard(false);localStorage.setItem('tesla-admin-install-dismissed','true');}}>Show me later</button></>}
+          <button type="button" className="tm-install-later" onClick={()=>{localStorage.setItem('tesla-admin-install-dismissed','true');setInstallPrompt(null);setShowInstallCard(false);}}>Not now</button>
         </section>
       </div>}
     </div>
