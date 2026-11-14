@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { isCurrentUserAdmin, supabase, supabaseConfigured } from './lib/supabase';
 import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, Sun, Moon, Search, Bell, Plus, Upload, Pencil, ArrowUpRight, ChevronRight, Monitor, Smartphone, ListTodo, FileClock, Home, Grid2X2 } from 'lucide-react';
 import { AdminInbox } from './ChatWorkspace';
+import { AiManagement } from './AiManagement';
 
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
 const ADMIN_AUTH_REDIRECT = 'https://tesla-markets.vercel.app/#admin';
@@ -13,7 +14,7 @@ type Overview = { conversations: number; messages: number; generatedImages: numb
 type AdminTask = {id:string;title:string;description:string;status:string;priority:string;due_at:string|null;created_at:string};
 type AdminNotice = {id:string;title:string;body:string;type:string;is_read:boolean;created_at:string};
 type AuditEntry = {id:number;action:string;entity_type:string;entity_id:string|null;details:any;created_at:string};
-type Section = 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'orders' | 'tasks' | 'notifications' | 'activity' | 'settings' | 'team' | 'analytics' | 'announcements' | 'profile' | 'security';
+type Section = 'ai' | 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'orders' | 'tasks' | 'notifications' | 'activity' | 'settings' | 'team' | 'analytics' | 'announcements' | 'profile' | 'security';
 
 const catalogue = [
   { name: 'Model 3', count: 5, first: '/resources/model-3-1.jpg' },
@@ -522,6 +523,7 @@ export function AdminConsole() {
 
   const nav = [
     { id: 'overview' as const, label: 'Overview', icon: LayoutDashboard, group:'WORKSPACE' },
+    { id: 'ai' as const, label: 'AI Management', icon: Activity, group:'WORKSPACE' },
     { id: 'messages' as const, label: 'Messages & Inbox', icon: MessageCircle, group:'WORKSPACE' },
     { id: 'customers' as const, label: 'Customers', icon: Users, group:'WORKSPACE' },
     { id: 'operations' as const, label: 'Enquiries', icon: ClipboardList, group:'WORKSPACE' },
@@ -577,6 +579,7 @@ export function AdminConsole() {
             <div className="admin-page-actions"><span className="admin-updated-label"><span className="admin-live-dot"/> Live data</span><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>
           </header>
           {error && <div className="admin-console-error">{error}</div>}
+          {section === 'ai' && <AiManagement/>}
           {section === 'overview' && <>
             <div className="tm-dashboard-toolbar">
               <label className="tm-global-search"><Search size={17}/><input value={dashboardSearch} onChange={e=>setDashboardSearch(e.target.value)} placeholder="Search customers, orders, vehicles…"/><kbd>Ctrl K</kbd></label>
