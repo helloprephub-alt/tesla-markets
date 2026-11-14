@@ -348,7 +348,7 @@ export function AdminInbox() {
       const {error}=await supabase.from('support_messages').insert({
         conversation_id:selected,sender_id:user.id,sender_role:'management',
         body:'Available payment methods',message_type:'payment_methods',
-        structured_data:{title:'Choose a payment method',subtitle:'SELECT A PAYMENT OPTION',status:'Available',payment_methods:['Apple Pay','Chime','Zelle','PayPal'],note:'Select your preferred method. Management will provide the account or checkout details here.'},
+        structured_data:{title:'Choose a payment method',subtitle:'SELECT A PAYMENT OPTION',payment_methods:['Apple Pay','Chime','Zelle','PayPal']},
         attachment_path:null,attachment_name:null,attachment_mime:null
       });
       if(error)throw error;
