@@ -9,7 +9,7 @@ self.addEventListener('push',event=>{
     badge:'/icons/admin-logo.jpg',
     tag:payload.tag||'tesla-customer-message',
     renotify:true,
-    data:{url:payload.url||'/#admin',conversationId:payload.conversationId||null},
+    data:{url:payload.url||'/admin.html?page=admin&app=tesla-markets-admin',conversationId:payload.conversationId||null},
     vibrate:[200,100,200],
     requireInteraction:true
   }));
@@ -17,7 +17,7 @@ self.addEventListener('push',event=>{
 self.addEventListener('notificationclick',event=>{
   event.notification.close();
   event.waitUntil((async()=>{
-    const url=event.notification.data?.url||'/#admin';
+    const url=event.notification.data?.url||'/admin.html?page=admin&app=tesla-markets-admin';
     const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
     for(const client of windows){if('focus' in client){await client.focus();if('navigate' in client)await client.navigate(url);return;}}
     if(self.clients.openWindow)await self.clients.openWindow(url);
