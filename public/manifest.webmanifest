@@ -1,8 +1,8 @@
 {
-  "name": "Tesla Markets Management",
+  "name": "Tesla Markets",
   "short_name": "Tesla Markets",
-  "description": "Private Tesla Markets management workspace and customer message alerts.",
-  "start_url": "/?page=admin",
+  "description": "Independent vehicle and market information, vehicle enquiries, and customer support.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f5f5",
