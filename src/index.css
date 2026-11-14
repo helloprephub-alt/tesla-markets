@@ -2620,3 +2620,5 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-install-primary:active{transform:translateY(1px)}
 .tm-install-later{margin-top:13px;padding:10px 16px;border:0;background:transparent;color:#9daab2;font-size:12px;font-weight:600}
 @media(max-width:640px){.admin-console-brand{min-width:0;max-width:220px}.admin-brand-lockup{width:210px;max-height:48px}.tm-install-dialog{padding:26px 22px 18px}}
+
+.tm-install-help{margin:-12px auto 18px!important;padding:12px 14px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.055);text-align:left;font-size:12px!important}.tm-install-help b{color:#fff}
