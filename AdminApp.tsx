@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { AdminInbox } from './ChatWorkspace';
+import { AIOperations } from './AIOperations';
 import { supabase } from './supabaseClient';
 import './markets-redesign.css';
 import './index.css';
@@ -73,7 +74,7 @@ export default function AdminApp() {
     setMessage('');
   };
 
-  if (signedIn) return <div className="admin-standalone"><header><a href="/" aria-label="Public website"><ArrowLeft size={17}/> Public website</a><div><ShieldCheck size={18}/> TESLA MARKETS <b>ADMIN</b></div><button onClick={signOut}>Sign out</button></header><main><div className="admin-welcome"><span>PRIVATE MANAGEMENT CONSOLE</span><h1>Administrator<br/><em>workspace.</em></h1><p>Manage customer enquiries and support conversations.</p></div><AdminInbox/></main></div>;
+  if (signedIn) return <div className="admin-standalone"><header><a href="/" aria-label="Public website"><ArrowLeft size={17}/> Public website</a><div><ShieldCheck size={18}/> TESLA MARKETS <b>ADMIN</b></div><button onClick={signOut}>Sign out</button></header><main><div className="admin-welcome"><span>PRIVATE MANAGEMENT CONSOLE</span><h1>Administrator<br/><em>workspace.</em></h1><p>Manage customer enquiries and support conversations.</p></div><AdminInbox/><AIOperations/></main></div>;
 
   return <div className="admin-standalone admin-login-page">
     <header><a href="/"><ArrowLeft size={17}/> Public website</a><div><ShieldCheck size={18}/> TESLA MARKETS <b>ADMIN</b></div><span>PRIVATE ACCESS</span></header>
