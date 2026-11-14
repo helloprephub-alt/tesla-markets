@@ -54,9 +54,27 @@ export default async function handler(request: IncomingRequest, response: Server
     conversationId: payload.record.conversation_id
   });
 
-  const results = await Promise.allSettled(payload.subscriptions.map(subscription =>
-    webpush.sendNotification(subscription, message, { TTL: 60 * 60 * 24 * 28, urgency: 'high' })
-  ));
+  const results = await Promise.allSettled(payload.subscriptions.map(async subscription => {
+    let lastError: unknown;
+    // Retry transient transport/provider failures twice. Permanent 404/410
+    // subscription failures are not retried.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await webpush.sendNotification(subscription, message, {
+          TTL: 60 * 60 * 24 * 28,
+          urgency: 'high'
+        });
+      } catch (error) {
+        lastError = error;
+        const failure = error as { statusCode?: number; code?: string };
+        if (failure?.statusCode === 404 || failure?.statusCode === 410 || attempt === 2) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+      }
+    }
+    throw lastError;
+  }));
   const sent = results.filter(result => result.status === 'fulfilled').length;
   const failed = results.length - sent;
   const failureCodes = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
