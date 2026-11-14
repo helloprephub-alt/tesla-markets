@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="164" viewBox="0 0 760 164">
+<defs>
+ <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f04449"/><stop offset=".5" stop-color="#c91520"/><stop offset="1" stop-color="#760d17"/></linearGradient>
+ <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".5" stop-color="#aeb8c0"/><stop offset="1" stop-color="#f5f7f8"/></linearGradient>
+</defs>
+<circle cx="82" cy="82" r="72" fill="url(#red)"/>
+<circle cx="82" cy="82" r="68" fill="none" stroke="url(#metal)" stroke-width="3"/>
+<path fill="#fff" d="M82 27c-29 0-55 5-75 15l10 17c17-7 39-11 65-11s48 4 65 11l10-17c-20-10-46-15-75-15zm-46 42 14 21h19l-7-21zm92 0h-26l-7 21h19zM67 69l15 77 15-77z"/>
+<text x="188" y="79" fill="#f5f7f8" font-family="Arial,sans-serif" font-size="43" font-weight="700" letter-spacing="6">TESLA MARKETS</text>
+<text x="191" y="119" fill="#9ca8b2" font-family="Arial,sans-serif" font-size="17" font-weight="600" letter-spacing="6">PRIVATE MANAGEMENT</text>
+<path d="M190 137h500" stroke="#c61b27" stroke-width="3" stroke-linecap="round"/>
+</svg>
