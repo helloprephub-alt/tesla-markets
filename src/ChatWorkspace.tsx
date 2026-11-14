@@ -378,7 +378,10 @@ export function AdminInbox() {
     if(!selected||!user||busy||!manualVehicleSlug)return;
     const vehicle=manualVehicles.find(item=>item.slug===manualVehicleSlug);
     if(!vehicle)return;
-    const specs=vehicle.specifications&&typeof vehicle.specifications==="object"?vehicle.specifications:{};
+    const catalogueSpecs=vehicle.specifications&&typeof vehicle.specifications==="object"?vehicle.specifications:{};
+    const officialSpecs=catalogueSpecs.official_specifications&&typeof catalogueSpecs.official_specifications==="object"?catalogueSpecs.official_specifications:{};
+    const specs={...catalogueSpecs,...officialSpecs};
+    delete specs.official_specifications;
     const metrics=[["Range",specs.range],["0–60 mph",specs.acceleration_0_60],["Top speed",specs.top_speed],["Power",specs.power]].filter(([,value])=>value&&String(value).trim()).map(([label,value])=>({label:String(label),value:String(value)}));
     const rows=[["Model",vehicle.model||vehicle.name],["Published guide price",vehicle.price_usd?"$"+Number(vehicle.price_usd).toLocaleString("en-US")+" USD":"Contact management"],["Drivetrain",specs.drivetrain],["Performance",specs.performance],["Charging",specs.charging||specs.charging_time||specs.charging_details],["Battery",specs.battery],["Tyres",specs.tyres||specs.tires||specs.tyre_size||specs.tire_size],["Availability",vehicle.availability],["Price note",specs.price_note],["Specification source",specs.spec_source_url]].filter(([,value])=>value&&String(value).trim()).map(([label,value])=>({label:String(label),value:String(value)}));
     const sections:any[]=[{title:"Vehicle overview",rows:[{label:"Description",value:String(vehicle.description||"Description to be confirmed by management")}]}];
