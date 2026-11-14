@@ -12,12 +12,7 @@ const emptyDoc: DocForm = {
   title:'', category:'company_faq', content:'', source_url:'', source_type:'management',
   verification_status:'management_approved', market:'', model_year:'', approved:false
 };
-const stageLabels: Record<string,string> = {
-  new_enquiry:'New enquiry', researching:'Researching', comparing_vehicles:'Comparing vehicles',
-  purchase_interested:'Purchase interested', draft_order_created:'Draft order created',
-  awaiting_management:'Awaiting management', awaiting_customer:'Awaiting customer',
-  completed:'Completed', opted_out:'Opted out'
-};
+
 const dateLabel=(value?:string|null)=>value?new Date(value).toLocaleString():'—';
 
 async function adminCall(action:string, extra:Record<string,unknown>={}) {
@@ -155,7 +150,7 @@ export function AIOperations() {
         <div className="aio-form-actions"><button className="primary" disabled={busy}>{doc.id?'Save changes':'Add knowledge document'}</button>{doc.id&&<button type="button" onClick={()=>setDoc(emptyDoc)}>Cancel edit</button>}</div>
       </form>
       <div className="aio-list">{documents.map(item=><article className="aio-item" key={item.id}>
-        <div><b>{item.title}</b><small>{item.category.replaceAll('_',' ')} · {item.source_type} · {item.verification_status}</small><p>{item.content?.slice(0,260)}{item.content?.length>260?'…':''}</p><small>{item.approved?'Approved for AI use':'Not approved'} · Updated {dateLabel(item.updated_at)}</small></div>
+        <div><b>{item.title}</b><small>{item.category.replace(/_/g,' ')} · {item.source_type} · {item.verification_status}</small><p>{item.content?.slice(0,260)}{item.content?.length>260?'…':''}</p><small>{item.approved?'Approved for AI use':'Not approved'} · Updated {dateLabel(item.updated_at)}</small></div>
         <button onClick={()=>editDocument(item)}>Edit</button>
       </article>)}{!documents.length&&<div className="aio-empty">No knowledge documents have been added yet.</div>}</div>
     </div>}
@@ -164,7 +159,7 @@ export function AIOperations() {
       <div className="aio-section-title"><div><h3>Management approval queue</h3><p>Approving a request records management's decision; it does not execute a payment, order or delivery commitment.</p></div></div>
       <label className="aio-note-field">Decision note<input value={decisionNote} onChange={e=>setDecisionNote(e.target.value)} placeholder="Optional note for the audit trail"/></label>
       <div className="aio-list">{approvals.map(item=><article className="aio-item stacked" key={item.id}>
-        <div className="aio-item-head"><b>{item.approval_type.replaceAll('_',' ')}</b><span className={'aio-status '+item.status}>{item.status}</span></div>
+        <div className="aio-item-head"><b>{item.approval_type.replace(/_/g,' ')}</b><span className={'aio-status '+item.status}>{item.status}</span></div>
         <small>Requested {dateLabel(item.requested_at)} · Conversation {item.conversation_id||'—'}</small>
         <pre>{JSON.stringify(item.request_data,null,2)}</pre>
         {item.status==='pending'&&<div className="aio-form-actions"><button className="primary" disabled={busy} onClick={()=>void run('decide_approval',{id:item.id,status:'approved',decision_note:decisionNote},'Approval decision recorded.')}>Approve</button><button className="danger" disabled={busy} onClick={()=>void run('decide_approval',{id:item.id,status:'rejected',decision_note:decisionNote},'Rejection recorded.')}>Reject</button></div>}
@@ -191,7 +186,7 @@ export function AIOperations() {
           <label>CRM stage<select value={item.crm_stage||'new_enquiry'} onChange={e=>void run('set_crm_stage',{customer_id:item.id,stage:e.target.value},'Customer stage updated.')}><option value="new_enquiry">New enquiry</option><option value="researching">Researching</option><option value="comparing_vehicles">Comparing vehicles</option><option value="purchase_interested">Purchase interested</option><option value="draft_order_created">Draft order created</option><option value="awaiting_management">Awaiting management</option><option value="awaiting_customer">Awaiting customer</option><option value="completed">Completed</option><option value="opted_out">Opted out</option></select></label>
           <div className="aio-memory-control"><span>Long-term memory: {item.memory?.memory_enabled===false?'Off':'On'}</span><button onClick={()=>void run('set_memory_preference',{customer_id:item.id,enabled:item.memory?.memory_enabled===false},'Customer memory preference updated.')}>{item.memory?.memory_enabled===false?'Enable':'Disable'}</button></div>
         </article>)}{!customers.length&&<div className="aio-empty">No customer profiles found.</div>}</div>
-        <div className="aio-history"><h4>Customer interaction history</h4>{selectedCustomer?interactions.map(item=><article key={item.id}><b>{item.interaction_type.replaceAll('_',' ')}</b><small>{dateLabel(item.created_at)}</small><p>{item.summary}</p></article>):<div className="aio-empty">Select a customer to view their history.</div>}</div>
+        <div className="aio-history"><h4>Customer interaction history</h4>{selectedCustomer?interactions.map(item=><article key={item.id}><b>{item.interaction_type.replace(/_/g,' ')}</b><small>{dateLabel(item.created_at)}</small><p>{item.summary}</p></article>):<div className="aio-empty">Select a customer to view their history.</div>}</div>
       </div>
     </div>}
 
