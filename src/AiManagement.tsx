@@ -19,7 +19,15 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 
 async function adminAction(action: string, values: Row = {}) {
   const { data, error } = await supabase.functions.invoke('tesla-markets-ai-admin', { body: { action, ...values } });
-  if (error) throw new Error(error.message || 'The AI management request failed.');
+  if (error) {
+    const context = (error as any).context;
+    if (context && typeof context.clone === 'function') {
+      const payload = await context.clone().json().catch(() => null);
+      if (payload?.error) throw new Error(String(payload.error));
+      if (payload?.message) throw new Error(String(payload.message));
+    }
+    throw new Error(error.message || 'The AI management request failed.');
+  }
   if (data?.error) throw new Error(String(data.error));
   return data || {};
 }
