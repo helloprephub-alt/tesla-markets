@@ -583,7 +583,7 @@ export function AdminConsole() {
           {section === 'overview' && <>
             <div className="tm-dashboard-toolbar">
               <label className="tm-global-search"><Search size={17}/><input value={dashboardSearch} onChange={e=>setDashboardSearch(e.target.value)} placeholder="Search customers, orders, vehicles…"/><kbd>Ctrl K</kbd></label>
-              <button className="tm-notification-button" aria-label="Notifications"><Bell size={18}/><i/></button>
+              <button className="tm-notification-button" aria-label={`Notifications${notices.filter(item=>!item.is_read).length?`, ${notices.filter(item=>!item.is_read).length} unread`:""}`} onClick={()=>setSection("notifications")}><Bell size={18}/>{notices.some(item=>!item.is_read)&&<i/>}</button>
             </div>
             <section className="tm-kpi-grid">
               <article className="tm-kpi-card"><span className="tm-kpi-icon"><Users size={20}/></span><div><small>Total Customers</small><strong>{registeredCustomerCount??'—'}</strong><em>Registered customer profiles</em></div><Users className="tm-kpi-watermark"/></article>
