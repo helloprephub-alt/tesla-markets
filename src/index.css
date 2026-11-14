@@ -2606,3 +2606,17 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
     width:28px!important;height:42px!important;flex-basis:28px!important;
   }
 }
+
+/* Premium Tesla Markets private-app identity and install experience */
+.admin-console-brand{display:flex;align-items:center;min-width:220px;max-width:330px}
+.admin-brand-lockup{display:block;width:min(100%,292px);height:auto;max-height:64px;object-fit:contain;object-position:left center}
+.tm-install-overlay{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:22px;background:rgba(7,12,17,.68);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.tm-install-dialog{width:min(100%,390px);padding:30px 26px 22px;border:1px solid rgba(255,255,255,.12);border-radius:26px;background:linear-gradient(155deg,#1c2831,#0e151b 72%);color:#f7f8f9;text-align:center;box-shadow:0 28px 90px rgba(0,0,0,.42)}
+.tm-install-icon{display:block;width:92px;height:92px;margin:0 auto 19px;border-radius:23px;box-shadow:0 12px 32px rgba(0,0,0,.28)}
+.tm-install-eyebrow{font-size:9px;font-weight:800;letter-spacing:.19em;color:#e5a4a7}
+.tm-install-dialog h2{margin:11px 0 9px;font:800 23px/1.2 Manrope,sans-serif;letter-spacing:-.04em}
+.tm-install-dialog p{margin:0 auto 23px;max-width:310px;color:#aeb9c0;font-size:13px;line-height:1.65}
+.tm-install-primary{width:100%;min-height:49px;border:0;border-radius:12px;background:linear-gradient(135deg,#e82127,#a70e19);color:#fff;font-size:14px;font-weight:800;box-shadow:0 9px 22px rgba(196,22,32,.28)}
+.tm-install-primary:active{transform:translateY(1px)}
+.tm-install-later{margin-top:13px;padding:10px 16px;border:0;background:transparent;color:#9daab2;font-size:12px;font-weight:600}
+@media(max-width:640px){.admin-console-brand{min-width:0;max-width:220px}.admin-brand-lockup{width:210px;max-height:48px}.tm-install-dialog{padding:26px 22px 18px}}
