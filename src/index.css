@@ -2343,3 +2343,47 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
  .customer-chat-screen .chat-bubble{max-width:86%;min-width:0;overflow-wrap:anywhere}
 }
 @media(prefers-reduced-motion:reduce){.admin-console.admin-console-standalone .admin-console-side{transition:none}}
+
+/* Compact desktop-density admin app and payment details */
+.admin-console.admin-console-standalone{font-size:13px}
+.admin-console.admin-console-standalone .admin-console-main{max-width:1440px;margin:0 auto;padding:18px clamp(14px,2.2vw,30px) 30px}
+.admin-console.admin-console-standalone .admin-console-header{gap:12px;margin-bottom:12px}
+.admin-console.admin-console-standalone .admin-console-header h1{font-size:clamp(22px,3vw,29px);margin:3px 0}
+.admin-console.admin-console-standalone .admin-console-header p{font-size:12px;line-height:1.4}
+.admin-console.admin-console-standalone .admin-console-panel,.admin-console.admin-console-standalone .tm-dashboard-card{padding:13px!important;margin:10px 0!important;border-radius:13px!important}
+.admin-console.admin-console-standalone .tm-kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.admin-console.admin-console-standalone .tm-kpi-card{min-height:88px;padding:10px;border-radius:12px;gap:5px}
+.admin-console.admin-console-standalone .tm-kpi-card strong{font-size:22px;margin:3px 0}
+.admin-console.admin-console-standalone .tm-kpi-card small{font-size:10px}
+.admin-console.admin-console-standalone .tm-kpi-card em{font-size:9px}
+.admin-console.admin-console-standalone .admin-console-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.admin-console.admin-console-standalone .admin-console-stats article{padding:10px;gap:4px}
+.admin-console.admin-console-standalone .admin-console-stats strong{font-size:21px}
+.admin-console.admin-console-standalone .admin-console-header .admin-page-actions{gap:6px}
+.admin-console.admin-console-standalone .admin-console-header .admin-page-actions button{min-height:34px;padding:0 9px;font-size:11px}
+.admin-console.admin-console-standalone .admin-install-card{padding:8px 12px!important;margin:8px 12px!important}
+.admin-console.admin-console-standalone .admin-install-card p{font-size:10px!important}
+.admin-payment-account-method{border:1px solid var(--admin-border,#e4e8ed);border-radius:12px;padding:12px;margin:10px 0;background:var(--admin-panel,#fff)}
+.admin-payment-account-method h3{font-size:14px;margin:0 0 9px}
+.admin-payment-account-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.admin-payment-account-fields label{display:grid;gap:5px;font-size:11px;font-weight:650;min-width:0}
+.admin-payment-account-fields input,.admin-payment-account-fields textarea{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--admin-border,#dfe4e8);border-radius:8px;padding:9px;font:inherit;font-size:12px;background:var(--admin-panel,#fff);color:inherit}
+.admin-payment-account-fields .wide{grid-column:1/-1}
+.tm-payment-account-details{margin:12px 0 4px;padding:12px;border:1px solid #dfe5eb;border-radius:12px;background:#f7f9fb;color:#202a34}
+.tm-payment-account-details h4{font-size:13px;margin:0 0 8px}
+.tm-payment-account-details>div{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid #e4e8ed;font-size:12px}
+.tm-payment-account-details>div span{color:#6b7680}.tm-payment-account-details>div b{text-align:right;overflow-wrap:anywhere}
+.tm-payment-account-details p{font-size:11px;line-height:1.45;margin:9px 0 0;color:#596571}
+@media(max-width:700px){
+ .admin-console.admin-console-standalone .tm-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-console.admin-console-standalone .admin-console-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-console.admin-console-standalone .admin-console-main{padding:10px 9px 80px}
+ .admin-console.admin-console-standalone .admin-console-header h1{font-size:21px}
+ .admin-console.admin-console-standalone .admin-console-header p{font-size:10px}
+ .admin-console.admin-console-standalone .tm-kpi-card{min-height:75px;padding:8px}
+ .admin-console.admin-console-standalone .tm-kpi-card strong{font-size:19px}
+ .admin-console.admin-console-standalone .tm-kpi-card em{display:none}
+ .admin-console.admin-console-standalone .admin-console-panel{padding:11px!important}
+ .admin-payment-account-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .admin-payment-account-fields input,.admin-payment-account-fields textarea{padding:8px;font-size:11px}
+}
