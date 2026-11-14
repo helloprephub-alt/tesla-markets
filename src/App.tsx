@@ -146,7 +146,7 @@ es:{home:'Inicio',vehicles:'Vehículos / Tienda',investments:'Inversiones',about
 
 function App() {
   const [page, setPage] = useState<Page>(
-    () => (location.hash.replace('#', '') as Page) || 'home'
+    () => (location.hash.replace('#', '') as Page) || 'admin'
   );
   const [pageHistory, setPageHistory] = useState<Page[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
