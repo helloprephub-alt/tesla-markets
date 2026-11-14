@@ -2239,3 +2239,35 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-payment-paypal{background:#eaf2ff;color:#073b82}.tm-payment-zelle{background:#f5edff;color:#6d2db8}.tm-payment-chime{background:#e8f8f0;color:#087d52}.tm-payment-apple-pay{background:#f0f1f2;color:#111}
 .tm-payment-method-arrow{color:#8a96a2;font-size:20px}
 @media(max-width:420px){.tm-payment-method-grid{gap:8px}.tm-payment-method-grid button{grid-template-columns:34px 1fr 10px;min-height:56px;padding:8px}.tm-payment-method-mark{width:32px;height:32px;border-radius:9px;font-size:14px}.tm-payment-method-grid b{font-size:12px}}
+
+
+/* Refined installed-app density: more useful content above the fold on phones */
+@media (display-mode: standalone){
+  .admin-console.admin-console-standalone .admin-console-main{padding:12px 12px 24px}
+  .admin-console.admin-console-standalone .admin-console-header{gap:10px;margin-bottom:14px}
+  .admin-console.admin-console-standalone .admin-console-header h1{font-size:clamp(25px,7vw,31px);line-height:1.1;margin:5px 0}
+  .admin-console.admin-console-standalone .admin-console-header p{font-size:14px;line-height:1.45}
+  .admin-console.admin-console-standalone .admin-page-actions button{min-height:42px;font-size:13px}
+  .admin-console.admin-console-standalone .tm-dashboard-toolbar{grid-template-columns:minmax(0,1fr) 46px;gap:8px;margin:12px 0}
+  .admin-console.admin-console-standalone .tm-global-search{min-height:46px;border-radius:13px}
+  .admin-console.admin-console-standalone .tm-notification-button{width:46px;height:46px;border-radius:13px}
+  .admin-console.admin-console-standalone .tm-kpi-grid{gap:9px}
+  .admin-console.admin-console-standalone .tm-kpi-card{min-height:112px;padding:12px;border-radius:16px;gap:7px}
+  .admin-console.admin-console-standalone .tm-kpi-card small{font-size:11px}
+  .admin-console.admin-console-standalone .tm-kpi-card strong{font-size:27px;margin:5px 0}
+  .admin-console.admin-console-standalone .tm-kpi-card em{font-size:10px}
+  .admin-console.admin-console-standalone .tm-dashboard-card,.admin-console.admin-console-standalone .admin-console-panel{padding:14px!important;border-radius:17px!important;margin:12px 0!important}
+  .admin-console.admin-console-standalone .tm-card-heading h2,.admin-console.admin-console-standalone .admin-console-panel h2{font-size:19px}
+  .admin-console.admin-console-standalone .tm-card-heading p,.admin-console.admin-console-standalone .admin-console-panel p{font-size:12px;line-height:1.45}
+  .admin-console.admin-console-standalone .tm-activity-row,.admin-console.admin-console-standalone .admin-thread-row{min-height:62px;padding:10px 0}
+  .admin-console.admin-console-standalone .tm-activity-row b,.admin-console.admin-console-standalone .admin-thread-row b{font-size:13px}
+  .admin-console.admin-console-standalone .tm-activity-row small,.admin-console.admin-console-standalone .admin-thread-row small{font-size:11px}
+  .admin-app-bottom-nav{padding-top:5px;padding-bottom:calc(5px + env(safe-area-inset-bottom))}
+  .admin-app-bottom-nav button{min-height:48px;font-size:10px;gap:3px}
+  .admin-app-bottom-nav button svg{width:17px;height:17px}
+}
+@media (display-mode: standalone) and (max-width:390px){
+  .admin-console.admin-console-standalone .admin-console-main{padding-left:10px;padding-right:10px}
+  .admin-console.admin-console-standalone .tm-kpi-card{min-height:104px;padding:10px}
+  .admin-console.admin-console-standalone .tm-kpi-card strong{font-size:24px}
+}
