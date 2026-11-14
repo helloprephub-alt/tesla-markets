@@ -334,7 +334,7 @@ Deno.serve(async (req: Request) => {
       throw runWrite.error;
     }
 
-    const paymentChoice = customerMessage.body.match(/\b(?:pay|payment)\s+using\s+(Apple Pay|Chime|Zelle|PayPal)\b/i);
+    const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Verified broker onboarding)\b/i);
     if (paymentChoice) {
       const amountMatch = customerMessage.body.match(/\$[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
       const { error: notificationError } = await admin.from("admin_notifications").insert({
