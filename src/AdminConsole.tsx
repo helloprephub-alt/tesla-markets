@@ -191,7 +191,7 @@ export function AdminConsole() {
       if(saveError) throw saveError;
       setPushSubscribed(true);
       setNotificationStatus('Notifications are enabled for this app. You can turn them off here at any time.');
-      await registration.showNotification('Tesla Markets Management',{body:'Customer message alerts are enabled on this app.',icon:'/icons/admin-icon.svg',badge:'/icons/admin-icon.svg',tag:'tesla-admin-notifications-enabled'});
+      await registration.showNotification('Tesla Markets Management',{body:'Customer message alerts are enabled on this app.',icon:'/icons/admin-logo.png',badge:'/icons/admin-logo.png',tag:'tesla-admin-notifications-enabled'});
     } catch(e) { setPushSubscribed(false); setNotificationStatus(e instanceof Error?e.message:'Could not enable notifications.'); }
     finally { setPushBusy(false); }
   };
@@ -622,7 +622,7 @@ export function AdminConsole() {
       </div>}
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
-        <div className="admin-console-brand"><img className="admin-brand-mark admin-tesla-mark" src="/icons/admin-icon.svg" alt="Tesla logo"/><div><b>TESLA MARKETS</b><small>MANAGEMENT CONSOLE</small></div></div>
+        <div className="admin-console-brand"><img className="admin-brand-mark admin-tesla-mark" src="/icons/admin-logo.png" alt="Tesla logo"/><div><b>TESLA MARKETS</b><small>MANAGEMENT CONSOLE</small></div></div>
         <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={'Theme: '+adminTheme+'. Tap to change.'} title={'Theme: '+adminTheme+' · tap to cycle'}>{adminTheme==='light'?<Sun size={16}/>:adminTheme==='dark'?<Moon size={16}/>:<Monitor size={16}/>}</button><button className="icon-btn admin-view-toggle" onClick={toggleDesktopView} aria-label={desktopView?'Use phone layout':'Use desktop layout'} title={desktopView?'Use phone layout':'Use desktop layout'}>{desktopView?<Smartphone size={16}/>:<Monitor size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
       </header>
       <div className="admin-shell">
