@@ -108,11 +108,23 @@ export function AdminConsole() {
   const toggleDesktopView=()=>setDesktopView(current=>{const next=!current;localStorage.setItem('tesla-admin-desktop-view',String(next));return next;});
 
   useEffect(() => {
-    const onInstallPrompt = (event: Event) => { event.preventDefault(); setInstallPrompt(event as any); };
-    const onInstalled = () => { setIsInstalled(true); setInstallPrompt(null); setNotificationStatus('Tesla Markets Management is installed on this device.'); };
+    const standalone = () => window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone);
+    const alreadyInstalled = standalone() || localStorage.getItem('tesla-admin-installed') === 'true';
+    setIsInstalled(alreadyInstalled);
+    const onInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      if (!alreadyInstalled && localStorage.getItem('tesla-admin-install-dismissed') !== 'true') setInstallPrompt(event as any);
+    };
+    const onInstalled = () => {
+      setIsInstalled(true);
+      setInstalledAppMode(true);
+      setInstallPrompt(null);
+      localStorage.setItem('tesla-admin-installed', 'true');
+      localStorage.removeItem('tesla-admin-install-dismissed');
+      setNotificationStatus('Tesla Markets Management is installed on this device.');
+    };
     window.addEventListener('beforeinstallprompt', onInstallPrompt);
     window.addEventListener('appinstalled', onInstalled);
-    setIsInstalled(window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone));
     if ('serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js').catch(() => setNotificationStatus('App worker could not be registered. Refresh and try again.'));
     return () => { window.removeEventListener('beforeinstallprompt', onInstallPrompt); window.removeEventListener('appinstalled', onInstalled); };
   }, []);
@@ -622,7 +634,7 @@ export function AdminConsole() {
       </div>}
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
-        <div className="admin-console-brand"><img className="admin-brand-mark admin-tesla-mark" src="/icons/admin-logo.jpg" alt="Tesla logo"/><div><b>TESLA MARKETS</b><small>MANAGEMENT CONSOLE</small></div></div>
+        <div className="admin-console-brand"><img className="admin-brand-lockup" src="/icons/admin-logo-lockup.svg" alt="Tesla Markets private management"/></div>
         <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={'Theme: '+adminTheme+'. Tap to change.'} title={'Theme: '+adminTheme+' · tap to cycle'}>{adminTheme==='light'?<Sun size={16}/>:adminTheme==='dark'?<Moon size={16}/>:<Monitor size={16}/>}</button><button className="icon-btn admin-view-toggle" onClick={toggleDesktopView} aria-label={desktopView?'Use phone layout':'Use desktop layout'} title={desktopView?'Use phone layout':'Use desktop layout'}>{desktopView?<Smartphone size={16}/>:<Monitor size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
       </header>
       <div className="admin-shell">
@@ -683,6 +695,16 @@ export function AdminConsole() {
           <footer className="admin-console-footer">Signed in as {user.email} · Private management session · <a href="#home">Open public website</a></footer>
         </main>
       </div>
+      {installPrompt && !isInstalled && !installedAppMode && <div className="tm-install-overlay" role="presentation">
+        <section className="tm-install-dialog" role="dialog" aria-modal="true" aria-labelledby="tm-install-title">
+          <img src="/icons/admin-app-icon.svg" alt="" className="tm-install-icon"/>
+          <div className="tm-install-eyebrow">TESLA MARKETS · PRIVATE MANAGEMENT</div>
+          <h2 id="tm-install-title">Install your management app</h2>
+          <p>Keep your customer inbox, vehicle enquiries, AI management and dashboard together in a dedicated app on this device.</p>
+          <button type="button" className="tm-install-primary" onClick={()=>void installAdminApp()}>Install app</button>
+          <button type="button" className="tm-install-later" onClick={()=>{localStorage.setItem('tesla-admin-install-dismissed','true');setInstallPrompt(null);}}>Not now</button>
+        </section>
+      </div>}
     </div>
   );
 }
