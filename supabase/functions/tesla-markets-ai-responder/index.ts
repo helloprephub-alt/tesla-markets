@@ -332,7 +332,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Verified broker onboarding)\b/i);
-    if (paymentChoice) {
+    if (paymentChoice && !((conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null)?.status === "pending")) {
       const amountMatch = customerMessage.body.match(/\$[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
       const currentDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
       const previousLock = currentDetails.payment_lock && typeof currentDetails.payment_lock === "object" ? currentDetails.payment_lock : {};
