@@ -46,10 +46,6 @@ export function AiManagement() {
   const [testPrompt, setTestPrompt] = useState('A customer asked about the Tesla Model Y and then replied with one word: performance. Respond naturally using the conversation context without inventing specifications.');
   const [testResult, setTestResult] = useState<Row | null>(null);
   const [billingConfirmed, setBillingConfirmed] = useState(false);
-  const [llmEnabled, setLlmEnabled] = useState(false);
-  const [followUpEnabled, setFollowUpEnabled] = useState(false);
-  const [testPrompt, setTestPrompt] = useState('A customer asked about the Tesla Model Y and then replied: performance. Understand the context without inventing specifications.');
-  const [testReply, setTestReply] = useState('');
   const [vehicleDraft, setVehicleDraft] = useState<Row | null>(null);
   const [knowledgeDraft, setKnowledgeDraft] = useState<Row | null>(null);
 
@@ -185,29 +181,13 @@ export function AiManagement() {
     finally { setBusy(false); }
   };
 
-  const saveAutomationSettings = async () => {
-    setBusy(true); setError(''); setNotice('');
-    try {
-      const result = await adminAction('update_settings', { llm_enabled: llmEnabled, follow_up_enabled: followUpEnabled });
-      setLlmEnabled(result.settings?.llm_enabled === true); setFollowUpEnabled(result.settings?.follow_up_enabled === true);
-      setNotice('AI and follow-up preferences saved. AI still falls back to deterministic handling if inference is unavailable.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save AI settings.'); }
-    finally { setBusy(false); }
-  };
-
-  const testModel = async () => {
-    setBusy(true); setError(''); setTestReply('');
-    try { const result = await adminAction('test_ai', { prompt: testPrompt }); setTestReply(result.reply || 'No response text returned.'); setNotice(`Model test succeeded · ${result.provider} · ${result.model} · ${result.latency_ms} ms`); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Model test failed.'); }
-    finally { setBusy(false); }
-  };
 
   const toggleResearch = async () => {
     if (!billingConfirmed) { setError('Before enabling live research, confirm that an AI Gateway provider key or credits are configured and that you have reviewed any charges.'); return; }
     setBusy(true); setError(''); setNotice('');
     try {
       const result = await adminAction('set_research_enabled', { enabled: !webResearchEnabled, confirm_provider_billing: true });
-      setWebResearchEnabled(result.settings?.web_research_enabled === true);
+      setWebResearchEnabled(result.web_research_enabled === true);
       setNotice(result.web_research_enabled ? 'Live research has been enabled. Monitor provider usage and billing.' : 'Live research has been disabled.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not update research settings.'); }
     finally { setBusy(false); }
