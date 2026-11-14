@@ -2271,3 +2271,75 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
   .admin-console.admin-console-standalone .tm-kpi-card{min-height:104px;padding:10px}
   .admin-console.admin-console-standalone .tm-kpi-card strong{font-size:24px}
 }
+
+
+/* 2026 mobile-first admin and chat refinement */
+.admin-console.admin-console-standalone{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+.admin-console.admin-console-standalone .admin-shell{min-width:0}
+.admin-console.admin-console-standalone .admin-console-main{min-width:0;width:100%;max-width:none}
+.admin-console.admin-console-standalone .admin-console-header h1{font-size:clamp(25px,4vw,34px);line-height:1.12}
+.admin-console.admin-console-standalone .admin-console-header p{font-size:13px;line-height:1.55}
+.admin-console.admin-console-standalone .admin-install-card{padding:10px 14px!important;margin:10px 12px!important;border-radius:12px!important}
+.admin-console.admin-console-standalone .admin-install-card b{font-size:14px}
+.admin-console.admin-console-standalone .admin-install-card p{font-size:11px!important;line-height:1.45}
+.admin-console.admin-console-standalone .admin-install-card button{min-height:40px;padding:0 13px;font-size:12px;border-radius:9px}
+.admin-console.admin-console-standalone .admin-console-panel{padding:clamp(13px,2vw,20px);border-radius:13px}
+.admin-console.admin-console-standalone .admin-console-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.admin-console.admin-console-standalone .admin-console-stats article{padding:14px;gap:6px}
+.admin-console.admin-console-standalone .admin-console-stats strong{font-size:24px}
+.admin-console-premium .admin-console-main nav[aria-label="AI management sections"]{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px!important;overflow:visible!important;padding:0!important}
+.admin-console-premium .admin-console-main nav[aria-label="AI management sections"] button{min-width:0;min-height:42px;white-space:normal!important;display:flex;align-items:center;justify-content:flex-start;text-align:left;gap:5px;padding:8px 10px!important;font-size:11px;line-height:1.2}
+.admin-console-premium .admin-console-main nav[aria-label="AI management sections"] button svg{flex:0 0 auto;margin:0!important}
+.admin-console-premium .admin-console-main nav[aria-label="AI management sections"] button span{min-width:0;overflow-wrap:anywhere}
+.admin-inbox-layout{min-width:0;grid-template-columns:minmax(250px,.78fr) minmax(0,1.22fr)}
+.admin-thread-list,.admin-conversation{min-width:0;max-width:100%}
+.admin-thread{min-width:0}
+.admin-thread-copy{min-width:0}
+.admin-thread-copy b,.admin-thread-copy small,.admin-thread-copy>span{max-width:100%;overflow-wrap:anywhere}
+.admin-conversation-head{min-width:0}
+.admin-conversation-head>div{min-width:0;flex:1}
+.admin-conversation-head small{overflow-wrap:anywhere}
+.admin-chat-messages{width:100%;min-width:0;display:flex;flex-direction:column;align-items:stretch}
+.admin-chat-messages .chat-message-row{width:100%;min-width:0;display:flex}
+.admin-chat-messages .chat-message-row.mine{justify-content:flex-end}
+.admin-chat-messages .chat-message-row.theirs{justify-content:flex-start}
+.admin-chat-messages .chat-bubble{width:fit-content;max-width:min(82%,620px);min-width:0;overflow-wrap:anywhere;word-break:normal}
+.admin-chat-messages .chat-bubble p{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.admin-chat-messages .tm-rich-card{width:min(100%,430px);max-width:100%}
+.admin-compose{display:flex;align-items:center;gap:8px;min-width:0}
+.admin-compose input[aria-label="Type a reply"]{min-width:0;flex:1}
+@media(max-width:900px){
+ .admin-console.admin-console-standalone .admin-shell{display:block;min-height:0}
+ .admin-console.admin-console-standalone .admin-console-side{position:fixed!important;display:flex!important;flex-direction:column!important;top:64px!important;left:0!important;right:auto!important;width:min(88vw,340px)!important;max-width:340px!important;height:calc(100dvh - 64px)!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;z-index:90!important;padding:16px 12px!important;background:#fff!important;color:#26343c!important;box-shadow:18px 0 45px #10182024!important;transform:translateX(-110%);transition:transform .24s ease}
+ .admin-console.admin-console-standalone .admin-console-side.is-open{transform:translateX(0)!important}
+ .admin-console.admin-console-standalone .admin-console-side .admin-nav-group-toggle{color:#596872}
+ .admin-console.admin-console-standalone .admin-console-side .admin-nav-group-items button{color:#53616b;min-height:44px}
+ .admin-console.admin-console-standalone .admin-console-side .admin-nav-group-items button.active{background:#edf4fb;color:#2165c7}
+ .admin-console.admin-console-standalone .admin-console-side .admin-console-side-foot{color:#74818a}
+ .admin-console.admin-console-standalone .admin-console-main{padding:16px 13px 30px}
+ .admin-console-premium .admin-console-main nav[aria-label="AI management sections"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .admin-inbox-layout{display:grid!important;grid-template-columns:minmax(0,1fr)!important;height:auto!important;min-height:0!important;max-height:none!important}
+ .admin-inbox-layout .admin-thread-list{display:block;max-height:65dvh;overflow-y:auto;border-right:0}
+ .admin-inbox-layout .admin-conversation{display:none;min-height:65dvh}
+ .admin-inbox-layout.show-conversation .admin-thread-list{display:none}
+ .admin-inbox-layout.show-conversation .admin-conversation{display:flex}
+ .admin-inbox-layout .admin-mobile-back{display:inline-flex}
+}
+@media(max-width:600px){
+ .admin-console.admin-console-standalone .admin-console-header h1{font-size:27px}
+ .admin-console.admin-console-standalone .admin-console-header p{font-size:12px}
+ .admin-console.admin-console-standalone .admin-console-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-console.admin-console-standalone .admin-console-stats article{padding:12px}
+ .admin-console-premium .admin-console-main nav[aria-label="AI management sections"]{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px!important}
+ .admin-console-premium .admin-console-main nav[aria-label="AI management sections"] button{font-size:10px;min-height:40px;padding:7px 8px!important}
+ .admin-inbox-layout .admin-thread{padding:12px 10px}
+ .admin-inbox-layout .admin-conversation-head{height:auto;min-height:64px;flex-wrap:wrap;padding:10px}
+ .admin-inbox-layout .admin-conversation-head>button:not(.admin-mobile-back){font-size:10px;padding:8px}
+ .admin-chat-messages{padding:13px 10px}
+ .admin-chat-messages .chat-bubble{max-width:88%;font-size:12px}
+ .admin-compose{padding:9px 8px;gap:6px}
+ .admin-compose input[aria-label="Type a reply"]{font-size:12px}
+ .customer-chat-screen .chat-message-row{width:100%;min-width:0}
+ .customer-chat-screen .chat-bubble{max-width:86%;min-width:0;overflow-wrap:anywhere}
+}
+@media(prefers-reduced-motion:reduce){.admin-console.admin-console-standalone .admin-console-side{transition:none}}
