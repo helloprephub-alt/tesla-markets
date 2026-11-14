@@ -582,7 +582,7 @@ Deno.serve(async (req: Request) => {
           opportunity: "Tesla Markets investment enquiry — $" + investmentAmount.toLocaleString("en-US") + " USD",
           category: "investment",
           customer_question: JSON.stringify(summary),
-          status: "payment_pending"
+          status: "new"
         });
         if (investmentInsertError) throw investmentInsertError;
         investmentEnquiryCreated = true;
