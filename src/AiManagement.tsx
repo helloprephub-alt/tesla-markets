@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 import { Activity, BookOpen, CarFront, Check, Clock3, FileSearch, RefreshCw, ShieldCheck, Users, X } from 'lucide-react';
 
-type Tab = 'overview' | 'vehicles' | 'knowledge' | 'approvals' | 'research' | 'followups' | 'customers' | 'settings';
+type Tab = 'overview' | 'test' | 'vehicles' | 'knowledge' | 'approvals' | 'research' | 'followups' | 'customers' | 'settings';
 type Row = Record<string, any>;
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: 'overview', label: 'Overview', icon: Activity },
+  { id: 'test', label: 'Test assistant', icon: Check },
   { id: 'vehicles', label: 'Vehicles', icon: CarFront },
   { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'approvals', label: 'Approvals', icon: ShieldCheck },
@@ -40,6 +41,10 @@ export function AiManagement() {
   const [followups, setFollowups] = useState<Row[]>([]);
   const [customers, setCustomers] = useState<Row[]>([]);
   const [webResearchEnabled, setWebResearchEnabled] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [followupEnabled, setFollowupEnabled] = useState(true);
+  const [testPrompt, setTestPrompt] = useState('A customer asked about the Tesla Model Y and then replied with one word: performance. Respond naturally using the conversation context without inventing specifications.');
+  const [testResult, setTestResult] = useState<Row | null>(null);
   const [billingConfirmed, setBillingConfirmed] = useState(false);
   const [vehicleDraft, setVehicleDraft] = useState<Row | null>(null);
   const [knowledgeDraft, setKnowledgeDraft] = useState<Row | null>(null);
@@ -50,6 +55,8 @@ export function AiManagement() {
       if (target === 'overview') {
         const result = await adminAction('overview');
         setOverview(result.counts || {});
+      } else if (target === 'test') {
+        setTestResult(null);
       } else if (target === 'vehicles') {
         const result = await adminAction('list_vehicles');
         setVehicles(result.vehicles || []);
@@ -70,7 +77,10 @@ export function AiManagement() {
         setCustomers(result.customers || []);
       } else if (target === 'settings') {
         const result = await adminAction('settings');
-        setWebResearchEnabled(result.web_research_enabled === true);
+        const settings = result.settings || {};
+        setWebResearchEnabled(settings.web_research_enabled === true);
+        setAiEnabled(settings.llm_enabled === true);
+        setFollowupEnabled(settings.follow_up_enabled === true);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load AI management data.');
@@ -149,6 +159,28 @@ export function AiManagement() {
     finally { setBusy(false); }
   };
 
+  const saveCoreSettings = async (changes: Row) => {
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const result = await adminAction('update_settings', changes);
+      const settings = result.settings || {};
+      setAiEnabled(settings.llm_enabled === true);
+      setFollowupEnabled(settings.follow_up_enabled === true);
+      setNotice('AI operating settings saved. The approved 24-hour follow-up interval and 5% discount ceiling remain enforced.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not save AI settings.'); }
+    finally { setBusy(false); }
+  };
+
+  const runTest = async () => {
+    setBusy(true); setError(''); setNotice(''); setTestResult(null);
+    try {
+      const result = await adminAction('test_ai', { prompt: testPrompt });
+      setTestResult(result);
+      setNotice('Cloudflare Workers AI returned a test response. This is a connectivity test, not a full end-to-end customer-chat test.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Cloudflare AI test failed.'); }
+    finally { setBusy(false); }
+  };
+
   const toggleResearch = async () => {
     if (!billingConfirmed) { setError('Before enabling live research, confirm that an AI Gateway provider key or credits are configured and that you have reviewed any charges.'); return; }
     setBusy(true); setError(''); setNotice('');
@@ -188,6 +220,17 @@ export function AiManagement() {
       ].map(([label, value]) => <article key={String(label)} style={panelStyle}><div style={{ fontSize: 12, opacity: .7 }}>{label}</div><strong style={{ display: 'block', fontSize: 27, marginTop: 6 }}>{value ?? '—'}</strong></article>)}
       <article style={{ ...panelStyle, gridColumn: '1/-1' }}><b>Operating policy</b><p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 0 }}>Official sources first; reputable independent sources second. One polite 24-hour follow-up. Customer-specific memory with privacy controls. Research unknowns before explaining uncertainty or escalating. AI may answer independently but requires management approval for financial and commercial commitments.</p></article>
     </div>}
+
+    {tab === 'test' && <article style={panelStyle}>
+      <h3 style={{marginTop:0}}>Cloudflare model test</h3>
+      <p style={{fontSize:13,opacity:.72}}>Run an isolated test against the configured Workers AI model. This does not create a customer conversation or send a customer message. Each test uses your Cloudflare AI allowance.</p>
+      <label style={{display:'grid',gap:6,fontSize:13,fontWeight:600}}>Test prompt<textarea style={{...inputStyle,minHeight:110}} maxLength={700} value={testPrompt} onChange={e=>setTestPrompt(e.target.value)}/></label>
+      <button style={{...buttonStyle,marginTop:12,background:'#17191d',color:'#fff'}} disabled={busy||!testPrompt.trim()} onClick={()=>void runTest()}>Run model test</button>
+      {testResult && <div style={{marginTop:14,padding:14,borderRadius:10,background:'var(--admin-input,#f8fafc)',border:'1px solid var(--admin-border,#e5e7eb)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',gap:8,flexWrap:'wrap'}}><b>{testResult.provider} · {testResult.model}</b><span>{testResult.latency_ms} ms</span></div>
+        <p style={{whiteSpace:'pre-wrap',lineHeight:1.6,marginBottom:0}}>{testResult.reply}</p>
+      </div>}
+    </article>}
 
     {tab === 'vehicles' && <>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}><h3 style={{ margin: 0 }}>Vehicle catalogue</h3><button style={buttonStyle} onClick={() => setVehicleDraft({ name: '', model: '', slug: '', description: '', price_usd: '', availability: 'unknown', source_type: 'management', verification_status: 'unverified', specifications_text: '{\n  \"variants\": [],\n  \"colors\": [],\n  \"wheels\": [],\n  \"features\": []\n}' })}>Add vehicle</button></div>
@@ -242,11 +285,26 @@ export function AiManagement() {
 
     {tab === 'customers' && <div style={{display:'grid',gap:9}}>{customers.map(customer=><article key={customer.id} style={panelStyle}><div style={{display:'flex',justifyContent:'space-between',gap:8,flexWrap:'wrap'}}><div><b>{customer.display_name||'Website visitor'}</b><div style={{fontSize:12,opacity:.7}}>{customer.email||'No email'} · {customer.phone||'No phone'}</div></div>{status(customer.crm_stage||'new enquiry')}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginTop:12}}><label style={{fontSize:12}}>CRM stage<select style={inputStyle} value={customer.crm_stage||'new_enquiry'} onChange={e=>void setStage(customer.id,e.target.value)}>{['new_enquiry','researching','comparing_vehicles','purchase_interested','draft_order_created','awaiting_management','awaiting_customer','completed','opted_out'].map(v=><option key={v} value={v}>{v.replaceAll('_',' ')}</option>)}</select></label><label style={{display:'flex',gap:8,alignItems:'center',fontSize:12}}><input type="checkbox" checked={customer.memory?.memory_enabled!==false} onChange={e=>void togglePreference(customer.id,'memory',e.target.checked)}/> Customer memory enabled</label><label style={{display:'flex',gap:8,alignItems:'center',fontSize:12}}><input type="checkbox" checked={customer.memory?.follow_up_enabled!==false} onChange={e=>void togglePreference(customer.id,'followup',e.target.checked)}/> 24-hour follow-up enabled</label></div><details style={{marginTop:10}}><summary style={{cursor:'pointer',fontSize:12}}>View stored preferences and memory</summary><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',fontSize:11,background:'var(--admin-input,#f8fafc)',padding:10,borderRadius:8}}>{JSON.stringify(customer.memory||{},null,2)}</pre></details></article>)}{!customers.length&&<p style={{opacity:.7}}>No customer profiles returned.</p>}</div>}
 
-    {tab === 'settings' && <article style={panelStyle}>
-      <h3 style={{marginTop:0}}>Research provider controls</h3><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}><div><b>Live web research</b><p style={{fontSize:13,opacity:.72}}>Official sources are searched first; reputable independent sources are used when official results are unavailable.</p></div>{status(webResearchEnabled?'enabled':'disabled')}</div>
-      <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:13,marginTop:12}}><input type="checkbox" checked={billingConfirmed} onChange={e=>setBillingConfirmed(e.target.checked)}/> I confirm that an AI Gateway provider key or credits are configured and I have reviewed possible provider charges.</label>
-      <button style={{...buttonStyle,marginTop:12,background:'#17191d',color:'#fff'}} disabled={busy||!billingConfirmed} onClick={()=>void toggleResearch()}>{webResearchEnabled?'Disable live research':'Enable live research'}</button>
-      <p style={{fontSize:12,opacity:.7,marginBottom:0}}>Do not enable until the Cloudflare token has AI Gateway Read permission and a provider key or credits are available. Workers AI's daily free neuron allowance does not automatically include web-search provider usage.</p>
-    </article>}
+    {tab === 'settings' && <div style={{display:'grid',gap:12}}>
+      <article style={panelStyle}>
+        <h3 style={{marginTop:0}}>Core assistant controls</h3>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',padding:'10px 0',borderBottom:'1px solid var(--admin-border,#e5e7eb)'}}>
+          <div><b>AI customer assistant</b><p style={{fontSize:12,opacity:.72,margin:'4px 0'}}>Global switch for automated AI responses. Human-managed conversations remain available.</p></div>
+          <button style={buttonStyle} disabled={busy} onClick={()=>void saveCoreSettings({llm_enabled:!aiEnabled})}>{aiEnabled?'Disable AI':'Enable AI'}</button>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap',padding:'10px 0'}}>
+          <div><b>24-hour customer follow-up</b><p style={{fontSize:12,opacity:.72,margin:'4px 0'}}>At most one polite follow-up per eligible unresolved enquiry, cancelled when the customer replies or opts out.</p></div>
+          <button style={buttonStyle} disabled={busy} onClick={()=>void saveCoreSettings({follow_up_enabled:!followupEnabled})}>{followupEnabled?'Pause follow-ups':'Enable follow-ups'}</button>
+        </div>
+        <p style={{fontSize:12,opacity:.7,marginBottom:0}}>Approved policy: follow-up interval remains 24 hours. Standard automatic discount ceiling remains 5%; higher discounts require management approval.</p>
+      </article>
+      <article style={panelStyle}>
+        <h3 style={{marginTop:0}}>Research provider controls</h3><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}><div><b>Live web research</b><p style={{fontSize:13,opacity:.72}}>Official sources are searched first; reputable independent sources are used when official results are unavailable.</p></div>{status(webResearchEnabled?'enabled':'disabled')}</div>
+        <label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:13,marginTop:12}}><input type="checkbox" checked={billingConfirmed} onChange={e=>setBillingConfirmed(e.target.checked)}/> I confirm that an AI Gateway provider key or credits are configured and I have reviewed possible provider charges.</label>
+        <button style={{...buttonStyle,marginTop:12,background:'#17191d',color:'#fff'}} disabled={busy||!billingConfirmed} onClick={()=>void toggleResearch()}>{webResearchEnabled?'Disable live research':'Enable live research'}</button>
+        <p style={{fontSize:12,opacity:.7,marginBottom:0}}>Do not enable until the Cloudflare token has AI Gateway Read permission and a provider key or credits are available. Web Search provider usage is separately billed; it is not included in Workers AI's free daily neuron allowance.</p>
+      </article>
+      <article style={panelStyle}><h3 style={{marginTop:0}}>Active model</h3><b>GLM-4.7-Flash</b><p style={{fontSize:12,opacity:.72,marginBottom:0}}>Cloudflare Workers AI · model identifier @cf/zai-org/glm-4.7-flash. Model changes require a tested backend deployment.</p></article>
+    </div>}
   </section>;
 }
