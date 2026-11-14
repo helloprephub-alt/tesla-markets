@@ -154,10 +154,10 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     }
   } else if(has(/\b(explain|explain to me|how does|how do|what is|tell me about|understand)\b.{0,70}\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla|tesla)\b|\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla)\b/)){
     intent="investment_explanation"; requiresManagement=true;
-    const rateSection = investmentKnowledge.match(/2\. What is the investment rate or profit rate\?([\\s\\S]*?)(?=\\n3\.)/i)?.[1]?.trim() || "Tesla Markets does not publish a fixed or guaranteed profit rate. TSLA is a market-traded stock; its price can rise or fall and losses are possible.";
-    const riskSection = investmentKnowledge.match(/5\. What are the risks\?([\\s\\S]*?)(?=\\n6\.)/i)?.[1]?.trim() || "The share price can fall and you may lose some or all of your investment.";
+    const rateSection = investmentKnowledge.match(/2\. What is the investment rate or profit rate\?([\s\S]*?)(?=\n3\.)/i)?.[1]?.trim() || "Tesla Markets does not publish a fixed or guaranteed profit rate. TSLA is a market-traded stock; its price can rise or fall and losses are possible.";
+    const riskSection = investmentKnowledge.match(/5\. What are the risks\?([\s\S]*?)(?=\n6\.)/i)?.[1]?.trim() || "The share price can fall and you may lose some or all of your investment.";
     const sourceLine = "Official sources: https://ir.tesla.com/ and https://www.sec.gov/edgar/browse/?CIK=1318605&owner=exclude";
-    reply = "Tesla, Inc. is publicly traded on Nasdaq under ticker TSLA. " + rateSection + "\\n\\n" + riskSection + "\\n\\n" + sourceLine;
+    reply = "Tesla, Inc. is publicly traded on Nasdaq under ticker TSLA. " + rateSection + "\n\n" + riskSection + "\n\n" + sourceLine;
   } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
     reply="I can help record your Tesla Markets investment enquiry. Please share your full name, email address, phone number and country. If you already have an amount in mind, include that too.";
@@ -399,7 +399,7 @@ Deno.serve(async (req: Request) => {
     const investmentKnowledge = (investmentKnowledgeRows || [])
       .filter((row:any) => ["management_approved","verified_official"].includes(String(row.verification_status||"")))
       .map((row:any) => String(row.content || ""))
-      .join("\\n\\n")
+      .join("\n\n")
       .slice(0, 18000);
 
     const lastAutomatedReply = [...history].reverse().find((row: any) => row.sender_role === "management" && row.automated_type === "ai_response");
