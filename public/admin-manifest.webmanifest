@@ -1,0 +1,21 @@
+{
+  "id": "/?app=tesla-markets-admin",
+  "name": "Tesla Markets Admin",
+  "short_name": "TM Admin",
+  "description": "Private Tesla Markets management console and customer inbox.",
+  "start_url": "/?page=admin&app=tesla-markets-admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f5f7",
+  "theme_color": "#101820",
+  "icons": [
+    {
+      "src": "/icons/admin-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait"
+}
