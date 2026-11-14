@@ -95,7 +95,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   }
   return out;
 }
-function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any) {
+function independentReply(text: string, history: any[], catalogue: any[], vehicle: any, discount: any, conversation: any, investmentKnowledge = "") {
   const lang=languageOf(text), t=normalized(text), delivery=extractDelivery(text, cleanString(conversation.ai_memory?.pending_slot,40));
   const has=(r:RegExp)=>r.test(t);
   const previousAiReply=cleanString(conversation.ai_memory?.last_ai_response,1200) || String([...history].reverse().find((row:any)=>row.sender_role==="management" && row.automated_type==="ai_response")?.body || "");
@@ -154,7 +154,10 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     }
   } else if(has(/\b(explain|explain to me|how does|how do|what is|tell me about|understand)\b.{0,70}\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla|tesla)\b|\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla)\b/)){
     intent="investment_explanation"; requiresManagement=true;
-    reply="Tesla, Inc. is publicly traded on the Nasdaq under ticker TSLA. Its share price moves with market conditions, so an investment can rise or fall in value and losses are possible. The investment information currently published in this website does not specify a fixed profit rate or guaranteed return. I can explain the share-price basis and show a timestamped market quote when available, but that is not a profit forecast or a promise of earnings. Any investment must be made through an appropriately authorised broker after eligibility and risk checks.";
+    const rateSection = investmentKnowledge.match(/2\. What is the investment rate or profit rate\?([\\s\\S]*?)(?=\\n3\.)/i)?.[1]?.trim() || "Tesla Markets does not publish a fixed or guaranteed profit rate. TSLA is a market-traded stock; its price can rise or fall and losses are possible.";
+    const riskSection = investmentKnowledge.match(/5\. What are the risks\?([\\s\\S]*?)(?=\\n6\.)/i)?.[1]?.trim() || "The share price can fall and you may lose some or all of your investment.";
+    const sourceLine = "Official sources: https://ir.tesla.com/ and https://www.sec.gov/edgar/browse/?CIK=1318605&owner=exclude";
+    reply = "Tesla, Inc. is publicly traded on Nasdaq under ticker TSLA. " + rateSection + "\\n\\n" + riskSection + "\\n\\n" + sourceLine;
   } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
     reply="I can help record your Tesla Markets investment enquiry. Please share your full name, email address, phone number and country. If you already have an amount in mind, include that too.";
@@ -385,6 +388,20 @@ Deno.serve(async (req: Request) => {
       .eq("is_published", true);
     if (catalogueError) throw catalogueError;
 
+    const { data: investmentKnowledgeRows, error: investmentKnowledgeError } = await admin
+      .from("ai_knowledge_documents")
+      .select("title,content,source_url,verification_status")
+      .eq("category", "investment_information")
+      .eq("approved", true)
+      .order("updated_at", { ascending: false })
+      .limit(8);
+    if (investmentKnowledgeError) throw investmentKnowledgeError;
+    const investmentKnowledge = (investmentKnowledgeRows || [])
+      .filter((row:any) => ["management_approved","verified_official"].includes(String(row.verification_status||"")))
+      .map((row:any) => String(row.content || ""))
+      .join("\\n\\n")
+      .slice(0, 18000);
+
     const lastAutomatedReply = [...history].reverse().find((row: any) => row.sender_role === "management" && row.automated_type === "ai_response");
     const discount = detectDiscountRequest(customerMessage.body);
     const vehicle = matchVehicle(customerMessage.body, conversation.vehicle_model || "", catalogue || []);
@@ -393,7 +410,7 @@ Deno.serve(async (req: Request) => {
     let requiresManagement = false;
     let extractedDelivery: Record<string, string> = {};
 
-    const local = independentReply(customerMessage.body, history, catalogue || [], vehicle, discount, conversation);
+    const local = independentReply(customerMessage.body, history, catalogue || [], vehicle, discount, conversation, investmentKnowledge);
     reply = local.reply;
     if (local.intent === "investment_explanation") {
       try {
