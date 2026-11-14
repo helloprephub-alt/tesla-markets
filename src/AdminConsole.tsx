@@ -24,6 +24,7 @@ const catalogue = [
   { name: 'Tesla Semi', count: 10, first: '/resources/semi-1.jpg' },
 ];
 const statusOptions = ['open', 'pending', 'closed'];
+const TESLA_MARKETS_VAPID_PUBLIC_KEY = 'BEq1tzEC0oPKDQRUYB7bcxbHDyvKIT5itF5FRz2_78C7iMI7hfNrhAu2Kr6V3JYpfrjhyb0SX0LLDi7QZXCmhrE';
 export function AdminConsole() {
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [checking, setChecking] = useState(true);
@@ -111,14 +112,46 @@ export function AdminConsole() {
       try {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
         const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
+        let subscription = await registration.pushManager.getSubscription();
         if (!subscription || cancelled) { if (!cancelled) setPushSubscribed(false); return; }
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        if (!currentUser || cancelled) return;
-        const { data, error } = await supabase.from('admin_push_subscriptions').select('endpoint').eq('endpoint', subscription.endpoint).maybeSingle();
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        if (userError || !currentUser || cancelled) return;
+
+        // Migrate subscriptions created with the previous hard-coded VAPID key.
+        const normalizedKey = TESLA_MARKETS_VAPID_PUBLIC_KEY.replace(/-/g, '+').replace(/_/g, '/');
+        const applicationServerKey = Uint8Array.from(atob(normalizedKey + '='.repeat((4 - normalizedKey.length % 4) % 4)), char => char.charCodeAt(0));
+        if (applicationServerKey.length !== 65 || applicationServerKey[0] !== 4) throw new Error('The notification server key is invalid.');
+        const existingKey = subscription.options.applicationServerKey;
+        const existing = existingKey ? Array.from(new Uint8Array(existingKey)) : [];
+        const expected = Array.from(applicationServerKey);
+        if (existing.length !== expected.length || existing.some((byte, index) => byte !== expected[index])) {
+          const oldEndpoint = subscription.endpoint;
+          await subscription.unsubscribe();
+          subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+          const json = subscription.toJSON();
+          const { error: saveError } = await supabase.from('admin_push_subscriptions').upsert({
+            user_id: currentUser.id, endpoint: subscription.endpoint, p256dh: json.keys?.p256dh, auth: json.keys?.auth,
+            expiration_time: subscription.expirationTime ? new Date(subscription.expirationTime).toISOString() : null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'endpoint' });
+          if (saveError) throw saveError;
+          await supabase.from('admin_push_subscriptions').delete().eq('user_id', currentUser.id).eq('endpoint', oldEndpoint);
+        }
+        const { data, error } = await supabase.from('admin_push_subscriptions').select('endpoint').eq('user_id', currentUser.id).eq('endpoint', subscription.endpoint).maybeSingle();
         if (error) throw error;
-        if (!cancelled) setPushSubscribed(Boolean(data));
-      } catch { if (!cancelled) setNotificationStatus('Could not check this app notification subscription. Tap Enable app notifications to retry.'); }
+        if (!data && Notification.permission === 'granted') {
+          const json = subscription.toJSON();
+          const { error: saveError } = await supabase.from('admin_push_subscriptions').upsert({
+            user_id: currentUser.id, endpoint: subscription.endpoint, p256dh: json.keys?.p256dh, auth: json.keys?.auth,
+            expiration_time: subscription.expirationTime ? new Date(subscription.expirationTime).toISOString() : null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'endpoint' });
+          if (saveError) throw saveError;
+        }
+        if (!cancelled) setPushSubscribed(true);
+      } catch (error) {
+        if (!cancelled) setNotificationStatus(error instanceof Error ? error.message : 'Could not check this app notification subscription. Tap Enable app notifications to retry.');
+      }
     };
     void restorePushState();
     return () => { cancelled = true; };
@@ -134,7 +167,7 @@ export function AdminConsole() {
       if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked for this app in Android settings.' : 'Allow notifications to continue.'); return; }
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Push notifications are not supported in this app environment.');
       const registration = await navigator.serviceWorker.ready;
-      const vapidPublicKey = 'BHxRm8hhaYlp7nlaNNK22mwPAlOou2BSXbKuaVFRyoT3cQDgaiKAkKiSrcoExgIIrG7Q6mTOUA3vq1ujWr0avTM';
+      const vapidPublicKey = TESLA_MARKETS_VAPID_PUBLIC_KEY;
       const normalizedKey=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
       const applicationServerKey=Uint8Array.from(atob(normalizedKey+'='.repeat((4-normalizedKey.length%4)%4)),char=>char.charCodeAt(0));
       if(applicationServerKey.length!==65||applicationServerKey[0]!==4) throw new Error('The notification server key is invalid.');
