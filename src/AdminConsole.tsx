@@ -134,7 +134,7 @@ export function AdminConsole() {
       if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked for this app in Android settings.' : 'Allow notifications to continue.'); return; }
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Push notifications are not supported in this app environment.');
       const registration = await navigator.serviceWorker.ready;
-      const vapidPublicKey = 'BHxRm8hhaYlp7nlaNNK22mwPAlOou2BSXbKuaVFRyoT3cQDgaiKAkKiSrcoExgIIrG7Q6mTOUA3vq1ujWr0avTM';
+      const vapidPublicKey = 'BEq1tzEC0oPKDQRUYB7bcxbHDyvKIT5itF5FRz2_78C7iMI7hfNrhAu2Kr6V3JYpfrjhyb0SX0LLDi7QZXCmhrE';
       const normalizedKey=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
       const applicationServerKey=Uint8Array.from(atob(normalizedKey+'='.repeat((4-normalizedKey.length%4)%4)),char=>char.charCodeAt(0));
       if(applicationServerKey.length!==65||applicationServerKey[0]!==4) throw new Error('The notification server key is invalid.');
