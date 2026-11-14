@@ -2547,3 +2547,50 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
  .admin-inbox-layout .admin-compose{flex:0 0 auto}
  .admin-inbox-layout .admin-thread-list{max-height:calc(100dvh - 150px)!important}
 }
+
+/* Final admin app polish: device notification controls live in Settings. */
+.admin-console-premium .admin-tesla-mark{width:30px;height:30px;flex:0 0 30px;object-fit:cover;border:0;border-radius:6px;display:block;background:#e82127}
+.admin-console-premium .admin-topbar{min-height:58px;height:58px;padding-left:18px;padding-right:18px;gap:10px}
+.admin-console-premium .admin-console-brand{gap:9px}
+.admin-console-premium .admin-console-brand b{font-size:10px;letter-spacing:.12em}
+.admin-console-premium .admin-console-brand small{font-size:7px;letter-spacing:.12em}
+.admin-console-premium .admin-mobile-menu{width:32px;height:32px;min-height:32px;border-radius:7px}
+.admin-console-premium .admin-console-main{padding:22px clamp(12px,2.5vw,32px)}
+.admin-console-premium .admin-console-header{margin-bottom:16px;gap:12px}
+.admin-console-premium .admin-console-header h1{font-size:clamp(21px,2.4vw,29px);margin:5px 0}
+.admin-console-premium .admin-console-header p{font-size:11px}
+.admin-console-premium .tm-kpi-card{min-height:86px;padding:11px;gap:9px;border-radius:10px}
+.admin-console-premium .tm-kpi-card strong{font-size:22px}
+.admin-console-premium .tm-kpi-icon{width:30px;height:30px;flex-basis:30px;border-radius:8px}
+.admin-console-premium .tm-dashboard-card{padding:14px;border-radius:11px}
+.admin-console-premium .tm-card-heading h2{font-size:14px}
+.admin-app-notification-settings{margin-bottom:14px}
+.admin-notification-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.admin-notification-controls .btn{min-height:36px;padding:0 12px;font-size:11px}
+.admin-notification-status{display:block;margin-top:9px;color:#63717a;font-size:11px}
+@media(max-width:700px){
+ .admin-console-premium .admin-topbar{height:52px;min-height:52px;padding-left:10px;padding-right:10px}
+ .admin-console-premium .admin-tesla-mark{width:25px;height:25px;flex-basis:25px;border-radius:5px}
+ .admin-console-premium .admin-console-brand{gap:7px}
+ .admin-console-premium .admin-console-brand b{font-size:9px;letter-spacing:.09em}
+ .admin-console-premium .admin-console-brand small{font-size:6px;letter-spacing:.1em;margin-top:2px}
+ .admin-console-premium .admin-topbar-right{gap:5px}
+ .admin-console-premium .admin-secure-label,.admin-console-premium .admin-topbar-email{display:none}
+ .admin-console-premium .admin-console-main{padding:14px 10px calc(18px + env(safe-area-inset-bottom))}
+ .admin-console-premium .admin-breadcrumb{font-size:10px;margin-bottom:10px}
+ .admin-console-premium .admin-console-header{align-items:flex-start;margin-bottom:12px}
+ .admin-console-premium .admin-console-header h1{font-size:22px}
+ .admin-console-premium .admin-page-actions .btn{min-height:34px;padding:0 9px;font-size:10px;gap:5px}
+ .admin-console-premium .tm-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .admin-console-premium .tm-kpi-card{min-height:74px;padding:9px;gap:7px}
+ .admin-console-premium .tm-kpi-card small{font-size:9px}
+ .admin-console-premium .tm-kpi-card strong{font-size:20px}
+ .admin-console-premium .tm-kpi-card em{font-size:8px}
+ .admin-console-premium .tm-kpi-icon{width:26px;height:26px;flex-basis:26px}
+ .admin-console-premium .tm-dashboard-grid-primary{grid-template-columns:minmax(0,1fr)}
+ .admin-console-premium .tm-dashboard-card{padding:11px}
+ .admin-console-premium .tm-chat-dashboard{overflow:hidden}
+ .admin-console-premium .admin-console-panel{padding:14px;border-radius:11px}
+ .admin-notification-controls{align-items:flex-start}
+}
+.management-avatar{flex-basis:32px;width:32px;height:32px;min-width:32px;min-height:32px}
