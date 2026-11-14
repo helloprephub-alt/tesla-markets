@@ -4,7 +4,7 @@ import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, Sh
 import { AdminInbox } from './ChatWorkspace';
 
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
-const ADMIN_AUTH_REDIRECT = 'https://tesla-markets.vercel.app/#admin';
+const ADMIN_AUTH_REDIRECT = 'https://tesla-markets-git-admin-console-upgrade-tesla-5c9c.vercel.app/';
 type Thread = { id: string; visitorName?: string; visitorEmail?: string; enquiryType?:string; enquirySource?:string; vehicleModel?:string; phone?:string; createdAt: number; updatedAt: number; lastMessage?: string; status?: string };
 type Visit = { id: string; page: string; createdAt: number };
 type OperationalOrder = {id:string;reference:string;item:string;status:string;createdAt:number};
