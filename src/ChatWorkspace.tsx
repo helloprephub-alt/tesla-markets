@@ -278,7 +278,24 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     }
     setCheckoutSubmitting(true);setProblem('');
     const message=[
-      'I want to invest 
+      'I want to invest $'+numericAmount.toLocaleString('en-US')+' USD.',
+      'Full name: '+fullName,'Email: '+email,'Phone: '+phone,'Country: '+country,
+      city?'City: '+city:'','Address: '+address
+    ].filter(Boolean).join('\n');
+    try{
+      const saved={name:fullName,email,phone};
+      localStorage.setItem('tesla-markets-customer-details',JSON.stringify(saved));
+      sessionStorage.setItem('tesla-markets-customer-details',JSON.stringify(saved));
+      setCustomerDetails(saved);
+      const sent=await sendQuickMessage(message);
+      if(sent){
+        setPaymentInvoice({vehicle:'Tesla Markets investment',amount:'$'+numericAmount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+' USD',orderReference:null,kind:'investment'});
+        setChosenPaymentMethod('');setPaymentReviewOpen(false);setInvestmentCheckout(null);
+      }
+    }catch(e){setProblem(errorText(e));}
+    finally{setCheckoutSubmitting(false);}
+  };
+  const send=async(e:FormEvent)=>{
     e.preventDefault(); if((!draft.trim()&&!images.length)||busy||!threadId||!viewerId)return;
     const investmentRequest=/\b(?:i\s+)?(?:want|would like|wish|plan|intend|interested)\s+to\s+invest\b|\bstart\s+(?:an?\s+)?investment\b|\binvest\s+\$?\s*[0-9]/i.test(draft.trim());
     if(investmentRequest&&!images.length){
