@@ -334,6 +334,22 @@ Deno.serve(async (req: Request) => {
       throw runWrite.error;
     }
 
+    const paymentChoice = customerMessage.body.match(/\b(?:pay|payment)\s+using\s+(Apple Pay|Chime|Zelle|PayPal)\b/i);
+    if (paymentChoice) {
+      const amountMatch = customerMessage.body.match(/\$[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
+      const { error: notificationError } = await admin.from("admin_notifications").insert({
+        type: "payment_method_selected",
+        title: "Customer selected a payment method",
+        body: [conversation.visitor_email || "Website visitor", cleanString(conversation.vehicle_model,100), amountMatch?.[0] || "Amount to confirm", paymentChoice[1]].filter(Boolean).join(" · ").slice(0,240),
+        entity_type: "conversation",
+        entity_id: conversationId,
+        is_read: false
+      });
+      if (notificationError) throw notificationError;
+      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
+      return json({ ok: true, management_handoff: true, payment_method: paymentChoice[1] }, 200, headers);
+    }
+
     const { data: managementProfile, error: managementError } = await admin
       .from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
     if (managementError) throw managementError;
