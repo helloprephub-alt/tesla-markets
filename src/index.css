@@ -2594,3 +2594,15 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
  .admin-notification-controls{align-items:flex-start}
 }
 .management-avatar{flex-basis:32px;width:32px;height:32px;min-width:32px;min-height:32px}
+
+/* Use the supplied portrait logo without redrawing or cropping it. */
+.admin-console-premium .admin-tesla-mark{
+  width:32px!important;height:48px!important;flex:0 0 32px!important;
+  object-fit:contain!important;object-position:center!important;
+  border:0!important;border-radius:0!important;background:transparent!important;
+}
+@media(max-width:700px){
+  .admin-console-premium .admin-tesla-mark{
+    width:28px!important;height:42px!important;flex-basis:28px!important;
+  }
+}
