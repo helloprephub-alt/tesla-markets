@@ -180,17 +180,12 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     if(busy||!threadId||!viewerId)return false;
     setBusy(true);setProblem('');
     try{
-      const {error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:messageText});
+      const {data:insertedMessage,error}=await supabase.from('support_messages').insert({conversation_id:threadId,sender_id:viewerId,sender_role:'customer',body:messageText}).select('id').single();
       if(error)throw error;
       // Payment-method selection is a management handoff, not a question for the AI.
       // Save the request in the chat, but do not invoke the responder for this message.
-      if(invokeResponder)await refresh();
+      if(invokeResponder)await runIndependentResponder(insertedMessage.id,messageText);
       else await refresh();
-      if(invokeResponder){
-        const {data:latest,error:latestError}=await supabase.from('support_messages').select('id').eq('conversation_id',threadId).eq('sender_id',viewerId).eq('sender_role','customer').eq('body',messageText).order('created_at',{ascending:false}).limit(1).maybeSingle();
-        if(latestError)throw latestError;
-        if(latest?.id)await runIndependentResponder(latest.id,messageText);
-      }
       return true;
     }catch(e){setProblem(errorText(e));return false;}finally{setBusy(false);}
   };
