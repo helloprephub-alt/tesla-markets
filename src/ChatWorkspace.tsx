@@ -128,6 +128,8 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
   const [vehicleCheckout,setVehicleCheckout]=useState<VehicleCheckoutDraft|null>(null);
   const [vehicleCheckoutForm,setVehicleCheckoutForm]=useState<VehicleCheckoutForm>(emptyVehicleCheckoutForm);
   const [checkoutSubmitting,setCheckoutSubmitting]=useState(false);
+  const [paymentReviewOpen,setPaymentReviewOpen]=useState(false);
+  const checkoutSubmitLock=useRef(false);
   const [enquiryKind,setEnquiryKind] = useState('Buying');
   const [booting,setBooting] = useState(true);
   const [viewerId,setViewerId] = useState('');
@@ -205,7 +207,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
   };
   const submitVehicleCheckout=async(event:FormEvent)=>{
     event.preventDefault();
-    if(!vehicleCheckout||checkoutSubmitting||busy)return;
+    if(!vehicleCheckout||checkoutSubmitLock.current||checkoutSubmitting||busy)return;
     const form=vehicleCheckoutForm;
     if(!form.fullName.trim()||!form.email.trim()||!form.phone.trim()||!form.country.trim()||!form.city.trim()||!form.address.trim()){
       setProblem('Please complete all required contact and delivery details.');
@@ -215,6 +217,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
       setProblem('Please select your preferred vehicle version.');
       return;
     }
+    checkoutSubmitLock.current=true;
     setCheckoutSubmitting(true);
     const saved={name:form.fullName.trim(),email:form.email.trim(),phone:form.phone.trim()};
     try{
@@ -234,10 +237,18 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
         'Delivery address: '+form.address.trim(),
         form.instructions.trim()?'Instructions: '+form.instructions.trim():''
       ].filter(Boolean).join('\n');
-      const sent=await sendQuickMessage(message);
-      if(sent)setVehicleCheckout(null);
+      // Avoid a duplicate checkout enquiry if the customer double-taps or retries after a slow connection.
+      const cutoff=new Date(Date.now()-5*60*1000).toISOString();
+      const {data:recentDuplicates,error:duplicateError}=await supabase.from('support_messages')
+        .select('id').eq('conversation_id',threadId).eq('sender_id',viewerId).eq('sender_role','customer').eq('body',message).gte('created_at',cutoff).limit(1);
+      if(duplicateError)throw duplicateError;
+      const sent=recentDuplicates?.length ? true : await sendQuickMessage(message);
+      if(sent){
+        setVehicleCheckout(null);
+        if(vehicleCheckout.mode==='purchase')setPaymentReviewOpen(true);
+      }
     }catch(e){setProblem(errorText(e));}
-    finally{setCheckoutSubmitting(false);}
+    finally{checkoutSubmitLock.current=false;setCheckoutSubmitting(false);}
   };
   const send=async(e:FormEvent)=>{
     e.preventDefault(); if((!draft.trim()&&!images.length)||busy||!threadId||!viewerId)return;
@@ -266,6 +277,17 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
       {images.length>0&&<div className="chat-image-previews" aria-label={images.length+' images selected'}><div className="chat-image-preview-heading">{images.length} {tr(images.length===1?'image selected':'images selected')}</div><div className="chat-image-preview-list">{images.map((file,index)=><div className="chat-image-preview-item" key={file.name+'-'+file.size+'-'+file.lastModified}><FileImage size={13}/><span>{file.name}</span><button type="button" onClick={()=>setImages(current=>current.filter((_,i)=>i!==index))} aria-label={'Remove '+file.name}><X size={13}/></button></div>)}</div></div>}{(problem||booting)&&<p className="chat-error" role="status">{problem||tr('Opening secure chat…')}</p>}
       <form className="chat-compose live-chat-compose" onSubmit={send}><div className="chat-attach-wrap"><button type="button" className={'chat-plus-button '+(attachOpen?'active':'')} onClick={()=>setAttachOpen(!attachOpen)} aria-label={tr('Add attachments')}><Plus size={19}/></button>{attachOpen&&<div className="chat-attach-menu"><button type="button" onClick={()=>document.getElementById('customer-chat-file')?.click()}><FileImage size={17}/> {tr('Choose images')}</button><small>{tr("Select multiple JPG, PNG, WEBP or GIF images. Each image can be up to 3 MB.")}</small></div>}<input id="customer-chat-file" className="chat-file-input" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>{const selected=Array.from(e.target.files||[]);setImages(current=>[...current,...selected.filter(file=>!current.some(existing=>existing.name===file.name&&existing.size===file.size&&existing.lastModified===file.lastModified))]);setAttachOpen(false);e.currentTarget.value='';}}/></div><textarea value={draft} rows={1} onChange={e=>setDraft(e.target.value)} placeholder={tr("Type a message…")} aria-label={tr('Write your message')} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/><button className="chat-send-button" disabled={busy||booting||(!draft.trim()&&!images.length)} aria-label="Send message">{busy?<LoaderCircle className="spin" size={18}/>:<Send size={17}/>}</button></form>
       </div></div></div>
+    {paymentReviewOpen&&<div className="tm-checkout-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setPaymentReviewOpen(false);}}>
+      <section className="tm-checkout-dialog tm-payment-review-card" role="dialog" aria-modal="true" aria-labelledby="tm-payment-review-title">
+        <div className="tm-payment-review-icon"><LoaderCircle className="spin" size={28}/></div>
+        <span className="tm-checkout-eyebrow">TESLA MARKETS · PAYMENT REVIEW</span>
+        <h2 id="tm-payment-review-title">Please hold while we check the available payment methods.</h2>
+        <p>Your purchase details have been submitted to management. We are checking which approved payment methods are available for your order and delivery country.</p>
+        <div className="tm-payment-review-status"><span className="tm-payment-review-dot"/> Payment method confirmation pending</div>
+        <p className="tm-checkout-security-note">No payment has been taken. Do not send card numbers, security codes, passwords or one-time codes in chat. We will provide payment instructions only after management confirms them.</p>
+        <button type="button" className="tm-checkout-submit" onClick={()=>setPaymentReviewOpen(false)}>Return to conversation</button>
+      </section>
+    </div>}
     {vehicleCheckout&&<div className="tm-checkout-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget&&!checkoutSubmitting&&!busy)setVehicleCheckout(null);}}>
       <section className="tm-checkout-dialog" role="dialog" aria-modal="true" aria-labelledby="tm-checkout-title">
         <header className="tm-checkout-head"><div><span className="tm-checkout-eyebrow">TESLA MARKETS · SECURE ENQUIRY</span><h2 id="tm-checkout-title">{vehicleCheckout.mode==='cart'?'Add to cart':'Start your purchase'}</h2><p>{vehicleCheckout.title}</p></div><button type="button" onClick={()=>setVehicleCheckout(null)} disabled={checkoutSubmitting||busy} aria-label="Close checkout"><X size={20}/></button></header>
@@ -279,9 +301,9 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
           <div className="tm-checkout-grid tm-checkout-grid-two"><label>Country<input required autoComplete="country-name" value={vehicleCheckoutForm.country} onChange={event=>setVehicleCheckoutForm(current=>({...current,country:event.target.value}))} placeholder="Delivery country"/></label><label>City<input required autoComplete="address-level2" value={vehicleCheckoutForm.city} onChange={event=>setVehicleCheckoutForm(current=>({...current,city:event.target.value}))} placeholder="Delivery city"/></label></div>
           <label>Full delivery address<textarea required rows={3} autoComplete="street-address" value={vehicleCheckoutForm.address} onChange={event=>setVehicleCheckoutForm(current=>({...current,address:event.target.value}))} placeholder="Street, house/building number and postal code"/></label>
           <label>Additional delivery instructions <span>(optional)</span><textarea rows={2} value={vehicleCheckoutForm.instructions} onChange={event=>setVehicleCheckoutForm(current=>({...current,instructions:event.target.value}))} placeholder="Anything management should know?"/></label>
-          <p className="tm-checkout-security-note">Your details will be saved to your Tesla Markets enquiry and sent to management. No payment is taken here. Management will confirm availability and the final quotation before sending approved payment instructions.</p>
+          <p className="tm-checkout-security-note">{vehicleCheckout.mode==='purchase'?'Selecting Pay now submits your purchase enquiry. We will check the approved payment methods with management; no card will be charged on this step.':'Your details will be saved to your Tesla Markets enquiry and sent to management. No payment is taken here.'} Management must confirm availability, final quotation and approved payment instructions.</p>
           {problem&&<p className="tm-checkout-error" role="alert">{problem}</p>}
-          <div className="tm-checkout-actions"><button type="button" className="tm-checkout-cancel" onClick={()=>setVehicleCheckout(null)} disabled={checkoutSubmitting||busy}>Cancel</button><button type="submit" className="tm-checkout-submit" disabled={checkoutSubmitting||busy||booting||!threadId||!viewerId}>{checkoutSubmitting||busy?'Submitting details…':vehicleCheckout.mode==='cart'?'Add to cart & continue':'Submit purchase details'}</button></div>
+          <div className="tm-checkout-actions"><button type="button" className="tm-checkout-cancel" onClick={()=>setVehicleCheckout(null)} disabled={checkoutSubmitting||busy}>Cancel</button><button type="submit" className="tm-checkout-submit" disabled={checkoutSubmitting||busy||booting||!threadId||!viewerId}>{checkoutSubmitting||busy?'Submitting securely…':vehicleCheckout.mode==='cart'?'Add to cart & continue':'Pay now'}</button></div>
         </form>
       </section>
     </div>}
