@@ -24,7 +24,16 @@ const catalogue = [
   { name: 'Tesla Semi', count: 10, first: '/resources/semi-1.jpg' },
 ];
 const statusOptions = ['open', 'pending', 'closed'];
-const TESLA_MARKETS_VAPID_PUBLIC_KEY = 'BEq1tzEC0oPKDQRUYB7bcxbHDyvKIT5itF5FRz2_78C7iMI7hfNrhAu2Kr6V3JYpfrjhyb0SX0LLDi7QZXCmhrE';
+const getTeslaPushApplicationServerKey = async () => {
+  const response = await fetch('/api/push-config', { cache: 'no-store' });
+  if (!response.ok) throw new Error('The notification server key could not be loaded.');
+  const config = await response.json() as { publicKey?: string };
+  const publicKey = config.publicKey || '';
+  const normalizedKey = publicKey.replace(/-/g, '+').replace(/_/g, '/');
+  const applicationServerKey = Uint8Array.from(atob(normalizedKey + '='.repeat((4 - normalizedKey.length % 4) % 4)), char => char.charCodeAt(0));
+  if (applicationServerKey.length !== 65 || applicationServerKey[0] !== 4) throw new Error('The notification server key is invalid.');
+  return applicationServerKey;
+};
 export function AdminConsole() {
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [checking, setChecking] = useState(true);
@@ -118,9 +127,7 @@ export function AdminConsole() {
         if (userError || !currentUser || cancelled) return;
 
         // Migrate subscriptions created with the previous hard-coded VAPID key.
-        const normalizedKey = TESLA_MARKETS_VAPID_PUBLIC_KEY.replace(/-/g, '+').replace(/_/g, '/');
-        const applicationServerKey = Uint8Array.from(atob(normalizedKey + '='.repeat((4 - normalizedKey.length % 4) % 4)), char => char.charCodeAt(0));
-        if (applicationServerKey.length !== 65 || applicationServerKey[0] !== 4) throw new Error('The notification server key is invalid.');
+        const applicationServerKey = await getTeslaPushApplicationServerKey();
         const existingKey = subscription.options.applicationServerKey;
         const existing = existingKey ? Array.from(new Uint8Array(existingKey)) : [];
         const expected = Array.from(applicationServerKey);
@@ -167,10 +174,7 @@ export function AdminConsole() {
       if (permission !== 'granted') { setNotificationStatus(permission === 'denied' ? 'Notifications are blocked for this app in Android settings.' : 'Allow notifications to continue.'); return; }
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('Push notifications are not supported in this app environment.');
       const registration = await navigator.serviceWorker.ready;
-      const vapidPublicKey = TESLA_MARKETS_VAPID_PUBLIC_KEY;
-      const normalizedKey=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
-      const applicationServerKey=Uint8Array.from(atob(normalizedKey+'='.repeat((4-normalizedKey.length%4)%4)),char=>char.charCodeAt(0));
-      if(applicationServerKey.length!==65||applicationServerKey[0]!==4) throw new Error('The notification server key is invalid.');
+      const applicationServerKey = await getTeslaPushApplicationServerKey();
       let subscription=await registration.pushManager.getSubscription();
       if(subscription){
         const existingKey=subscription.options.applicationServerKey;
