@@ -243,9 +243,8 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
       const {data:recentDuplicates,error:duplicateError}=await supabase.from('support_messages')
         .select('id').eq('conversation_id',threadId).eq('sender_id',viewerId).eq('sender_role','customer').eq('body',message).gte('created_at',cutoff).limit(1);
       if(duplicateError)throw duplicateError;
-      if(vehicleCheckout.mode==='purchase')setPaymentReviewOpen(true);
       const sent=recentDuplicates?.length ? true : await sendQuickMessage(message);
-      if(sent){setVehicleCheckout(null);}else{setPaymentReviewOpen(false);}
+      if(sent){setVehicleCheckout(null);setPaymentReviewOpen(false);}else{setPaymentReviewOpen(false);}
     }catch(e){setProblem(errorText(e));}
     finally{checkoutSubmitLock.current=false;setCheckoutSubmitting(false);}
   };
