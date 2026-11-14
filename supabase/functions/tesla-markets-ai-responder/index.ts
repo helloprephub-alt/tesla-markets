@@ -154,7 +154,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     }
   } else if(has(/\b(explain|explain to me|how does|how do|what is|tell me about|understand)\b.{0,70}\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla|tesla)\b|\b(tesla investment|investing in tesla|tesla shares|tesla stock|investment in tesla)\b/)){
     intent="investment_explanation"; requiresManagement=true;
-    reply="Tesla is a publicly traded company listed on the Nasdaq under the ticker TSLA. Buying a share means buying a small ownership interest in the company; the share price changes with the market. I’m checking the latest available TSLA quote so I can show an estimated share calculation for your chosen amount.";
+    reply="Tesla, Inc. is publicly traded on the Nasdaq under ticker TSLA. Its share price moves with market conditions, so an investment can rise or fall in value and losses are possible. The investment information currently published in this website does not specify a fixed profit rate or guaranteed return. I can explain the share-price basis and show a timestamped market quote when available, but that is not a profit forecast or a promise of earnings. Any investment must be made through an appropriately authorised broker after eligibility and risk checks.";
   } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
     reply="I can help record your Tesla Markets investment enquiry. Please share your full name, email address, phone number and country. If you already have an amount in mind, include that too.";
