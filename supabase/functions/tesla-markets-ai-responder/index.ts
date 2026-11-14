@@ -310,12 +310,6 @@ Deno.serve(async (req: Request) => {
     }
     if (!cleanString(customerMessage.body, 4000)) return json({ ok: true, skipped: true, reason: "attachment_only" }, 200, headers);
 
-    const { data: settingsRow, error: settingsError } = await admin
-      .from("site_settings").select("value").eq("key", "ai_responder_settings").maybeSingle();
-    if (settingsError) throw settingsError;
-    const settings = settingsRow?.value || {};
-    if (settings.llm_enabled !== true) return json({ ok: true, enabled: false }, 200, headers);
-
     const { data: existingRun, error: runReadError } = await admin
       .from("ai_responder_runs").select("status,updated_at")
       .eq("message_id", messageId).maybeSingle();
@@ -349,6 +343,12 @@ Deno.serve(async (req: Request) => {
       await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
       return json({ ok: true, management_handoff: true, payment_method: paymentChoice[1] }, 200, headers);
     }
+
+    const { data: settingsRow, error: settingsError } = await admin
+      .from("site_settings").select("value").eq("key", "ai_responder_settings").maybeSingle();
+    if (settingsError) throw settingsError;
+    const settings = settingsRow?.value || {};
+    if (settings.llm_enabled !== true) return json({ ok: true, enabled: false }, 200, headers);
 
     const { data: managementProfile, error: managementError } = await admin
       .from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
