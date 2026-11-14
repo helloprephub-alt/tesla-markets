@@ -159,6 +159,14 @@ function App() {
   // Keep direct admin links working when Opera or another browser reuses an
   // already-open public-site tab and changes only the URL fragment.
   useEffect(() => {
+    const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (manifest) manifest.href = page === 'admin' ? '/admin-manifest.webmanifest' : '/manifest.webmanifest';
+    document.title = page === 'admin' ? 'Tesla Markets Admin | Private Management' : 'Tesla Markets | Vehicle Enquiries & Market Information';
+    const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (theme) theme.content = page === 'admin' ? '#101820' : '#e82127';
+  }, [page]);
+
+  useEffect(() => {
     const syncRoute = () => {
       const route = new URLSearchParams(location.search).get('page');
       const hash = location.hash.replace(/^#\/?/, '');
