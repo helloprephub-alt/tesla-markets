@@ -2941,3 +2941,8 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
  .tm-store-checkout{padding:14px;max-height:96vh}.tm-store-checkout-layout{grid-template-columns:1fr;gap:16px}.tm-store-checkout-layout h2{font-size:23px}.tm-store-checkout-two{grid-template-columns:1fr}.tm-store-pending-chip{font-size:7px}.tm-store-checkout-summary{padding:14px}
 }
 @media(prefers-reduced-motion:reduce){.tm-store-card,.tm-store-department-card,.tm-store-image-zoom{transition:none}}
+
+.tm-store-promo-review{display:block;margin-top:3px;color:#8a5b18;font-size:8px;font-weight:850;line-height:1.45}
+.tm-store-header-actions button.active{color:#ae1e29}
+.tm-store-header-actions button.active svg{fill:#f8e7e8}
+.tm-store-card-actions .tm-store-add-icon:disabled{opacity:.25;cursor:not-allowed}
