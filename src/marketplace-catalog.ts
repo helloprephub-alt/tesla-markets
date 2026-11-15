@@ -8,7 +8,6 @@ export type StoreProduct = {
   priceRange?: [number, number];
   discountPercent: number;
   image?: string;
-  imageIndex?: number;
   gallery?: string[];
   description: string;
   sourceUrl?: string;
@@ -300,55 +299,6 @@ const allStoreProducts: StoreProduct[] = [
 ];
 
 /** Discounts are set per product; products without an active discount show only their listed price. */
-/** Indexes into the 4-column × 5-row product image atlas. */
-export function getProductImageIndex(product: StoreProduct): number {
-  const id = product.id.toLowerCase();
-  const text = (product.name + ' ' + product.category + ' ' + product.description).toLowerCase();
-  if (id.includes('winter-holiday-scarf')) return 1;
-  if (id.includes('winter-holiday-beanie') || id.includes('hat') || text.includes('beanie') || text.includes('snapback') || text.includes('trucker hat')) return 2;
-  if (id.includes('winter-holiday-tee') || id.includes('kids-winter-holiday-tee')) return 4;
-  if (id.includes('winter-holiday') || id.includes('holiday-cat') || id.includes('holiday-dog')) return 0;
-  if (id.includes('winter-holiday-mug')) return 5;
-  if (id.includes('tesla-ornament')) return 6;
-  if (id.includes('action-figure') || id.includes('bot-action')) return 7;
-  if (id.includes('cybertruck-rc-racer') || id.includes('cybercab-pullback') || id.includes('cybertruck-pullback') || id.includes('wind-up-racer')) return 8;
-  if (id.includes('diecast') || id.includes('mini-tesla')) return 9;
-  if (id.includes('wooden-toy') || id.includes('playset')) return 10;
-  if (text.includes('cybertruck')) return 18;
-  if (text.includes('model 3')) return 16;
-  if (text.includes('model y')) return 17;
-  if (text.includes('model s') || text.includes('model x')) return 17;
-  if (text.includes('semi')) return 9;
-  if (text.includes('optimus') && (text.includes('hoodie') || text.includes('sweatshirt'))) return 15;
-  if (text.includes('hoodie') || text.includes('jacket') || text.includes('sweatshirt')) return 15;
-  if (text.includes('kids') && (text.includes('tee') || text.includes('shirt'))) return 4;
-  if (text.includes('tee') || text.includes('t-shirt') || text.includes('shirt')) return 3;
-  if (text.includes('espresso')) return 12;
-  if (text.includes('thermal mug')) return 13;
-  if (text.includes('vessel') || text.includes('tumbler') || text.includes('on the road')) return 14;
-  if (text.includes('mug') || text.includes('cup') || text.includes('drinkware')) return 5;
-  if (text.includes('backpack') || text.includes('bag') || text.includes('lifestyle') || text.includes('travel kit')) return 11;
-  if (product.department === 'EV Charging') return 19;
-  if (product.department === 'Solar & Energy' || product.department === 'Batteries & Inverters') return 19;
-  if (product.department === 'Apparel') return 3;
-  if (product.department === 'Vehicle Accessories') return 17;
-  return 11;
-}
-/**
- * Only publish listings with their own direct Tesla Shop photograph and a fixed
- * reference price. A missing image is never filled with a shared catalogue atlas.
- * Image URLs must remain unique, so one product photograph cannot be reused for
- * another listing.
- */
-const usedStoreImageUrls = new Set<string>();
-export const storeProducts: StoreProduct[] = allStoreProducts.filter(product => {
-  if (!product.name || !product.image || !product.image.startsWith('https://digitalassets-shop.tesla.com/')) return false;
-  if (!Number.isFinite(product.originalPrice) || product.originalPrice <= 0 || product.priceRange) return false;
-  if (usedStoreImageUrls.has(product.image)) return false;
-  usedStoreImageUrls.add(product.image);
-  return true;
-});
-
 export function getDiscountedPrice(product: StoreProduct): number | null {
   if (!product.originalPrice || product.originalPrice <= 0) return null;
   if (!Number.isFinite(product.discountPercent) || product.discountPercent <= 0) return Math.round(product.originalPrice);
