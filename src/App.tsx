@@ -22,6 +22,7 @@ import {
   Globe2,
   LayoutDashboard,
   LockKeyhole,
+  LogOut,
   Menu,
   MessageCircle,
   Search,
@@ -184,6 +185,19 @@ function App() {
       window.removeEventListener('popstate', syncRoute);
     };
   }, []);
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecovery(true);
+        setAuthError('');
+        setAuthMessage('Choose a new password for your account.');
+        setPage('login');
+        location.hash = 'login';
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   const [pageHistory, setPageHistory] = useState<Page[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen,setLanguageOpen]=useState(false);
@@ -203,6 +217,10 @@ function App() {
     setVideoMuted(nextMuted);
   };
   const [notice, setNotice] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMessage, setAuthMessage] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
   const [tab, setTab] = useState('Overview');
@@ -718,7 +736,7 @@ function App() {
       </section>
     </>
   );
-  const Shop = () => <Marketplace onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Marketplace',type:'product',context}));go('chat')}} />;
+  const Shop = () => <Marketplace onSelectModel={(id)=>go(id as Page)} onRequireAuth={()=>go('login')} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Marketplace',type:'product',context}));go('chat')}} />;
   const VehicleDetail = () => <VehicleExperience language={detectedLanguage as PublicLanguage} modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('shop')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
   const Info = ({ kind }: { kind: 'about' | 'contact' | 'faq' }) => (
     <>
@@ -873,23 +891,54 @@ function App() {
             ← Back to home
           </button>
           <div className="eyebrow dark">
-            {signup ? 'CREATE ACCOUNT' : 'WELCOME BACK'}
+            {passwordRecovery ? 'ACCOUNT RECOVERY' : signup ? 'CREATE ACCOUNT' : 'WELCOME BACK'}
           </div>
-          <h1>{signup ? 'Create your account' : 'Sign in to your account'}</h1>
+          <h1>{passwordRecovery ? 'Choose a new password' : signup ? 'Create your account' : 'Sign in to your account'}</h1>
           <p className="muted">
-            {signup
-              ? 'Start building your personal research workspace.'
-              : 'Continue to your personal workspace.'}
+            {passwordRecovery ? 'Set a new password to secure your account.' : signup ? 'Create your secure Tesla Markets customer account.' : 'Sign in to continue to your account and saved checkout.'}
           </p>
           <form
-            onSubmit={e => {
+            onSubmit={async e => {
               e.preventDefault();
-              announce(
-                'Account access is not connected in this visual preview.'
-              );
+              if (authBusy) return;
+              setAuthBusy(true); setAuthError(''); setAuthMessage('');
+              try {
+                if (passwordRecovery) {
+                  if (form.password.length < 8) throw new Error('Use a password with at least 8 characters.');
+                  const { error } = await supabase.auth.updateUser({ password: form.password });
+                  if (error) throw error;
+                  setForm(current => ({ ...current, password: '' }));
+                  setPasswordRecovery(false);
+                  setAuthMessage('Your password has been updated. Sign in with your new password.');
+                } else if (signup) {
+                  const { data, error } = await supabase.auth.signUp({
+                    email: form.email.trim().toLowerCase(), password: form.password,
+                    options: {
+                      data: { name: [form.first, form.last].filter(Boolean).join(' ').trim(), country: form.country, currency: form.currency },
+                      emailRedirectTo: window.location.origin + '/#shop'
+                    }
+                  });
+                  if (error) throw error;
+                  if (data.session) {
+                    if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
+                    else go('dashboard');
+                  } else {
+                    setAuthMessage('Your account request was received. Check your email to confirm your address, then sign in. Your saved checkout will remain in this browser.');
+                  }
+                } else {
+                  const { error } = await supabase.auth.signInWithPassword({
+                    email: form.email.trim().toLowerCase(), password: form.password
+                  });
+                  if (error) throw error;
+                  if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
+                  else go('dashboard');
+                }
+              } catch (error) {
+                setAuthError(error instanceof Error ? error.message : 'We could not complete that account request. Please try again.');
+              } finally { setAuthBusy(false); }
             }}
           >
-            {signup && (
+            {!passwordRecovery && signup && (
               <div className="form-row">
                 <label>
                   First name
@@ -911,17 +960,13 @@ function App() {
                 </label>
               </div>
             )}
-            <label>
+            {!passwordRecovery && <label>
               Email address
-              <input
-                required
-                type="email"
-                value={form.email}
+              <input required type="email" autoComplete="email" value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
-                placeholder="name@example.com"
-              />
-            </label>
-            {signup && (
+                placeholder="name@example.com" />
+            </label>}
+            {!passwordRecovery && signup && (
               <div className="form-row">
                 <label>
                   Country
@@ -955,14 +1000,11 @@ function App() {
               </div>
             )}
             <label>
-              Password
-              <input
-                required
-                type="password"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                placeholder="Enter password"
-              />
+              {passwordRecovery ? 'New password' : 'Password'}
+              <input required type="password" minLength={8}
+                autoComplete={passwordRecovery || signup ? 'new-password' : 'current-password'}
+                value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
+                placeholder={passwordRecovery ? 'Enter your new password' : 'Enter password'} />
             </label>
             {signup && (
               <label className="checkline">
@@ -970,30 +1012,32 @@ function App() {
                 privacy policy.
               </label>
             )}
-            {!signup && (
-              <button
-                type="button"
-                className="forgot"
-                onClick={() =>
-                  announce('Password recovery will be added in a later phase.')
-                }
-              >
-                Forgot password?
-              </button>
-            )}
-            <button className="btn btn-red full">
-              {signup ? 'Continue' : 'Sign in'} <ArrowUpRight size={16} />
+            {!signup && !passwordRecovery && <button type="button" className="forgot"
+              disabled={authBusy || !form.email.trim()}
+              onClick={async () => {
+                setAuthBusy(true); setAuthError(''); setAuthMessage('');
+                try {
+                  const { error } = await supabase.auth.resetPasswordForEmail(form.email.trim().toLowerCase(), { redirectTo: window.location.origin + '/#login' });
+                  if (error) throw error;
+                  setAuthMessage('If the address is registered, a password recovery email has been sent.');
+                } catch (error) {
+                  setAuthError(error instanceof Error ? error.message : 'Password recovery could not be started.');
+                } finally { setAuthBusy(false); }
+              }}>Forgot password?</button>}
+            {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
+            {authMessage && <p className="auth-feedback success" role="status">{authMessage}</p>}
+            <button className="btn btn-red full" disabled={authBusy}>
+              {authBusy ? 'Please wait…' : passwordRecovery ? 'Update password' : signup ? 'Create account' : 'Sign in'} <ArrowUpRight size={16} />
             </button>
           </form>
-          <div className="auth-switch">
+          {!passwordRecovery && <div className="auth-switch">
             {signup ? 'Already have an account?' : 'New to the platform?'}{' '}
-            <button onClick={() => go(signup ? 'login' : 'signup')}>
+            <button onClick={() => { setAuthError(''); setAuthMessage(''); go(signup ? 'login' : 'signup'); }}>
               {signup ? 'Log in' : 'Create account'}
             </button>
-          </div>
+          </div>}
           <div className="auth-disclaimer">
-            <LockKeyhole size={14} /> Preview only. No account is created and
-            credentials are not transmitted or stored.
+            <LockKeyhole size={14} /> Secure account access is provided by Supabase Authentication.
           </div>
         </div>
       </div>
@@ -1035,6 +1079,14 @@ function App() {
         <button onClick={() => go('admin')}>
           <ShieldCheck size={16} />
           Management console
+        </button>
+        <button onClick={async () => {
+          const { error } = await supabase.auth.signOut();
+          if (error) announce(error.message);
+          else go('home');
+        }}>
+          <LogOut size={16} />
+          Sign out
         </button>
       </div>
     </aside>

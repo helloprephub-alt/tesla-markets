@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, BatteryCharging, Check, ChevronRight,
   CreditCard, Heart, Menu, PackageCheck, PlugZap, Search, ShieldCheck,
@@ -7,9 +7,22 @@ import {
 import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
 import { supabase } from './lib/supabase';
 
-type Props = { onSelectModel: (id: string) => void; onEnquire: (context: string) => void };
+type Props = { onSelectModel: (id: string) => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
 type CartLine = { id: string; quantity: number; selectedSize?: string };
+type CheckoutIntent = {
+  cart: CartLine[];
+  checkoutDetails?: { fullName: string; email: string; phone: string; address: string; city: string; postalCode: string; country: string };
+};
+const CHECKOUT_INTENT_KEY = 'tesla-markets-checkout-intent';
+function readCheckoutIntent(): CheckoutIntent | null {
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_INTENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CheckoutIntent;
+    return Array.isArray(parsed.cart) ? parsed : null;
+  } catch { return null; }
+}
 
 const money = (amount: number) => new Intl.NumberFormat('en-US', {
   style: 'currency', currency: 'USD', maximumFractionDigits: 0
@@ -115,14 +128,15 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   );
 }
 
-export function Marketplace({ onSelectModel }: Props) {
+export function Marketplace({ onSelectModel, onRequireAuth }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
   const [selected, setSelected] = useState<StoreProduct | null>(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [detailQuantity, setDetailQuantity] = useState(1);
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const [cart, setCart] = useState<CartLine[]>(() => readCheckoutIntent()?.cart || []);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [saved, setSaved] = useState<string[]>([]);
@@ -131,9 +145,9 @@ export function Marketplace({ onSelectModel }: Props) {
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [showAllDepartments, setShowAllDepartments] = useState(false);
   const [checkoutStage, setCheckoutStage] = useState<'details' | 'payment' | 'done'>('details');
-  const [checkoutDetails, setCheckoutDetails] = useState({
+  const [checkoutDetails, setCheckoutDetails] = useState(() => readCheckoutIntent()?.checkoutDetails || ({
     fullName: '', email: '', phone: '', address: '', city: '', postalCode: '', country: ''
-  });
+  }));
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [checkoutReference, setCheckoutReference] = useState('');
   const [checkoutAction, setCheckoutAction] = useState<'pay' | 'save'>('pay');
@@ -144,6 +158,34 @@ export function Marketplace({ onSelectModel }: Props) {
   const [paymentProofError, setPaymentProofError] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState('');
+
+  useEffect(() => {
+    const savedIntent = readCheckoutIntent();
+    if (savedIntent) {
+      setCheckoutOpen(true);
+      setCartOpen(false);
+      setCheckoutStage('details');
+      sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
+    }
+    void supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) setCheckoutDetails(current => ({ ...current, email: current.email || data.user!.email! }));
+    });
+  }, []);
+
+  const persistCheckoutIntent = () => {
+    try { sessionStorage.setItem(CHECKOUT_INTENT_KEY, JSON.stringify({ cart, checkoutDetails })); }
+    catch { setCheckoutMessage('This browser could not save your checkout. Please allow session storage and try again.'); }
+  };
+
+  const beginCheckout = async () => {
+    setCheckoutMessage('');
+    const { data, error } = await supabase.auth.getSession();
+    if (error) { setCheckoutMessage(error.message); return; }
+    if (!data.session?.user) { persistCheckoutIntent(); onRequireAuth(); return; }
+    if (data.session.user.email) setCheckoutDetails(current => ({ ...current, email: data.session!.user.email! }));
+    setCartOpen(false);
+    setCheckoutOpen(true);
+  };
 
   const setCheckoutField = (field: keyof typeof checkoutDetails, value: string) => {
     setCheckoutDetails(current => ({ ...current, [field]: value }));
@@ -204,6 +246,12 @@ export function Marketplace({ onSelectModel }: Props) {
     setCheckoutBusy(true);
     setCheckoutMessage('');
     try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const user = authData.user;
+      if (!user) { persistCheckoutIntent(); onRequireAuth(); return; }
+      if (!user.email) throw new Error('Your account needs a verified email address before checkout.');
+      if (checkoutDetails.email.trim().toLowerCase() !== user.email.toLowerCase()) throw new Error('Use the email address connected to your signed-in account.');
       const orderId = crypto.randomUUID();
       const reference = 'TM-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + crypto.randomUUID().slice(0,6).toUpperCase();
       const items = cartLines.map(line => ({
@@ -218,8 +266,9 @@ export function Marketplace({ onSelectModel }: Props) {
       const { error } = await supabase.from('store_orders').insert({
         id: orderId,
         order_reference: reference,
+        customer_id: user.id,
         customer_name: checkoutDetails.fullName.trim(),
-        customer_email: checkoutDetails.email.trim().toLowerCase(),
+        customer_email: user.email.toLowerCase(),
         customer_phone: checkoutDetails.phone.trim(),
         delivery_address: checkoutDetails.address.trim(),
         delivery_city: checkoutDetails.city.trim(),
@@ -259,6 +308,9 @@ export function Marketplace({ onSelectModel }: Props) {
     setPaymentProofError('');
     setCheckoutMessage('');
     try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Your sign-in session has expired. Sign in again before submitting payment evidence. Your order will remain unpaid.');
       const ext = paymentProofFile.type === 'image/png' ? 'png' : paymentProofFile.type === 'image/webp' ? 'webp' : 'jpg';
       const path = checkoutOrderId + '/' + crypto.randomUUID() + '.' + ext;
       const { error: uploadError } = await supabase.storage.from('shop-payment-proofs').upload(path, paymentProofFile, {
@@ -316,6 +368,9 @@ export function Marketplace({ onSelectModel }: Props) {
   const subtotal = cartLines.reduce((sum,line) => sum + line.unitPrice * line.quantity, 0);
   const originalSubtotal = cartLines.reduce((sum,line) => sum + line.product.originalPrice * line.quantity, 0);
   const totalSavings = originalSubtotal - subtotal;
+  const selectedGallery = selected
+    ? [...new Set([selected.image, ...(selected.gallery || [])].filter((src): src is string => Boolean(src)))]
+    : [];
 
   const addToCart = (product: StoreProduct, quantity = 1, size?: string) => {
     if (productPrice(product) === null) return;
@@ -339,6 +394,7 @@ export function Marketplace({ onSelectModel }: Props) {
 
   const openDetail = (product: StoreProduct) => {
     setSelected(product);
+    setSelectedGalleryImage(product.image || '');
     setSelectedSize(product.sizes?.[0] || '');
     setDetailQuantity(1);
   };
@@ -437,7 +493,7 @@ export function Marketplace({ onSelectModel }: Props) {
         </div>
         {visibleProducts.length ? <div className="tm-store-product-grid">
           {visibleProducts.map(product => <ProductCard key={product.id} product={product} onOpen={() => openDetail(product)} onAdd={() => addToCart(product)} saved={saved.includes(product.id)} onSave={() => setSaved(current => current.includes(product.id) ? current.filter(id => id !== product.id) : [...current, product.id])}/>)}
-        </div> : <div className="tm-store-empty"><PackageCheck size={28}/><b>No matching products</b><p>Try another search or choose a different department.</p><button onClick={() => switchDepartment('All products')}>Back to all products</button></div>}
+        </div> : <div className="tm-store-empty"><PackageCheck size={28}/><b>{storeProducts.length ? 'No matching products' : 'Verified product galleries are being prepared'}</b><p>{storeProducts.length ? 'Try another search or choose a different department.' : 'Products are only published after two distinct, matching product photographs have been verified. Browse the vehicle collection above while more product galleries are prepared.'}</p><button onClick={() => switchDepartment('All products')}>Back to all products</button></div>}
         {department === 'All products' && <p className="tm-store-data-note">Every priced listing displays its original price and its own rounded Christmas sale price. Discount rates vary by product. Energy products without a verified partner price are shown as price-on-request until supplier pricing is verified.</p>}
       </section>
 
@@ -448,12 +504,19 @@ export function Marketplace({ onSelectModel }: Props) {
       </section>
 
       {selected && (
-        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setSelected(null); }}>
+        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) { setSelected(null); setSelectedGalleryImage(''); } }}>
           <section className="tm-store-detail" role="dialog" aria-modal="true" aria-labelledby="tm-store-detail-title">
-            <button className="tm-store-detail-back" onClick={() => setSelected(null)}><ArrowLeft size={15}/> Continue shopping</button>
-            <button className="tm-store-close" onClick={() => setSelected(null)} aria-label="Close product details"><X size={19}/></button>
+            <button className="tm-store-detail-back" onClick={() => { setSelected(null); setSelectedGalleryImage(''); }}><ArrowLeft size={15}/> Continue shopping</button>
+            <button className="tm-store-close" onClick={() => { setSelected(null); setSelectedGalleryImage(''); }} aria-label="Close product details"><X size={19}/></button>
             <div className="tm-store-detail-layout">
-              <div className="tm-store-detail-image"><ProductVisual product={selected} variant="large" /></div>
+              <div className="tm-store-detail-gallery">
+                <div className="tm-store-detail-image"><ProductVisual product={{ ...selected, image: selectedGalleryImage || selected.image }} variant="large" /></div>
+                {selectedGallery.length > 1 && <div className="tm-store-gallery-thumbnails" aria-label={selected.name + ' product photos'}>
+                  {selectedGallery.map((src, index) => <button type="button" key={src} className={selectedGalleryImage === src ? 'active' : ''} onClick={() => setSelectedGalleryImage(src)} aria-label={'Show product photo ' + (index + 1)}>
+                    <img src={src} alt={selected.name + ' view ' + (index + 1)} loading="lazy" decoding="async" />
+                  </button>)}
+                </div>}
+              </div>
               <div className="tm-store-detail-copy">
                 <span className="tm-store-eyebrow">{selected.category} · {selected.sourceLabel}</span>
                 <h2 id="tm-store-detail-title">{selected.name}</h2>
@@ -497,7 +560,7 @@ export function Marketplace({ onSelectModel }: Props) {
                 <div><span>Product savings</span><b className="saving">−{money(totalSavings)}</b></div>
                 <div className="total"><span>Estimated product total</span><b>{money(subtotal)}</b></div>
                 <small>Shipping, taxes and any duties are calculated before the payment step. Prices are rounded to whole US dollars.</small>
-                <button onClick={() => {setCartOpen(false);setCheckoutOpen(true)}}>Continue to checkout <ArrowRight size={16}/></button>
+                <button onClick={() => void beginCheckout()}>Continue to checkout <ArrowRight size={16}/></button>
               </div>
             </>}
           </aside>
@@ -574,7 +637,7 @@ export function Marketplace({ onSelectModel }: Props) {
                     <button type="button" onClick={() => handlePaymentProof()}>Remove</button>
                   </div>}
                   {paymentProofError && <small role="alert" className="tm-store-proof-error">{paymentProofError}</small>}
-                  <p className="tm-store-proof-instruction">Upload the image. Your proof will be verified.</p>
+                  <p className="tm-store-proof-instruction">Upload a clear purchase receipt or payment image. Do not upload or reveal gift-card redemption codes, PINs, or full card details. Evidence is private and remains awaiting administrator verification; uploading a screenshot does not mark the order as paid.</p>
                 </div>
                 {checkoutMessage && <p className="tm-store-checkout-message" role="alert">{checkoutMessage}</p>}
                 <div className="tm-store-checkout-actions">
