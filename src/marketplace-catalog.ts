@@ -298,6 +298,20 @@ const allStoreProducts: StoreProduct[] = [
   {id:'model-3-key-band',name:'Model 3 Key Band',department:'Vehicle Accessories',category:'Model 3 · Keys',originalPrice:18,discountPercent:50,description:'Key band accessory for Model 3.',sourceLabel:'Tesla Shop reference PDF · $18',availability:'Compatibility and stock must be reconfirmed',brandType:'Tesla Shop listing'}
 ];
 
+/**
+ * The live shop publishes only products with a dedicated direct Tesla Shop
+ * photograph, a verified display name and one fixed reference price.
+ * There is no shared image fallback. Duplicate image URLs are skipped.
+ */
+const usedStoreImageUrls = new Set<string>();
+export const storeProducts: StoreProduct[] = allStoreProducts.filter(product => {
+  if (!product.name.trim() || !product.image || !product.image.startsWith('https://digitalassets-shop.tesla.com/')) return false;
+  if (!Number.isFinite(product.originalPrice) || product.originalPrice <= 0 || product.priceRange) return false;
+  if (usedStoreImageUrls.has(product.image)) return false;
+  usedStoreImageUrls.add(product.image);
+  return true;
+});
+
 /** Discounts are set per product; products without an active discount show only their listed price. */
 export function getDiscountedPrice(product: StoreProduct): number | null {
   if (!product.originalPrice || product.originalPrice <= 0) return null;
