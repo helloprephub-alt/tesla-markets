@@ -37,6 +37,14 @@ function productPrice(product: StoreProduct) {
 }
 
 function productArtStyle(product: StoreProduct) {
+  if (product.image) {
+    return {
+      backgroundImage: 'url("' + product.image + '")',
+      backgroundSize: 'contain',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    };
+  }
   const index = getProductImageIndex(product);
   const column = index % 4;
   const row = Math.floor(index / 4);
