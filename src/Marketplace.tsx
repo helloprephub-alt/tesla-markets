@@ -75,7 +75,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
     <article className="tm-store-card">
       <button className="tm-store-image" onClick={onOpen} aria-label={'View ' + product.name}>
         <span className="tm-store-product-art" style={productArtStyle(product)} role="img" aria-label={product.name}/>
-        <span className="tm-store-sale-badge">10% OFF</span>
+        <span className="tm-store-sale-badge">{product.discountPercent}% OFF</span>
         {product.featured && <span className="tm-store-featured">FEATURED</span>}
         <span className="tm-store-image-zoom">View item <ArrowUpRight size={13}/></span>
       </button>
@@ -209,7 +209,7 @@ export function Marketplace({ onSelectModel }: Props) {
         <div className="tm-store-christmas-copy">
           <span>TESLA MARKETS · CHRISTMAS PROMOTION</span>
           <b>Holiday season. Special prices.</b>
-          <small>10% OFF EVERY PRODUCT · DECEMBER SPECIAL</small>
+          <small>DIFFERENT DISCOUNTS · UP TO 70% OFF SELECTED ITEMS</small>
         </div>
         <button onClick={() => switchDepartment('All products')}>Shop Christmas offers <ArrowUpRight size={15}/></button>
         <span className="tm-store-snowflake one">✦</span><span className="tm-store-snowflake two">✧</span><span className="tm-store-snowflake three">❄</span>
@@ -221,10 +221,10 @@ export function Marketplace({ onSelectModel }: Props) {
             <div className="tm-store-hero-copy">
               <span className="tm-store-eyebrow">TESLA MARKETS · CHRISTMAS COLLECTION</span>
               <h1>Christmas<br/><em>special offers.</em></h1>
-              <p>Discover Tesla apparel, drinkware, miniatures, vehicle accessories, charging and energy products — all with 10% off.</p>
+              <p>Discover Tesla apparel, drinkware, miniatures, vehicle accessories, charging and energy products — with different Christmas discounts across the collection.</p>
               <div className="tm-store-hero-actions">
                 <button onClick={() => switchDepartment('All products')}>Shop all Christmas offers <ArrowRight size={16}/></button>
-                <span>10% off every listed product</span>
+                <span>Product-specific Christmas discounts</span>
               </div>
             </div>
             <div className="tm-store-hero-media">
@@ -264,7 +264,7 @@ export function Marketplace({ onSelectModel }: Props) {
         {visibleProducts.length ? <div className="tm-store-product-grid">
           {visibleProducts.map(product => <ProductCard key={product.id} product={product} onOpen={() => openDetail(product)} onAdd={() => addToCart(product)} saved={saved.includes(product.id)} onSave={() => setSaved(current => current.includes(product.id) ? current.filter(id => id !== product.id) : [...current, product.id])}/>)}
         </div> : <div className="tm-store-empty"><PackageCheck size={28}/><b>No matching products</b><p>Try another search or choose a different department.</p><button onClick={() => switchDepartment('All products')}>Back to all products</button></div>}
-        {department === 'All products' && <p className="tm-store-data-note">Every priced listing displays its original price and 10% Christmas sale price. Energy products without a verified partner price are shown as price-on-request with the same 10% offer applied to the confirmed quote.</p>}
+        {department === 'All products' && <p className="tm-store-data-note">Every priced listing displays its original price and its own rounded Christmas sale price. Discount rates vary by product. Energy products without a verified partner price are shown as price-on-request until supplier pricing is verified.</p>}
       </section>
 
       <section className="tm-store-benefits">
@@ -288,7 +288,7 @@ export function Marketplace({ onSelectModel }: Props) {
                   {productPrice(selected) !== null ? <>
                     <s>{money(selected.originalPrice)}</s>
                     <b>{money(productPrice(selected)!)}</b>
-                    <span>10% OFF</span>
+                    <span>{selected.discountPercent}% OFF</span>
                   </> : <b>Price on request</b>}
                 </div>
                 <small className="tm-store-stock">{selected.availability}</small>
