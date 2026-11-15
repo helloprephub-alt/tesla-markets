@@ -10,6 +10,16 @@ type Thread = { id: string; visitorName?: string; visitorEmail?: string; enquiry
 type Visit = { id: string; page: string; createdAt: number };
 type OperationalOrder = {id:string;reference:string;item:string;status:string;amount:number;currency:string;customerId:string;conversationId:string|null;paymentUrl:string|null;createdAt:number};
 type OperationalPayment = {id:string;reference:string;orderId:string;amount:number;currency:string;method:string;providerReference:string|null;status:string;createdAt:number};
+type ShopOrderReview = {
+  id:string; reference:string; customerName:string; email:string; phone:string;
+  address:string; city:string; postalCode:string|null; country:string;
+  items:Array<{product_id?:string;name:string;quantity:number;selected_size?:string|null;unit_price:number;original_unit_price?:number;discount_percent?:number}>;
+  subtotal:number; discountTotal:number; currency:string; status:string; createdAt:number;
+};
+type ShopProofReview = {
+  id:string; orderId:string; method:string; storagePath:string; signedUrl:string;
+  status:string; reviewNote:string|null; createdAt:number; reviewedAt:string|null;
+};
 type Overview = { conversations: number; messages: number; generatedImages: number; visits: number; clicks: number; onlineNow: number; updatedAt: number };
 type AdminTask = {id:string;title:string;description:string;status:string;priority:string;due_at:string|null;created_at:string};
 type AdminNotice = {id:string;title:string;body:string;type:string;is_read:boolean;created_at:string};
@@ -55,6 +65,9 @@ export function AdminConsole() {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [orders,setOrders]=useState<OperationalOrder[]>([]);
   const [payments,setPayments]=useState<OperationalPayment[]>([]);
+  const [shopOrders,setShopOrders]=useState<ShopOrderReview[]>([]);
+  const [shopProofs,setShopProofs]=useState<ShopProofReview[]>([]);
+  const [reviewingShopProof,setReviewingShopProof]=useState<string|null>(null);
   const [paymentLinks,setPaymentLinks]=useState<Record<string,string>>({});
   const [orderAmounts,setOrderAmounts]=useState<Record<string,string>>({});
   const [paymentOrderId,setPaymentOrderId]=useState('');
@@ -265,7 +278,7 @@ export function AdminConsole() {
   const load = async () => {
     setRefreshing(true);
     try {
-      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, orderRows, paymentRows, taskRows, noticeRows, auditRows] = await Promise.all([
+      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, orderRows, paymentRows, storeOrderRows, storeProofRows, taskRows, noticeRows, auditRows] = await Promise.all([
         supabase.from('site_visits').select('id', { count:'exact', head:true }),
         supabase.from('site_clicks').select('id', { count:'exact', head:true }),
         supabase.from('support_conversations').select('id', { count:'exact', head:true }),
@@ -276,11 +289,13 @@ export function AdminConsole() {
         supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
         supabase.from('business_orders').select('id,order_reference,item_description,status,agreed_amount,currency,customer_id,conversation_id,payment_url,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,method,provider_reference,status,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_postal_code,delivery_country,items,subtotal,discount_total,currency,status,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('store_payment_submissions').select('id,order_id,payment_method,proof_storage_path,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_tasks').select('id,title,description,status,priority,due_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('admin_audit_logs').select('id,action,entity_type,entity_id,details,created_at').order('created_at',{ascending:false}).limit(100),
       ]);
-      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,orderRows,paymentRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
+      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,orderRows,paymentRows,storeOrderRows,storeProofRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
       const ids=rows.map(row=>row.customer_id);
       const {data:profiles,error:profilesError}=ids.length?await supabase.from('customer_profiles').select('id,display_name,email,phone').in('id',ids):{data:[],error:null};
@@ -298,6 +313,20 @@ export function AdminConsole() {
       setPaymentLinks(Object.fromEntries((orderRows.data||[]).map(row=>[row.id,row.payment_url||''])));
       setOrderAmounts(Object.fromEntries((orderRows.data||[]).map(row=>[row.id,String(row.agreed_amount||'')])))
       setPayments((paymentRows.data||[]).map(row=>({id:row.id,reference:row.payment_reference,orderId:row.order_id,amount:Number(row.amount||0),currency:row.currency||'USD',method:row.method||'unknown',providerReference:row.provider_reference||null,status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));
+      setShopOrders((storeOrderRows.data||[]).map(row=>({
+        id:row.id,reference:row.order_reference,customerName:row.customer_name,email:row.customer_email,phone:row.customer_phone,
+        address:row.delivery_address,city:row.delivery_city,postalCode:row.delivery_postal_code||null,country:row.delivery_country,
+        items:Array.isArray(row.items)?row.items:[],subtotal:Number(row.subtotal||0),discountTotal:Number(row.discount_total||0),
+        currency:row.currency||'USD',status:row.status||'awaiting_payment',createdAt:new Date(row.created_at).getTime()
+      })));
+      const signedShopProofs=await Promise.all((storeProofRows.data||[]).map(async row=>{
+        const {data:signed,error:signedError}=await supabase.storage.from('shop-payment-proofs').createSignedUrl(row.proof_storage_path,900);
+        if(signedError) throw signedError;
+        return {id:row.id,orderId:row.order_id,method:row.payment_method,storagePath:row.proof_storage_path,
+          signedUrl:signed?.signedUrl||'',status:row.status||'pending',reviewNote:row.review_note||null,
+          createdAt:new Date(row.created_at).getTime(),reviewedAt:row.reviewed_at||null};
+      }));
+      setShopProofs(signedShopProofs);
       setTasks((taskRows.data||[]) as AdminTask[]);setNotices((noticeRows.data||[]) as AdminNotice[]);setAuditEntries((auditRows.data||[]) as AuditEntry[]);
       setError('');
     } catch (e) {
@@ -397,6 +426,38 @@ export function AdminConsole() {
       setError('');
     } catch(e) {
       setError(e instanceof Error?e.message:'Could not mark notifications as read.');
+    }
+  };
+
+  const reviewShopPaymentProof = async (proofId:string, decision:'approve'|'reject') => {
+    const proof=shopProofs.find(item=>item.id===proofId);
+    const order=proof?shopOrders.find(item=>item.id===proof.orderId):null;
+    if(!proof||!order){setError('The shop payment proof or order could not be found.');return;}
+    setReviewingShopProof(proofId);
+    try {
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin) throw new Error('Administrator session expired.');
+      const now=new Date().toISOString();
+      const proofStatus=decision==='approve'?'approved_pending_settlement':'rejected';
+      const orderStatus=decision==='approve'?'proof_approved_pending_settlement':'payment_proof_rejected';
+      const note=decision==='approve'
+        ? 'Proof approved by management. Payment settlement is still unverified.'
+        : 'Payment proof rejected by management. A replacement submission or alternate payment arrangement is required.';
+      const {error:proofError}=await supabase.from('store_payment_submissions').update({
+        status:proofStatus,review_note:note,reviewed_by:current.id,reviewed_at:now
+      }).eq('id',proofId);
+      if(proofError) throw proofError;
+      const {error:orderError}=await supabase.from('store_orders').update({
+        status:orderStatus,updated_at:now
+      }).eq('id',order.id);
+      if(orderError) throw orderError;
+      setShopProofs(currentProofs=>currentProofs.map(item=>item.id===proofId?{...item,status:proofStatus,reviewNote:note,reviewedAt:now}:item));
+      setShopOrders(currentOrders=>currentOrders.map(item=>item.id===order.id?{...item,status:orderStatus}:item));
+      setError('');
+    } catch(e) {
+      setError(e instanceof Error?e.message:'Could not review this payment proof.');
+    } finally {
+      setReviewingShopProof(null);
     }
   };
   const updateOrderStatus = async (orderId:string,status:string) => {
@@ -691,7 +752,41 @@ export function AdminConsole() {
           {section === 'media' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">MEDIA LIBRARY</div><h2>Website media</h2><p>Manage investment slides and the management profile image. Vehicle gallery assets remain attached to the current site resources.</p></div></div><div className="admin-media-links"><button onClick={()=>setSection('investment')}>Manage investment images</button><button onClick={()=>setSection('catalogue')}>View vehicle galleries</button><button onClick={()=>setSection('settings')}>Management profile image</button></div></section>}
           {section === 'messages' && <section className="admin-console-panel admin-messages-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER COMMUNICATIONS</div><h2>Customer inbox</h2><p>Customer conversation list and replies. The conversation header and reply bar remain in place while messages scroll.</p></div></div><AdminInbox/></section>}
           {section === 'operations' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">ENQUIRY PIPELINE</div><h2>{threads.length} enquiries</h2><p>Track the current status of each customer enquiry.</p></div></div>{threads.length?<div className="admin-pipeline">{threads.map(thread=><article key={thread.id}><div><b>{thread.visitorName||'Website visitor'}</b><small>{thread.lastMessage||'No message yet'} · {new Date(thread.updatedAt).toLocaleString()}</small></div><label>Status<select value={thread.status||'new'} onChange={event=>void updateStatus(thread.id,event.target.value)}>{statusOptions.map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></label></article>)}</div>:<p className="admin-empty-note">New enquiries will appear here.</p>}</section>}
-          {section === 'orders' && <><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE ORDERS & PRO FORMA</div><h2>{orders.length} recorded orders</h2><p>Set the final amount, paste a hosted checkout URL from your approved payment provider, then approve and send it to the customer. Verify incoming funds before marking payment complete.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>{orders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Vehicle</th><th>Final amount (USD)</th><th>Order status</th><th>Checkout link</th><th>Received</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td><input aria-label={'Final amount for '+order.reference} type="number" min="0.01" step="0.01" value={orderAmounts[order.id]??String(order.amount)} onChange={event=>setOrderAmounts(current=>({...current,[order.id]:event.target.value}))}/></td><td><select value={order.status} onChange={event=>void updateOrderStatus(order.id,event.target.value)}>{['draft','awaiting_payment','processing','completed','cancelled','refunded'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td><input aria-label={'Hosted checkout link for '+order.reference} type="url" placeholder="https://…" value={paymentLinks[order.id]??''} onChange={event=>setPaymentLinks(current=>({...current,[order.id]:event.target.value}))}/><button className="btn btn-dark" onClick={()=>void sendPaymentLink(order.id)}>Approve & send link</button></td><td>{new Date(order.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No vehicle orders have been recorded yet.</p>}</section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECONCILIATION</div><h2>Record an incoming payment</h2><p>Use this for payments received through an independently approved method. New records stay pending until management verifies the transaction.</p></div></div><div className="admin-task-create"><label>Order<select value={paymentOrderId} onChange={event=>setPaymentOrderId(event.target.value)}><option value="">Select an order</option>{orders.filter(order=>!['cancelled','refunded'].includes(order.status)).map(order=><option key={order.id} value={order.id}>{order.reference} · {order.item}</option>)}</select></label><div className="admin-task-fields"><label>Amount (USD)<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={event=>setPaymentAmount(event.target.value)} placeholder="e.g. 39990"/></label><label>Payment method<select value={paymentMethod} onChange={event=>setPaymentMethod(event.target.value)}><option value="bank_transfer">Bank transfer</option><option value="card">Card / online gateway</option><option value="wire_transfer">International wire</option><option value="other">Other approved method</option></select></label><label>Transaction / provider reference<input value={paymentProviderReference} onChange={event=>setPaymentProviderReference(event.target.value)} placeholder="Bank or gateway reference"/></label><button className="btn btn-dark" disabled={savingPayment||!paymentOrderId||!paymentAmount.trim()||!paymentProviderReference.trim()} onClick={()=>void recordPayment()}>{savingPayment?'Saving…':'Record pending payment'}</button></div></div></section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECORDS</div><h2>{payments.length} recorded payments</h2><p>Verify only after matching the transaction against the bank or payment provider.</p></div></div>{payments.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Payment reference</th><th>Order</th><th>Amount</th><th>Method / provider reference</th><th>Verification</th></tr></thead><tbody>{payments.map(payment=><tr key={payment.id}><td>{payment.reference}</td><td>{orders.find(order=>order.id===payment.orderId)?.reference||'Order'}</td><td>{new Intl.NumberFormat('en-US',{style:'currency',currency:payment.currency||'USD'}).format(payment.amount)}</td><td>{payment.method.replaceAll('_',' ')}<small>{payment.providerReference||'No provider reference'}</small></td><td><select value={payment.status} onChange={event=>void updatePaymentStatus(payment.id,event.target.value)}>{['pending','verified','rejected','refunded'].map(status=><option key={status} value={status}>{status}</option>)}</select></td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No payments have been recorded. Payments must be recorded and independently verified.</p>}</section></>}
+          {section === 'orders' && <>
+            <section className="admin-console-panel">
+              <div className="admin-console-panel-head">
+                <div><div className="eyebrow dark">SHOP PAYMENT PROOF REVIEW</div><h2>{shopProofs.filter(proof=>proof.status==='pending').length} pending reviews</h2><p>Review the uploaded gift-card image, then approve or reject the evidence. Approval is not payment settlement.</p></div>
+                <button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button>
+              </div>
+              {shopProofs.length ? <div className="tm-shop-review-grid">
+                {shopProofs.map(proof=>{
+                  const order=shopOrders.find(item=>item.id===proof.orderId);
+                  return <article className="tm-shop-review-card" key={proof.id}>
+                    <div className="tm-shop-review-top"><b>{order?.reference||proof.orderId.slice(0,8)}</b><span className={'tm-shop-review-status '+proof.status}>{proof.status.replaceAll('_',' ')}</span></div>
+                    {order && <>
+                      <h3>{order.customerName}</h3>
+                      <p>{order.email} · {order.phone}</p>
+                      <p>{order.address}, {order.city}{order.postalCode?' '+order.postalCode:''}, {order.country}</p>
+                      <div className="tm-shop-review-items">{order.items.map((item,index)=><div key={item.product_id||index}><span>{item.name} × {item.quantity}{item.selected_size?' · '+item.selected_size:''}</span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(item.unit_price*item.quantity)}</b></div>)}</div>
+                      <div className="tm-shop-review-total"><span>Order total</span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(order.subtotal)}</b></div>
+                    </>}
+                    <div className="tm-shop-review-method">Payment method: <b>{proof.method.replaceAll('_',' ')}</b></div>
+                    {proof.signedUrl ? <a className="tm-shop-review-proof" href={proof.signedUrl} target="_blank" rel="noreferrer"><img src={proof.signedUrl} alt={'Payment proof for '+(order?.reference||'shop order')}/><span>Open full image</span></a> : <p className="admin-empty-note">Proof image unavailable. Refresh to request a new secure link.</p>}
+                    {proof.reviewNote && <small className="tm-shop-review-note">{proof.reviewNote}</small>}
+                    {proof.status==='pending' && <div className="tm-shop-review-actions">
+                      <button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'approve')}>Approve proof</button>
+                      <button className="btn btn-outline" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'reject')}>Reject</button>
+                    </div>}
+                    <small className="tm-shop-review-date">Submitted {new Date(proof.createdAt).toLocaleString()}{proof.reviewedAt?' · Reviewed '+new Date(proof.reviewedAt).toLocaleString():''}</small>
+                  </article>;
+                })}
+              </div> : <p className="admin-empty-note">No shop payment proofs have been submitted yet.</p>}
+            </section>
+            <section className="admin-console-panel">
+              <div className="admin-console-panel-head"><div><div className="eyebrow dark">SHOP ORDERS</div><h2>{shopOrders.length} customer orders</h2><p>Orders saved for later, awaiting proof and reviewed orders are listed here.</p></div></div>
+              {shopOrders.length ? <div className="tm-shop-orders-list">{shopOrders.map(order=><article key={order.id}><div><b>{order.reference}</b><small>{order.customerName} · {order.email}</small><small>{order.items.map(item=>item.name+' × '+item.quantity).join(' · ')}</small></div><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(order.subtotal)}</b><span className={'tm-shop-review-status '+order.status}>{order.status.replaceAll('_',' ')}</span></article>)}</div> : <p className="admin-empty-note">No shop orders have been saved yet.</p>}
+            </section>
+            <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE ORDERS & PRO FORMA</div><h2>{orders.length} recorded orders</h2><p>Set the final amount, paste a hosted checkout URL from your approved payment provider, then approve and send it to the customer. Verify incoming funds before marking payment complete.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE ORDERS & PRO FORMA</div><h2>{orders.length} recorded orders</h2><p>Set the final amount, paste a hosted checkout URL from your approved payment provider, then approve and send it to the customer. Verify incoming funds before marking payment complete.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>{orders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Vehicle</th><th>Final amount (USD)</th><th>Order status</th><th>Checkout link</th><th>Received</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td><input aria-label={'Final amount for '+order.reference} type="number" min="0.01" step="0.01" value={orderAmounts[order.id]??String(order.amount)} onChange={event=>setOrderAmounts(current=>({...current,[order.id]:event.target.value}))}/></td><td><select value={order.status} onChange={event=>void updateOrderStatus(order.id,event.target.value)}>{['draft','awaiting_payment','processing','completed','cancelled','refunded'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td><input aria-label={'Hosted checkout link for '+order.reference} type="url" placeholder="https://…" value={paymentLinks[order.id]??''} onChange={event=>setPaymentLinks(current=>({...current,[order.id]:event.target.value}))}/><button className="btn btn-dark" onClick={()=>void sendPaymentLink(order.id)}>Approve & send link</button></td><td>{new Date(order.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No vehicle orders have been recorded yet.</p>}</section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECONCILIATION</div><h2>Record an incoming payment</h2><p>Use this for payments received through an independently approved method. New records stay pending until management verifies the transaction.</p></div></div><div className="admin-task-create"><label>Order<select value={paymentOrderId} onChange={event=>setPaymentOrderId(event.target.value)}><option value="">Select an order</option>{orders.filter(order=>!['cancelled','refunded'].includes(order.status)).map(order=><option key={order.id} value={order.id}>{order.reference} · {order.item}</option>)}</select></label><div className="admin-task-fields"><label>Amount (USD)<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={event=>setPaymentAmount(event.target.value)} placeholder="e.g. 39990"/></label><label>Payment method<select value={paymentMethod} onChange={event=>setPaymentMethod(event.target.value)}><option value="bank_transfer">Bank transfer</option><option value="card">Card / online gateway</option><option value="wire_transfer">International wire</option><option value="other">Other approved method</option></select></label><label>Transaction / provider reference<input value={paymentProviderReference} onChange={event=>setPaymentProviderReference(event.target.value)} placeholder="Bank or gateway reference"/></label><button className="btn btn-dark" disabled={savingPayment||!paymentOrderId||!paymentAmount.trim()||!paymentProviderReference.trim()} onClick={()=>void recordPayment()}>{savingPayment?'Saving…':'Record pending payment'}</button></div></div></section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECORDS</div><h2>{payments.length} recorded payments</h2><p>Verify only after matching the transaction against the bank or payment provider.</p></div></div>{payments.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Payment reference</th><th>Order</th><th>Amount</th><th>Method / provider reference</th><th>Verification</th></tr></thead><tbody>{payments.map(payment=><tr key={payment.id}><td>{payment.reference}</td><td>{orders.find(order=>order.id===payment.orderId)?.reference||'Order'}</td><td>{new Intl.NumberFormat('en-US',{style:'currency',currency:payment.currency||'USD'}).format(payment.amount)}</td><td>{payment.method.replaceAll('_',' ')}<small>{payment.providerReference||'No provider reference'}</small></td><td><select value={payment.status} onChange={event=>void updatePaymentStatus(payment.id,event.target.value)}>{['pending','verified','rejected','refunded'].map(status=><option key={status} value={status}>{status}</option>)}</select></td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No payments have been recorded. Payments must be recorded and independently verified.</p>}</section></>}
           {section === 'tasks' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">WORK MANAGEMENT</div><h2>Tasks & follow-ups</h2><p>Create real, saved follow-up tasks for the management team.</p></div></div><div className="admin-task-create"><label>Task title<input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} placeholder="e.g. Follow up with customer"/></label><label>Description<textarea rows={2} value={taskDescription} onChange={e=>setTaskDescription(e.target.value)} placeholder="What needs to be done?"/></label><div className="admin-task-fields"><label>Priority<select value={taskPriority} onChange={e=>setTaskPriority(e.target.value)}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Due date<input type="datetime-local" value={taskDue} onChange={e=>setTaskDue(e.target.value)}/></label><button className="btn btn-dark" disabled={!taskTitle.trim()} onClick={()=>void createTask()}><Plus size={15}/> Create task</button></div></div><div className="admin-task-list">{tasks.map(task=><article key={task.id}><div><b>{task.title}</b><p>{task.description||'No description provided.'}</p><small>{task.priority.toUpperCase()} priority · {task.due_at?'Due '+new Date(task.due_at).toLocaleString():'No due date'} · Created {new Date(task.created_at).toLocaleDateString()}</small></div><label>Status<select value={task.status} onChange={e=>void updateTaskStatus(task.id,e.target.value)}><option value="open">Open</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label></article>)}{tasks.length===0&&<p className="admin-empty-note">No tasks yet. Create your first follow-up above.</p>}</div></section>}
           {section === 'notifications' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">SYSTEM ALERTS</div><h2>Notifications</h2><p>Saved notifications from the admin notification feed.</p></div>{notices.some(item=>!item.is_read)&&<button className="btn btn-outline" onClick={()=>void markAllNoticesRead()}>Mark all read</button>}</div>{notices.map(item=><article className="admin-notice-row" key={item.id}><span className={item.is_read?'':'unread'}><Bell size={16}/></span><div><b>{item.title}</b><p>{item.body}</p><small>{item.type} · {new Date(item.created_at).toLocaleString()}</small></div>{!item.is_read&&<button className="btn btn-outline" onClick={()=>void markNoticeRead(item.id)}>Mark read</button>}</article>)}{notices.length===0&&<p className="admin-empty-note">No saved notifications yet. New system notifications will appear here.</p>}</section>}
           {section === 'activity' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">ADMIN AUDIT TRAIL</div><h2>Activity logs</h2><p>Recent recorded administrative actions. This view does not invent activity that has not been logged.</p></div></div>{auditEntries.map(entry=><article className="admin-audit-row" key={entry.id}><span><FileClock size={16}/></span><div><b>{entry.action.replaceAll('_',' ')}</b><p>{entry.entity_type}{entry.entity_id?' · '+entry.entity_id:''}</p><small>{new Date(entry.created_at).toLocaleString()} · {JSON.stringify(entry.details||{})}</small></div></article>)}{auditEntries.length===0&&<p className="admin-empty-note">No audit events have been recorded yet.</p>}</section>}
