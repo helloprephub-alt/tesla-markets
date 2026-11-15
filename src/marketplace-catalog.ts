@@ -181,45 +181,30 @@ export const storeProducts: StoreProduct[] = [
 ];
 
 /** Every shop listing carries an individual 10% December offer. Prices are rounded to whole USD. */
+/** Indexes into the 4-column × 5-row product image atlas. */
 export function getProductImageIndex(product: StoreProduct): number {
   const id = product.id.toLowerCase();
   const text = (product.name + ' ' + product.category + ' ' + product.description).toLowerCase();
-  if (id.includes('winter-holiday-sweater')) return 35;
-  if (id.includes('winter-holiday-scarf')) return 34;
-  if (id.includes('winter-holiday-beanie')) return 31;
-  if (id.includes('winter-holiday-mug')) return 30;
-  if (id.includes('winter-holiday-blanket')) return 32;
-  if (id.includes('winter-holiday-dog-sweater')) return 33;
-  if (id.includes('winter-holiday-tee') || id.includes('holiday-tee')) return 37;
-  if (id.includes('holiday-cat')) return 11;
-  if (id.includes('holiday-dog')) return 12;
-  if (id.includes('tesla-ornament')) return 29;
-  if (id.includes('cybertruck-rc-racer')) return 26;
-  if (id.includes('cybertruck-pullback') || id.includes('cybertruck-wind-up')) return 8;
-  if (id.includes('cybercab-pullback') || id.includes('cybercab-wind-up')) return 6;
-  if (id.includes('cybertruck-holiday-diecast')) return 5;
-  if (id.includes('cybercab-diecast')) return 0;
-  if (id.includes('model-3-diecast')) return 20;
-  if (id.includes('model-y-diecast')) return 16;
-  if (id.includes('cybertruck-diecast')) return 5;
-  if (id.includes('wooden-toy') || id.includes('playset')) return 25;
-  if (id.includes('action-figure') || id.includes('bot-action')) return 24;
-  if (text.includes('cybertruck')) return 4;
-  if (text.includes('model 3')) return 15;
-  if (text.includes('model s')) return 17;
-  if (text.includes('model x')) return 18;
-  if (text.includes('model y')) return 19;
-  if (text.includes('semi')) return 23;
-  if (text.includes('optimus') && (text.includes('hoodie') || text.includes('sweatshirt'))) return 1;
-  if (text.includes('hoodie') || text.includes('jacket')) return 22;
-  if (text.includes('tee') || text.includes('t-shirt') || text.includes('shirt')) return 3;
-  if (text.includes('mug') || text.includes('cup') || text.includes('vessel') || text.includes('tumbler') || text.includes('drinkware') || text.includes('espresso')) return 30;
-  if (text.includes('backpack') || text.includes('bag') || text.includes('lifestyle') || text.includes('travel kit')) return 27;
-  if (text.includes('solar') || text.includes('battery') || text.includes('inverter') || text.includes('energy')) return 27;
+  if (id.includes('winter-holiday-sweater')) return 0;
+  if (id.includes('winter-holiday-scarf')) return 1;
+  if (id.includes('winter-holiday-beanie')) return 2;
+  if (id.includes('winter-holiday-tee')) return 3;
+  if (id.includes('winter-holiday-mug')) return 4;
+  if (id.includes('ornament')) return 5;
+  if (id.includes('action-figure')) return 6;
+  if (id.includes('cybertruck-rc') || id.includes('pullback')) return 7;
+  if (id.includes('diecast') || id.includes('racer')) return 8;
+  if (text.includes('backpack') || text.includes('travel kit')) return 10;
+  if (text.includes('mug') || text.includes('cup') || text.includes('vessel') || text.includes('tumbler') || text.includes('espresso') || text.includes('drinkware')) return 12;
+  if (text.includes('charging') || text.includes('connector') || text.includes('charger')) return 14;
+  if (text.includes('model 3') || text.includes('model y')) return 15;
+  if (text.includes('model s') || text.includes('model x')) return 16;
+  if (text.includes('cybertruck') && (text.includes('armor') || text.includes('bed'))) return 17;
+  if (text.includes('cybertruck')) return 18;
   if (product.department === 'Apparel') return 3;
   if (product.department === 'Vehicle Accessories') return 15;
-  if (product.department === 'EV Charging') return 27;
-  return 27;
+  if (product.department === 'EV Charging') return 14;
+  return 19;
 }
 export function getDiscountedPrice(product: StoreProduct): number | null {
   if (!product.originalPrice || product.originalPrice <= 0) return null;
