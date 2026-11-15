@@ -38,12 +38,12 @@ function productPrice(product: StoreProduct) {
 
 function productArtStyle(product: StoreProduct) {
   const index = getProductImageIndex(product);
-  const column = index % 6;
-  const row = Math.floor(index / 6);
+  const column = index % 4;
+  const row = Math.floor(index / 4);
   return {
     backgroundImage: "url('/shop-assets/product-atlas.webp')",
-    backgroundSize: '600% 700%',
-    backgroundPosition: ((column / 5) * 100) + '% ' + ((row / 6) * 100) + '%',
+    backgroundSize: '400% 500%',
+    backgroundPosition: ((column / 3) * 100) + '% ' + ((row / 4) * 100) + '%',
     backgroundRepeat: 'no-repeat'
   };
 }
@@ -74,7 +74,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   return (
     <article className="tm-store-card">
       <button className="tm-store-image" onClick={onOpen} aria-label={'View ' + product.name}>
-        <span className="tm-store-product-art" style={productArtStyle(product)} role="img" aria-label={product.name}/>
+        {product.image ? <img className="tm-store-product-photo" src={product.image} alt={product.name} loading="lazy" /> : <span className="tm-store-product-art" style={productArtStyle(product)} role="img" aria-label={product.name}/>}
         <span className="tm-store-sale-badge">{product.discountPercent}% OFF</span>
         {product.featured && <span className="tm-store-featured">FEATURED</span>}
         <span className="tm-store-image-zoom">View item <ArrowUpRight size={13}/></span>
@@ -279,7 +279,7 @@ export function Marketplace({ onSelectModel }: Props) {
             <button className="tm-store-detail-back" onClick={() => setSelected(null)}><ArrowLeft size={15}/> Continue shopping</button>
             <button className="tm-store-close" onClick={() => setSelected(null)} aria-label="Close product details"><X size={19}/></button>
             <div className="tm-store-detail-layout">
-              <div className="tm-store-detail-image"><div className="tm-store-product-art tm-store-product-art-large" style={productArtStyle(selected)} role="img" aria-label={selected.name}/></div>
+              <div className="tm-store-detail-image">{selected.image ? <img className="tm-store-product-photo tm-store-product-photo-large" src={selected.image} alt={selected.name} /> : <div className="tm-store-product-art tm-store-product-art-large" style={productArtStyle(selected)} role="img" aria-label={selected.name}/>}</div>
               <div className="tm-store-detail-copy">
                 <span className="tm-store-eyebrow">{selected.category} · {selected.sourceLabel}</span>
                 <h2 id="tm-store-detail-title">{selected.name}</h2>
@@ -310,7 +310,7 @@ export function Marketplace({ onSelectModel }: Props) {
             {!cartLines.length ? <div className="tm-store-cart-empty"><ShoppingBag size={32}/><b>Your cart is empty</b><p>Choose a product from the collection to start an order.</p><button onClick={() => setCartOpen(false)}>Continue shopping</button></div> : <>
               <div className="tm-store-cart-lines">
                 {cartLines.map(line => <div className="tm-store-cart-line" key={line.id + (line.selectedSize || '')}>
-                  <div className="tm-store-cart-line-image"><div className="tm-store-product-art tm-store-product-art-thumb" style={productArtStyle(line.product)} role="img" aria-label={line.product.name}/></div>
+                  <div className="tm-store-cart-line-image">{line.product.image ? <img className="tm-store-product-photo" src={line.product.image} alt={line.product.name}/> : <div className="tm-store-product-art tm-store-product-art-thumb" style={productArtStyle(line.product)} role="img" aria-label={line.product.name}/>}</div>
                   <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.product.discountPercent > 0 ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
                   <div className="tm-store-cart-qty"><button onClick={() => changeQty(line.id,-1,line.selectedSize)}>−</button><b>{line.quantity}</b><button onClick={() => changeQty(line.id,1,line.selectedSize)}>+</button></div>
                 </div>)}
