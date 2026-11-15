@@ -2679,3 +2679,17 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-market-modal-note{font-size:10px;color:#858c8e;line-height:1.7;margin:18px 0 0}
 @media(max-width:850px){.tm-market-hero{grid-template-columns:1fr}.tm-market-hero-copy{padding:55px 28px 42px}.tm-market-hero-art{min-height:280px}.tm-market-hero-art img{min-height:280px;max-height:340px}.tm-market-hero-art:after{background:linear-gradient(0deg,rgba(0,0,0,.38),transparent 65%)}.tm-department-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tm-vehicle-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.tm-market-hero-copy{padding:44px 22px 34px}.tm-market-hero h1{font-size:46px}.tm-market-promo{padding:38px 22px;display:block}.tm-market-promo p{margin-top:17px}.tm-market-section{padding:42px 16px}.tm-market-section-head{align-items:flex-start;flex-direction:column;gap:10px}.tm-department-grid{grid-template-columns:1fr;gap:9px}.tm-department-card{min-height:125px;padding:17px}.tm-vehicle-grid{grid-template-columns:1fr 1fr;gap:9px}.tm-vehicle-image{height:135px}.tm-vehicle-info{padding:12px}.tm-vehicle-info b{font-size:13px}.tm-market-contact{margin:0 16px;padding:25px 20px;display:block}.tm-market-contact>button{margin-top:20px}.tm-market-modal{padding:20px}.tm-market-subcategory-grid,.tm-market-modal-list{grid-template-columns:1fr}.tm-market-modal-head h2{font-size:23px}}
+
+/* Marketplace product catalogue cards */
+.tm-catalogue-view{padding-top:18px}
+.tm-catalogue-back{border:0;background:transparent;color:#a51c26;font-size:11px;font-weight:800;padding:0 0 15px}
+.tm-catalogue-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.tm-catalogue-card{border:1px solid #e7e9e7;background:#fff;min-width:0}
+.tm-catalogue-card-art{height:90px;background:linear-gradient(135deg,#f2f3f1,#e4e6e4);display:flex;align-items:center;justify-content:center;position:relative;color:#8c9699}
+.tm-catalogue-card-art span{position:absolute;left:10px;bottom:9px;background:#fff;padding:5px 7px;font-size:8px;color:#71797c;letter-spacing:.05em}
+.tm-catalogue-card-body{padding:13px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.tm-catalogue-card-body>b{font-size:12px;line-height:1.4}
+.tm-catalogue-card-body p{font-size:10px;color:#737b7e;line-height:1.55;margin:0}
+.tm-catalogue-card-body>small{font-size:9px;color:#a51c26;font-weight:800}
+.tm-catalogue-card-body>button{margin-top:3px;border:0;background:#15191b;color:#fff;padding:9px 10px;display:flex;align-items:center;gap:7px;font-size:9px;font-weight:800}
+@media(max-width:560px){.tm-catalogue-grid{grid-template-columns:1fr}.tm-catalogue-card-art{height:75px}}
