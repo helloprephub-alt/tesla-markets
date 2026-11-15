@@ -3045,3 +3045,11 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-store-proof-preview b{overflow:hidden;color:#2f383d;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
 .tm-store-proof-preview small{color:#79848a;font-size:8px}
 .tm-store-proof-preview button{padding:6px 8px;border:1px solid #e3d0d2;background:#fff;color:#a51d2a;font-size:8px;font-weight:800}
+
+
+/* Never substitute one product's image for another product. */
+.tm-store-image-unavailable{width:100%;height:100%;min-height:144px;display:flex;align-items:center;justify-content:center;background:#f2f3f3;color:#8b9498}
+.tm-store-image-unavailable span{padding:7px 9px;border:1px solid #d7dddd;color:#778186;font-size:8px;font-weight:850;letter-spacing:.13em}
+.tm-store-image-unavailable-large{min-height:395px}
+.home-shop-preview-image{background-color:#fff;background-size:contain;background-position:center;background-repeat:no-repeat}
+@media(max-width:640px){.tm-store-image-unavailable{min-height:144px}.tm-store-image-unavailable-large{min-height:225px}}
