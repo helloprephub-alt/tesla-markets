@@ -5,7 +5,7 @@ import { ChatWorkspace, GeneratedGallery, ThemeToggle } from './ChatWorkspace';
 import { AdminConsole } from './AdminConsole';
 import { VehicleExperience } from './VehicleExperience';
 import { Marketplace } from './Marketplace';
-import { getDiscountedPrice, getProductImageIndex, storeProducts } from './marketplace-catalog';
+import { getDiscountedPrice, storeProducts } from './marketplace-catalog';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -498,7 +498,7 @@ function App() {
       </div>
     </section>
   );
-  const homeShopPreview = ['winter-holiday-sweater','winter-holiday-mug','tesla-core-backpack','cybertruck-rc-racer']
+  const homeShopPreview = ['winter-holiday-sweater','winter-holiday-mug','tesla-core-backpack','model-y-mud-flaps']
     .map(id => storeProducts.find(product => product.id === id))
     .filter((product): product is NonNullable<typeof product> => Boolean(product));
   const Home = () => (
@@ -521,14 +521,9 @@ function App() {
         </div>
         <div className="home-shop-preview-grid">
           {homeShopPreview.map(product => {
-            const imageIndex = getProductImageIndex(product);
-            const imageColumn = imageIndex % 4;
-            const imageRow = Math.floor(imageIndex / 4);
             const price = getDiscountedPrice(product);
             return <button className="home-shop-preview-card" key={product.id} onClick={() => go('shop')}>
-              <div className="home-shop-preview-image" style={product.image
-                ? {backgroundImage:"url('" + product.image + "')",backgroundSize:'contain',backgroundPosition:'center',backgroundRepeat:'no-repeat'}
-                : {backgroundImage:"url('/shop-assets/product-atlas.webp')",backgroundSize:'400% 500%',backgroundPosition:((imageColumn/3)*100)+'% '+((imageRow/4)*100)+'%'}}>
+              <div className="home-shop-preview-image" style={{backgroundImage: "url('" + product.image + "')", backgroundSize:'contain', backgroundPosition:'center', backgroundRepeat:'no-repeat'}}>
                 {product.discountPercent > 0 && <span>{product.discountPercent}% OFF</span>}
               </div>
               <span className="home-shop-preview-name">{product.name}</span>
