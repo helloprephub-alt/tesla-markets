@@ -62,10 +62,11 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
           {sale !== null ? <b>{money(sale)}</b> : <b className="tm-store-quote-price">Quote required</b>}
         </div>
         {hasDiscount && <small className="tm-store-saving">Save {money(discountValue(product))} · rounded payable price</small>}
+        {product.promoIsPreview && <small className="tm-store-promo-review">Sample offer · approval required</small>}
         {!hasDiscount && sale !== null && <small className="tm-store-saving-muted">US reference price</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
-          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null} onClick={onAdd}><ShoppingBag size={16}/></button>
+          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null || Boolean(product.promoIsPreview)} onClick={onAdd}><ShoppingBag size={16}/></button>
           <button className={'tm-store-save ' + (saved ? 'saved' : '')} onClick={onSave} aria-label={saved ? 'Remove from saved items' : 'Save item'}><Heart size={15} fill={saved ? 'currentColor' : 'none'}/></button>
         </div>
       </div>
@@ -84,12 +85,14 @@ export function Marketplace({ onSelectModel }: Props) {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [saved, setSaved] = useState<string[]>([]);
+  const [savedOnly, setSavedOnly] = useState(false);
   const [showAllDepartments, setShowAllDepartments] = useState(false);
 
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const visibleProducts = useMemo(() => {
     let items = storeProducts.filter(product =>
       (department === 'All products' || product.department === department) &&
+      (!savedOnly || saved.includes(product.id)) &&
       (product.name + ' ' + product.category + ' ' + product.description).toLowerCase().includes(query.toLowerCase())
     );
     if (sort === 'Name A–Z') items = [...items].sort((a,b) => a.name.localeCompare(b.name));
@@ -97,7 +100,7 @@ export function Marketplace({ onSelectModel }: Props) {
     if (sort === 'Price: high to low') items = [...items].sort((a,b) => (productPrice(b) ?? -1) - (productPrice(a) ?? -1));
     if (sort === 'Biggest discount') items = [...items].sort((a,b) => b.discountPercent - a.discountPercent);
     return items;
-  }, [department, query, sort]);
+  }, [department, query, sort, savedOnly, saved]);
 
   const cartLines = cart.map(line => {
     const product = storeProducts.find(item => item.id === line.id);
@@ -108,7 +111,7 @@ export function Marketplace({ onSelectModel }: Props) {
   const totalSavings = originalSubtotal - subtotal;
 
   const addToCart = (product: StoreProduct, quantity = 1, size?: string) => {
-    if (productPrice(product) === null) return;
+    if (productPrice(product) === null || product.promoIsPreview) return;
     const keySize = size || '';
     setCart(current => {
       const found = current.find(line => line.id === product.id && (line.selectedSize || '') === keySize);
@@ -135,6 +138,7 @@ export function Marketplace({ onSelectModel }: Props) {
 
   const switchDepartment = (next: Department) => {
     setDepartment(next);
+    setSavedOnly(false);
     setQuery('');
     setSort('Featured');
     setShowAllDepartments(false);
@@ -153,7 +157,7 @@ export function Marketplace({ onSelectModel }: Props) {
           {query && <button onClick={() => setQuery('')} aria-label="Clear search"><X size={14}/></button>}
         </label>
         <div className="tm-store-header-actions">
-          <button onClick={() => setSaved(current => current.length ? [] : current)}><Heart size={17}/><span>Saved</span></button>
+          <button className={savedOnly ? 'active' : ''} onClick={() => {setSavedOnly(v => !v);setDepartment('All products');setQuery('');}}><Heart size={17}/><span>Saved {saved.length ? '('+saved.length+')' : ''}</span></button>
           <button onClick={() => setCartOpen(true)} className="tm-store-cart-button"><ShoppingBag size={18}/><span>Cart</span><b>{cartCount}</b></button>
         </div>
       </header>
@@ -243,11 +247,12 @@ export function Marketplace({ onSelectModel }: Props) {
                     {selected.discountPercent > 0 && <span>{selected.discountPercent}% OFF</span>}
                   </> : <b>Price on request</b>}
                 </div>
-                {selected.promoIsPreview && <div className="tm-store-preview-note">Preview promotion only — confirm this item’s actual discount before publishing</div>}
+                {selected.promoIsPreview && <div className="tm-store-preview-note">Sample promotion only — not approved for orders. The Add to Cart option stays locked until management confirms this item’s actual discount.</div>}
                 <small className="tm-store-stock">{selected.availability}</small>
                 {selected.sizes && <label className="tm-store-size">Choose size<select value={selectedSize} onChange={event => setSelectedSize(event.target.value)}>{selected.sizes.map(size => <option key={size}>{size}</option>)}</select></label>}
                 <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
-                <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
+                <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.promoIsPreview) || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
+                {selected.promoIsPreview && <small className="tm-store-promo-review">Sample price only · cannot be purchased yet</small>}
                 {selected.sourceUrl && <a className="tm-store-source-link" href={selected.sourceUrl} target="_blank" rel="noreferrer">View source listing <ArrowUpRight size={13}/></a>}
                 <p className="tm-store-product-disclaimer">{selected.brandType}. Tesla Markets is an independent marketplace and is not presented as Tesla’s official store or dealer. Product eligibility and source terms may limit resale.</p>
               </div>
