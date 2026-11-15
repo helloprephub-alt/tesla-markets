@@ -4,7 +4,7 @@ import {
   CreditCard, Heart, Menu, PackageCheck, PlugZap, Search, ShieldCheck,
   ShoppingBag, SlidersHorizontal, Sun, Truck, X
 } from 'lucide-react';
-import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
+import { getDiscountedPrice, getProductImageIndex, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
 
 type Props = { onSelectModel: (id: string) => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
@@ -36,6 +36,31 @@ function productPrice(product: StoreProduct) {
   return getDiscountedPrice(product);
 }
 
+function productArtStyle(product: StoreProduct) {
+  const index = getProductImageIndex(product);
+  const column = index % 6;
+  const row = Math.floor(index / 6);
+  return {
+    backgroundImage: "url('/shop-assets/product-atlas.webp')",
+    backgroundSize: '600% 700%',
+    backgroundPosition: ((column / 5) * 100) + '% ' + ((row / 6) * 100) + '%',
+    backgroundRepeat: 'no-repeat'
+  };
+}
+
+function productMatchesModel(product: StoreProduct, model: string) {
+  if (model === 'All models') return true;
+  const text = (product.name + ' ' + product.category).toLowerCase();
+  const terms: Record<string, string[]> = {
+    'Model 3': ['model 3', 'model 3/y', 'model s/3/y', 'sx3y'],
+    'Model Y': ['model y', 'model 3/y', 'model x/y', 'model s/3/y', 'sx3y'],
+    'Model S': ['model s', 'model s/x', 'model s/3/y', 'sx3y'],
+    'Model X': ['model x', 'model s/x', 'model x/y', 'model s/3/y', 'sx3y'],
+    'Cybertruck': ['cybertruck', 'cyber beast', 'cyberbeast']
+  };
+  return (terms[model] || [model.toLowerCase()]).some(term => text.includes(term));
+}
+
 function discountValue(product: StoreProduct) {
   const price = productPrice(product);
   return price === null ? 0 : Math.max(0, product.originalPrice - price);
@@ -45,12 +70,12 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   product: StoreProduct; onOpen: () => void; onAdd: () => void; saved: boolean; onSave: () => void
 }) {
   const sale = productPrice(product);
-  const hasDiscount = sale !== null && product.discountPercent > 0;
+  const hasDiscount = sale !== null;
   return (
     <article className="tm-store-card">
       <button className="tm-store-image" onClick={onOpen} aria-label={'View ' + product.name}>
-        {product.image ? <img src={product.image} alt={product.name} loading="lazy" /> : <div className="tm-store-image-placeholder"><ShoppingBag size={31}/><span>PRODUCT PHOTO</span></div>}
-        {hasDiscount && <span className="tm-store-sale-badge">{product.discountPercent}% OFF</span>}
+        <span className="tm-store-product-art" style={productArtStyle(product)} role="img" aria-label={product.name}/>
+        <span className="tm-store-sale-badge">10% OFF</span>
         {product.featured && <span className="tm-store-featured">FEATURED</span>}
         <span className="tm-store-image-zoom">View item <ArrowUpRight size={13}/></span>
       </button>
@@ -58,15 +83,12 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
         <span className="tm-store-card-category">{product.category}</span>
         <button className="tm-store-card-name" onClick={onOpen}>{product.name}</button>
         <div className="tm-store-price-row">
-          {hasDiscount && <s>{money(product.originalPrice)}</s>}
-          {sale !== null ? <b>{money(sale)}</b> : <b className="tm-store-quote-price">Quote required</b>}
+          {hasDiscount ? <><s>{money(product.originalPrice)}</s><b>{money(sale!)}</b></> : <b className="tm-store-quote-price">Price on request</b>}
         </div>
-        {hasDiscount && <small className="tm-store-saving">Save {money(discountValue(product))} · rounded payable price</small>}
-        {product.promoIsPreview && <small className="tm-store-promo-review">Sample offer · approval required</small>}
-        {!hasDiscount && sale !== null && <small className="tm-store-saving-muted">US reference price</small>}
+        {hasDiscount ? <small className="tm-store-saving">Save {money(discountValue(product))} · December sale price</small> : <small className="tm-store-saving-muted">10% off confirmed final quote</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
-          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null || Boolean(product.promoIsPreview)} onClick={onAdd}><ShoppingBag size={16}/></button>
+          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null} onClick={onAdd}><ShoppingBag size={16}/></button>
           <button className={'tm-store-save ' + (saved ? 'saved' : '')} onClick={onSave} aria-label={saved ? 'Remove from saved items' : 'Save item'}><Heart size={15} fill={saved ? 'currentColor' : 'none'}/></button>
         </div>
       </div>
@@ -86,12 +108,23 @@ export function Marketplace({ onSelectModel }: Props) {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [saved, setSaved] = useState<string[]>([]);
   const [savedOnly, setSavedOnly] = useState(false);
+  const [vehicleModelFilter, setVehicleModelFilter] = useState('All models');
+  const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [showAllDepartments, setShowAllDepartments] = useState(false);
 
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const categoryOptions = useMemo(() => {
+    return [...new Set(storeProducts
+      .filter(product => department === 'All products' || product.department === department)
+      .filter(product => department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter))
+      .map(product => product.category))].sort((a,b) => a.localeCompare(b));
+  }, [department, vehicleModelFilter]);
+
   const visibleProducts = useMemo(() => {
     let items = storeProducts.filter(product =>
       (department === 'All products' || product.department === department) &&
+      (department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter)) &&
+      (categoryFilter === 'All categories' || product.category === categoryFilter) &&
       (!savedOnly || saved.includes(product.id)) &&
       (product.name + ' ' + product.category + ' ' + product.description).toLowerCase().includes(query.toLowerCase())
     );
@@ -100,7 +133,7 @@ export function Marketplace({ onSelectModel }: Props) {
     if (sort === 'Price: high to low') items = [...items].sort((a,b) => (productPrice(b) ?? -1) - (productPrice(a) ?? -1));
     if (sort === 'Biggest discount') items = [...items].sort((a,b) => b.discountPercent - a.discountPercent);
     return items;
-  }, [department, query, sort, savedOnly, saved]);
+  }, [department, query, sort, savedOnly, saved, vehicleModelFilter, categoryFilter]);
 
   const cartLines = cart.map(line => {
     const product = storeProducts.find(item => item.id === line.id);
@@ -111,7 +144,7 @@ export function Marketplace({ onSelectModel }: Props) {
   const totalSavings = originalSubtotal - subtotal;
 
   const addToCart = (product: StoreProduct, quantity = 1, size?: string) => {
-    if (productPrice(product) === null || product.promoIsPreview) return;
+    if (productPrice(product) === null) return;
     const keySize = size || '';
     setCart(current => {
       const found = current.find(line => line.id === product.id && (line.selectedSize || '') === keySize);
@@ -139,6 +172,8 @@ export function Marketplace({ onSelectModel }: Props) {
   const switchDepartment = (next: Department) => {
     setDepartment(next);
     setSavedOnly(false);
+    setVehicleModelFilter('All models');
+    setCategoryFilter('All categories');
     setQuery('');
     setSort('Featured');
     setShowAllDepartments(false);
@@ -149,7 +184,7 @@ export function Marketplace({ onSelectModel }: Props) {
       <header className="tm-store-header">
         <button className="tm-store-brand" onClick={() => switchDepartment('All products')} aria-label="Tesla Markets shop home">
           <span className="tm-store-brand-mark">T</span>
-          <span><b>TESLA MARKETS</b><small>THE STORE</small></span>
+          <span><b>TESLA MARKETS</b><small>CHRISTMAS SPECIAL OFFERS</small></span>
         </button>
         <label className="tm-store-search">
           <Search size={17}/>
@@ -169,28 +204,33 @@ export function Marketplace({ onSelectModel }: Props) {
           </button>
         ))}
       </nav>
+      <section className="tm-store-christmas-banner">
+        <div className="tm-store-holiday-emblem" aria-hidden="true">✦</div>
+        <div className="tm-store-christmas-copy">
+          <span>TESLA MARKETS · CHRISTMAS PROMOTION</span>
+          <b>Holiday season. Special prices.</b>
+          <small>10% OFF EVERY PRODUCT · DECEMBER SPECIAL</small>
+        </div>
+        <button onClick={() => switchDepartment('All products')}>Shop Christmas offers <ArrowUpRight size={15}/></button>
+        <span className="tm-store-snowflake one">✦</span><span className="tm-store-snowflake two">✧</span><span className="tm-store-snowflake three">❄</span>
+      </section>
 
       {department === 'All products' && !query && (
         <>
           <section className="tm-store-hero">
             <div className="tm-store-hero-copy">
-              <span className="tm-store-eyebrow">TESLA MARKETS · CURATED COLLECTIONS</span>
-              <h1>Find your next<br/><em>everyday essential.</em></h1>
-              <p>Explore Tesla merchandise, vehicle accessories, charging and selected energy products in one organised store.</p>
+              <span className="tm-store-eyebrow">TESLA MARKETS · CHRISTMAS COLLECTION</span>
+              <h1>Christmas<br/><em>special offers.</em></h1>
+              <p>Discover Tesla apparel, drinkware, miniatures, vehicle accessories, charging and energy products — all with 10% off.</p>
               <div className="tm-store-hero-actions">
-                <button onClick={() => switchDepartment('Lifestyle')}>Shop the collection <ArrowRight size={16}/></button>
-                <span>US reference prices · USD</span>
+                <button onClick={() => switchDepartment('All products')}>Shop all Christmas offers <ArrowRight size={16}/></button>
+                <span>10% off every listed product</span>
               </div>
             </div>
             <div className="tm-store-hero-media">
               <img src="https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/teslaweb/homepage/Lifestyle_home.jpg" alt="Tesla lifestyle collection featuring bags and drinkware"/>
               <div className="tm-store-hero-caption"><b>DESIGNED FOR THE EVERYDAY</b><span>APPAREL · LIFESTYLE · ACCESSORIES</span></div>
             </div>
-          </section>
-
-          <section className="tm-store-film">
-            <div className="tm-store-film-copy"><span className="tm-store-eyebrow">EXPLORE THE COLLECTION</span><h2>Beyond the drive.</h2><p>Discover merchandise, accessories and energy categories through the Tesla Markets collection.</p></div>
-            <video src="/resources/tesla-showreel.mp4" autoPlay muted loop playsInline controls aria-label="Tesla Markets visual collection video"/>
           </section>
 
           <section className="tm-store-section tm-store-vehicle-section">
@@ -213,14 +253,18 @@ export function Marketplace({ onSelectModel }: Props) {
       )}
 
       <section className="tm-store-section tm-store-catalogue">
-        <div className="tm-store-section-head">
+        <div className="tm-store-section-head tm-store-catalogue-head">
           <div><span className="tm-store-eyebrow">{department === 'All products' ? 'THE FULL COLLECTION' : department.toUpperCase()}</span><h2>{query ? 'Search results' : department === 'All products' ? 'Shop all products' : department}</h2><small>{visibleProducts.length} listings in this catalogue view</small></div>
-          <label className="tm-store-sort"><SlidersHorizontal size={15}/><select value={sort} onChange={event => setSort(event.target.value)}><option>Featured</option><option>Name A–Z</option><option>Price: low to high</option><option>Price: high to low</option><option>Biggest discount</option></select></label>
+          <div className="tm-store-catalogue-controls">
+            {department === 'Vehicle Accessories' && <label className="tm-store-filter-select"><span>VEHICLE MODEL</span><select value={vehicleModelFilter} onChange={event => {setVehicleModelFilter(event.target.value);setCategoryFilter('All categories');}}><option>All models</option><option>Model 3</option><option>Model Y</option><option>Model S</option><option>Model X</option><option>Cybertruck</option></select></label>}
+            {department !== 'All products' && <label className="tm-store-filter-select"><span>PRODUCT TYPE</span><select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option>All categories</option>{categoryOptions.map(category => <option key={category}>{category}</option>)}</select></label>}
+            <label className="tm-store-sort"><SlidersHorizontal size={15}/><select value={sort} onChange={event => setSort(event.target.value)}><option>Featured</option><option>Name A–Z</option><option>Price: low to high</option><option>Price: high to low</option><option>Biggest discount</option></select></label>
+          </div>
         </div>
         {visibleProducts.length ? <div className="tm-store-product-grid">
           {visibleProducts.map(product => <ProductCard key={product.id} product={product} onOpen={() => openDetail(product)} onAdd={() => addToCart(product)} saved={saved.includes(product.id)} onSave={() => setSaved(current => current.includes(product.id) ? current.filter(id => id !== product.id) : [...current, product.id])}/>)}
         </div> : <div className="tm-store-empty"><PackageCheck size={28}/><b>No matching products</b><p>Try another search or choose a different department.</p><button onClick={() => switchDepartment('All products')}>Back to all products</button></div>}
-        {department === 'All products' && <p className="tm-store-data-note">Tesla product names and reference prices are based on the official US Tesla Shop. Final availability, regional eligibility, taxes, shipping and delivery must be confirmed. Solar and battery partner products are quotation-only until supplier SKUs and prices are verified.</p>}
+        {department === 'All products' && <p className="tm-store-data-note">Every priced listing displays its original price and 10% Christmas sale price. Energy products without a verified partner price are shown as price-on-request with the same 10% offer applied to the confirmed quote.</p>}
       </section>
 
       <section className="tm-store-benefits">
@@ -235,24 +279,22 @@ export function Marketplace({ onSelectModel }: Props) {
             <button className="tm-store-detail-back" onClick={() => setSelected(null)}><ArrowLeft size={15}/> Continue shopping</button>
             <button className="tm-store-close" onClick={() => setSelected(null)} aria-label="Close product details"><X size={19}/></button>
             <div className="tm-store-detail-layout">
-              <div className="tm-store-detail-image">{selected.image ? <img src={selected.image} alt={selected.name}/> : <div className="tm-store-image-placeholder large"><ShoppingBag size={42}/><span>PRODUCT PHOTO TO BE ADDED</span></div>}</div>
+              <div className="tm-store-detail-image"><div className="tm-store-product-art tm-store-product-art-large" style={productArtStyle(selected)} role="img" aria-label={selected.name}/></div>
               <div className="tm-store-detail-copy">
                 <span className="tm-store-eyebrow">{selected.category} · {selected.sourceLabel}</span>
                 <h2 id="tm-store-detail-title">{selected.name}</h2>
                 <p>{selected.description}</p>
                 <div className="tm-store-detail-price">
                   {productPrice(selected) !== null ? <>
-                    {selected.discountPercent > 0 && <s>{money(selected.originalPrice)}</s>}
+                    <s>{money(selected.originalPrice)}</s>
                     <b>{money(productPrice(selected)!)}</b>
-                    {selected.discountPercent > 0 && <span>{selected.discountPercent}% OFF</span>}
+                    <span>10% OFF</span>
                   </> : <b>Price on request</b>}
                 </div>
-                {selected.promoIsPreview && <div className="tm-store-preview-note">Sample promotion only — not approved for orders. The Add to Cart option stays locked until management confirms this item’s actual discount.</div>}
                 <small className="tm-store-stock">{selected.availability}</small>
                 {selected.sizes && <label className="tm-store-size">Choose size<select value={selectedSize} onChange={event => setSelectedSize(event.target.value)}>{selected.sizes.map(size => <option key={size}>{size}</option>)}</select></label>}
                 <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
-                <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.promoIsPreview) || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
-                {selected.promoIsPreview && <small className="tm-store-promo-review">Sample price only · cannot be purchased yet</small>}
+                <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
                 {selected.sourceUrl && <a className="tm-store-source-link" href={selected.sourceUrl} target="_blank" rel="noreferrer">View source listing <ArrowUpRight size={13}/></a>}
                 <p className="tm-store-product-disclaimer">{selected.brandType}. Tesla Markets is an independent marketplace and is not presented as Tesla’s official store or dealer. Product eligibility and source terms may limit resale.</p>
               </div>
@@ -268,7 +310,7 @@ export function Marketplace({ onSelectModel }: Props) {
             {!cartLines.length ? <div className="tm-store-cart-empty"><ShoppingBag size={32}/><b>Your cart is empty</b><p>Choose a product from the collection to start an order.</p><button onClick={() => setCartOpen(false)}>Continue shopping</button></div> : <>
               <div className="tm-store-cart-lines">
                 {cartLines.map(line => <div className="tm-store-cart-line" key={line.id + (line.selectedSize || '')}>
-                  <div className="tm-store-cart-line-image">{line.product.image ? <img src={line.product.image} alt={line.product.name}/> : <ShoppingBag size={19}/>}</div>
+                  <div className="tm-store-cart-line-image"><div className="tm-store-product-art tm-store-product-art-thumb" style={productArtStyle(line.product)} role="img" aria-label={line.product.name}/></div>
                   <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.product.discountPercent > 0 ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
                   <div className="tm-store-cart-qty"><button onClick={() => changeQty(line.id,-1,line.selectedSize)}>−</button><b>{line.quantity}</b><button onClick={() => changeQty(line.id,1,line.selectedSize)}>+</button></div>
                 </div>)}
