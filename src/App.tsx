@@ -514,7 +514,7 @@ function App() {
         <div className="home-shop-preview-heading">
           <div>
             <div className="eyebrow dark">TESLA MARKETS · CHRISTMAS PROMOTION</div>
-            <h2>Christmas offers.<br/><em>10% off across the shop.</em></h2>
+            <h2>Christmas offers.<br/><em>Different discounts across the shop.</em></h2>
             <p>Apparel, drinkware, mini Teslas, vehicle accessories and more — discover the store before you browse.</p>
           </div>
           <button className="btn btn-red" onClick={() => go('shop')}>Shop Christmas offers <ArrowUpRight size={16}/></button>
@@ -527,7 +527,7 @@ function App() {
             const price = getDiscountedPrice(product);
             return <button className="home-shop-preview-card" key={product.id} onClick={() => go('shop')}>
               <div className="home-shop-preview-image" style={{backgroundImage:"url('/shop-assets/product-atlas.webp')",backgroundSize:'600% 700%',backgroundPosition:((imageColumn/5)*100)+'% '+((imageRow/6)*100)+'%'}}>
-                <span>10% OFF</span>
+                <span>{product.discountPercent}% OFF</span>
               </div>
               <span className="home-shop-preview-name">{product.name}</span>
               {price !== null && <span className="home-shop-preview-prices"><s>${product.originalPrice}</s><b>${price}</b></span>}
