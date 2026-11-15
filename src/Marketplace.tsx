@@ -4,7 +4,7 @@ import {
   CreditCard, Heart, Menu, PackageCheck, PlugZap, Search, ShieldCheck,
   ShoppingBag, SlidersHorizontal, Sun, Truck, X
 } from 'lucide-react';
-import { getDiscountedPrice, getProductImageIndex, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
+import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
 
 type Props = { onSelectModel: (id: string) => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
@@ -36,18 +36,6 @@ function productPrice(product: StoreProduct) {
   return getDiscountedPrice(product);
 }
 
-function productArtStyle(product: StoreProduct) {
-  const index = getProductImageIndex(product);
-  const column = index % 4;
-  const row = Math.floor(index / 4);
-  return {
-    backgroundImage: "url('/shop-assets/product-atlas.webp')",
-    backgroundSize: '400% 500%',
-    backgroundPosition: ((column / 3) * 100) + '% ' + ((row / 4) * 100) + '%',
-    backgroundRepeat: 'no-repeat'
-  };
-}
-
 function productMatchesModel(product: StoreProduct, model: string) {
   if (model === 'All models') return true;
   const text = (product.name + ' ' + product.category).toLowerCase();
@@ -68,21 +56,20 @@ function discountValue(product: StoreProduct) {
 
 function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; variant?: 'card' | 'large' | 'thumb' }) {
   const [imageFailed, setImageFailed] = useState(false);
-  if (product.image && !imageFailed) {
-    return <img
-      className={'tm-store-product-photo' + (variant === 'large' ? ' tm-store-product-photo-large' : '')}
-      src={product.image}
-      alt={product.name}
-      loading="lazy"
-      onError={() => setImageFailed(true)}
-    />;
+  if (!product.image || imageFailed) {
+    return <div className={'tm-store-image-unavailable' + (variant === 'large' ? ' tm-store-image-unavailable-large' : '')} role="img" aria-label={'Product image unavailable for ' + product.name}>
+      <span>IMAGE UNAVAILABLE</span>
+    </div>;
   }
-  const artClass = variant === 'large'
-    ? 'tm-store-product-art tm-store-product-art-large'
-    : variant === 'thumb'
-      ? 'tm-store-product-art tm-store-product-art-thumb'
-      : 'tm-store-product-art';
-  return <div className={artClass} style={productArtStyle(product)} role="img" aria-label={product.name}/>;
+  return <img
+    className={'tm-store-product-photo' + (variant === 'large' ? ' tm-store-product-photo-large' : '')}
+    src={product.image}
+    alt={product.name}
+    loading="lazy"
+    decoding="async"
+    referrerPolicy="no-referrer"
+    onError={() => setImageFailed(true)}
+  />;
 }
 
 function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
