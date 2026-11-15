@@ -522,11 +522,11 @@ function App() {
         <div className="home-shop-preview-grid">
           {homeShopPreview.map(product => {
             const imageIndex = getProductImageIndex(product);
-            const imageColumn = imageIndex % 6;
-            const imageRow = Math.floor(imageIndex / 6);
+            const imageColumn = imageIndex % 4;
+            const imageRow = Math.floor(imageIndex / 4);
             const price = getDiscountedPrice(product);
             return <button className="home-shop-preview-card" key={product.id} onClick={() => go('shop')}>
-              <div className="home-shop-preview-image" style={{backgroundImage:"url('/shop-assets/product-atlas.webp')",backgroundSize:'600% 700%',backgroundPosition:((imageColumn/5)*100)+'% '+((imageRow/6)*100)+'%'}}>
+              <div className="home-shop-preview-image" style={{backgroundImage:"url('/shop-assets/product-atlas.webp')",backgroundSize:'400% 500%',backgroundPosition:((imageColumn/3)*100)+'% '+((imageRow/4)*100)+'%'}}>
                 <span>{product.discountPercent}% OFF</span>
               </div>
               <span className="home-shop-preview-name">{product.name}</span>
