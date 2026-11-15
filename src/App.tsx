@@ -526,11 +526,13 @@ function App() {
             const imageRow = Math.floor(imageIndex / 4);
             const price = getDiscountedPrice(product);
             return <button className="home-shop-preview-card" key={product.id} onClick={() => go('shop')}>
-              <div className="home-shop-preview-image" style={{backgroundImage:"url('/shop-assets/product-atlas.webp')",backgroundSize:'400% 500%',backgroundPosition:((imageColumn/3)*100)+'% '+((imageRow/4)*100)+'%'}}>
-                <span>{product.discountPercent}% OFF</span>
+              <div className="home-shop-preview-image" style={product.image
+                ? {backgroundImage:"url('" + product.image + "')",backgroundSize:'contain',backgroundPosition:'center',backgroundRepeat:'no-repeat'}
+                : {backgroundImage:"url('/shop-assets/product-atlas.webp')",backgroundSize:'400% 500%',backgroundPosition:((imageColumn/3)*100)+'% '+((imageRow/4)*100)+'%'}}>
+                {product.discountPercent > 0 && <span>{product.discountPercent}% OFF</span>}
               </div>
               <span className="home-shop-preview-name">{product.name}</span>
-              {price !== null && <span className="home-shop-preview-prices"><s>${product.originalPrice}</s><b>${price}</b></span>}
+              {price !== null && <span className="home-shop-preview-prices">{product.discountPercent > 0 && <s>${product.originalPrice}</s>}<b>${price}</b></span>}
             </button>;
           })}
         </div>
