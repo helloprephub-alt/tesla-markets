@@ -5,6 +5,7 @@ import { ChatWorkspace, GeneratedGallery, ThemeToggle } from './ChatWorkspace';
 import { AdminConsole } from './AdminConsole';
 import { VehicleExperience } from './VehicleExperience';
 import { Marketplace } from './Marketplace';
+import { getDiscountedPrice, getProductImageIndex, storeProducts } from './marketplace-catalog';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -497,6 +498,9 @@ function App() {
       </div>
     </section>
   );
+  const homeShopPreview = ['winter-holiday-sweater','winter-holiday-mug','tesla-core-backpack','cybertruck-rc-racer']
+    .map(id => storeProducts.find(product => product.id === id))
+    .filter((product): product is NonNullable<typeof product> => Boolean(product));
   const Home = () => (
     <>
       <Hero />
@@ -505,6 +509,35 @@ function App() {
         <h2>{publicContent.homeHeadline}</h2>
         <p>{publicContent.homeDescription}</p>
         <div className="home-intro-actions"><button className="btn btn-dark" onClick={()=>go('markets')}>{t("investNow")} <ArrowUpRight size={16}/></button><button className="btn btn-outline" onClick={()=>go('shop')}>{t("shop")} <ArrowUpRight size={16}/></button></div>
+      </section>
+      <section className="home-shop-preview" aria-label="Tesla Markets Christmas shop promotion">
+        <div className="home-shop-preview-heading">
+          <div>
+            <div className="eyebrow dark">TESLA MARKETS · CHRISTMAS PROMOTION</div>
+            <h2>Christmas offers.<br/><em>10% off across the shop.</em></h2>
+            <p>Apparel, drinkware, mini Teslas, vehicle accessories and more — discover the store before you browse.</p>
+          </div>
+          <button className="btn btn-red" onClick={() => go('shop')}>Shop Christmas offers <ArrowUpRight size={16}/></button>
+        </div>
+        <div className="home-shop-preview-grid">
+          {homeShopPreview.map(product => {
+            const imageIndex = getProductImageIndex(product);
+            const imageColumn = imageIndex % 6;
+            const imageRow = Math.floor(imageIndex / 6);
+            const price = getDiscountedPrice(product);
+            return <button className="home-shop-preview-card" key={product.id} onClick={() => go('shop')}>
+              <div className="home-shop-preview-image" style={{backgroundImage:"url('/shop-assets/product-atlas.webp')",backgroundSize:'600% 700%',backgroundPosition:((imageColumn/5)*100)+'% '+((imageRow/6)*100)+'%'}}>
+                <span>10% OFF</span>
+              </div>
+              <span className="home-shop-preview-name">{product.name}</span>
+              {price !== null && <span className="home-shop-preview-prices"><s>${product.originalPrice}</s><b>${price}</b></span>}
+            </button>;
+          })}
+        </div>
+        <div className="home-shop-preview-footer">
+          <span>THE TESLA MARKETS CHRISTMAS STORE</span>
+          <button onClick={() => go('shop')}>Explore all products <ArrowUpRight size={14}/></button>
+        </div>
       </section>
       <section className="home-model-preview">
         <div className="section-head"><div><div className="eyebrow dark">{t("collection")}</div><h2>{t("choose")}<br/><em>{t("next")}</em></h2></div><button className="text-link" onClick={()=>go('shop')}>{t("viewAll")} <ArrowUpRight size={15}/></button></div>
