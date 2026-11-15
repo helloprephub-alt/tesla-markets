@@ -1,56 +1,308 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, BatteryCharging, CarFront, ChevronDown, Heart, Menu, PlugZap, Search, ShoppingBag, SlidersHorizontal, Sun, X } from 'lucide-react';
+import {
+  ArrowLeft, ArrowRight, ArrowUpRight, BatteryCharging, Check, ChevronRight,
+  CreditCard, Heart, Menu, PackageCheck, PlugZap, Search, ShieldCheck,
+  ShoppingBag, SlidersHorizontal, Sun, Truck, X
+} from 'lucide-react';
+import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
 
 type Props = { onSelectModel: (id: string) => void; onEnquire: (context: string) => void };
-type Product = { id:string; name:string; category:string; department:string; image:string; images:string[]; description:string; price?:string; priceNote:string; source:string; sourceLabel:string; availability:string; badge?:string };
+type Department = StoreDepartment | 'All products';
+type CartLine = { id: string; quantity: number; selectedSize?: string };
 
-const products:Product[] = [
- {id:'m3-liners',name:'Model 3 All-Weather Interior Liners',category:'Vehicle accessories',department:'Accessories',image:'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/studio/CAR_ACCESSORIES/MODEL_3/INTERIOR/1974087-00-A_01_2000_1.jpg',images:['https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/studio/CAR_ACCESSORIES/MODEL_3/INTERIOR/1974087-00-A_01_2000_1.jpg'],description:'Thermoplastic elastomer interior liners with raised sides to help protect the vehicle carpet. Tesla lists compatibility with Model 3 vehicles produced in 2024 and later.',price:'$225',priceNote:'Tesla US Shop listing price; stock and eligibility can change. Confirm final price and availability before order.',source:'https://shop.tesla.com/product/model-3-all-weather-interior-liners',sourceLabel:'Tesla Official Shop',availability:'Official listing · stock must be reconfirmed',badge:'Tesla product'},
- {id:'wall-connector',name:'Wall Connector',category:'Home charging',department:'EV Charging',image:'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/CAR_ACCESSORIES/MODEL_3/CHARGING_ADAPTERS/1457768-02-H_01_2000.png',images:['https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/CAR_ACCESSORIES/MODEL_3/CHARGING_ADAPTERS/1457768-02-H_01_2000.png'],description:'Tesla home charging equipment with Wi-Fi connectivity, Tesla app controls and indoor/outdoor installation options. Installation must be completed by a qualified electrician.',price:'$535',priceNote:'Tesla US Shop listing price; regional pricing, compatibility and stock vary. Confirm before order.',source:'https://shop.tesla.com/product/wall-connector',sourceLabel:'Tesla Official Shop',availability:'Official listing · stock must be reconfirmed',badge:'Tesla product'},
- {id:'universal-wall-connector',name:'Universal Wall Connector',category:'Home charging',department:'EV Charging',image:'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/CAR_ACCESSORIES/MODEL_3/CHARGING_ADAPTERS/1734412-02-E-V2.png',images:['https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/CHARGING/UNIVERSAL_WALL_CONNECTOR/1734411-00-A_01.jpg'],description:'Tesla home charging unit with an integrated J1772 adapter for compatible non-Tesla electric vehicles as well as Tesla vehicles. Electrical compatibility and installation must be checked.',price:'$600',priceNote:'Tesla US Shop listing price; regional pricing, compatibility and stock vary. Confirm before order.',source:'https://shop.tesla.com/product/universal-wall-connector',sourceLabel:'Tesla Official Shop',availability:'Official listing · stock must be reconfirmed',badge:'Tesla product'}
+const money = (amount: number) => new Intl.NumberFormat('en-US', {
+  style: 'currency', currency: 'USD', maximumFractionDigits: 0
+}).format(amount);
+
+const departments: { name: Department; sub: string; icon: typeof ShoppingBag }[] = [
+  { name: 'All products', sub: 'Browse the complete shop', icon: Menu },
+  { name: 'Apparel', sub: 'Clothing, hats and kids', icon: Heart },
+  { name: 'Lifestyle', sub: 'Drinkware, bags and collectibles', icon: ShoppingBag },
+  { name: 'Vehicle Accessories', sub: 'Interior, exterior and care', icon: SlidersHorizontal },
+  { name: 'EV Charging', sub: 'Home and mobile charging', icon: PlugZap },
+  { name: 'Solar & Energy', sub: 'Solar systems and accessories', icon: Sun },
+  { name: 'Batteries & Inverters', sub: 'Home and commercial storage', icon: BatteryCharging },
 ];
 
-const categories = [
- {name:'All',icon:Menu},{name:'Tesla Vehicles',icon:CarFront},{name:'Accessories',icon:SlidersHorizontal},{name:'EV Charging',icon:PlugZap},{name:'Solar & Energy',icon:Sun},{name:'Batteries',icon:BatteryCharging},{name:'Clothing',icon:Heart}
-];
-const vehicles=[
- {id:'model-3',name:'Model 3',image:'/resources/model-3-1.jpg',description:'Electric sedan'},
- {id:'model-y',name:'Model Y',image:'/resources/model-y-1.jpg',description:'Electric SUV'},
- {id:'cybertruck',name:'Cybertruck',image:'/resources/cybertruck-1.jpg',description:'Electric pickup'},
- {id:'roadster',name:'Roadster',image:'/resources/roadster-1.jpg',description:'Electric sports car'},
- {id:'semi',name:'Tesla Semi',image:'/resources/semi-1.jpg',description:'Electric semi truck'}
+const vehicles = [
+  { id: 'model-3', name: 'Model 3', image: '/resources/model-3-1.jpg', desc: 'Electric sedan' },
+  { id: 'model-y', name: 'Model Y', image: '/resources/model-y-1.jpg', desc: 'Electric SUV' },
+  { id: 'cybertruck', name: 'Cybertruck', image: '/resources/cybertruck-1.jpg', desc: 'Electric pickup' },
+  { id: 'roadster', name: 'Roadster', image: '/resources/roadster-1.jpg', desc: 'Performance vehicle' },
+  { id: 'semi', name: 'Tesla Semi', image: '/resources/semi-1.jpg', desc: 'Electric truck' },
 ];
 
-export function Marketplace({onSelectModel,onEnquire}:Props){
- const [category,setCategory]=useState('All');
- const [query,setQuery]=useState('');
- const [cart,setCart]=useState<{id:string;qty:number}[]>([]);
- const [cartOpen,setCartOpen]=useState(false);
- const [selected,setSelected]=useState<Product|null>(null);
- const [qty,setQty]=useState(1);
- const [favorites,setFavorites]=useState<string[]>([]);
- const [sort,setSort]=useState('Featured');
- const cartCount=cart.reduce((n,x)=>n+x.qty,0);
- const visible=useMemo(()=>products.filter(p=>(category==='All'||p.department===category||category==='Accessories'&&p.department==='Accessories'||category==='EV Charging'&&p.department==='EV Charging')&&(p.name+' '+p.category+' '+p.description).toLowerCase().includes(query.toLowerCase())),[category,query]);
- const add=(id:string,n=1)=>setCart(old=>old.some(x=>x.id===id)?old.map(x=>x.id===id?{...x,qty:x.qty+n}:x):[...old,{id,qty:n}]);
- const remove=(id:string)=>setCart(old=>old.filter(x=>x.id!==id));
- const openProduct=(p:Product)=>{setSelected(p);setQty(1)};
- const checkout=()=>{const summary=cart.map(x=>{const p=products.find(y=>y.id===x.id);return p?p.name+' × '+x.qty:''}).filter(Boolean).join('; ');onEnquire('Marketplace checkout request: '+summary+'. Please confirm current price, stock, product authenticity, shipping cost and delivery estimate before payment.');setCartOpen(false)};
- return <main className="tm-shop">
-  <header className="tm-shop-header">
-   <button className="tm-shop-brand" onClick={()=>{setCategory('All');setQuery('')}} aria-label="Tesla Markets home"><span className="tm-shop-mark">T</span><span><b>TESLA MARKETS</b><small>MARKETPLACE</small></span></button>
-   <label className="tm-shop-search"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search products, categories and more"/><button onClick={()=>setQuery('')} aria-label="Clear search"><X size={15}/></button></label>
-   <div className="tm-shop-actions"><button aria-label="Your account" onClick={()=>onEnquire('I would like help with my Tesla Markets customer account.')}><span>Account</span></button><button className="tm-shop-cart-button" onClick={()=>setCartOpen(true)} aria-label="Open shopping cart"><ShoppingBag size={20}/><span>Cart</span><b>{cartCount}</b></button></div>
-  </header>
-  <nav className="tm-shop-categories" aria-label="Shop categories">{categories.map(({name,icon:Icon})=><button key={name} className={category===name?'active':''} onClick={()=>setCategory(name)}><Icon size={16}/>{name}</button>)}</nav>
-  <section className="tm-shop-promo"><div><span>TESLA MARKETS · THE COLLECTION</span><h1>Find what moves<br/><em>you forward.</em></h1><p>Vehicles, charging, energy and selected accessories in one marketplace.</p><button onClick={()=>setCategory('Tesla Vehicles')}>Explore vehicles <ArrowRight size={16}/></button></div><div className="tm-shop-promo-art"><img src="/resources/tesla-hero.jpg" alt="Tesla Markets featured collection"/></div></section>
-  {category==='All'||category==='Tesla Vehicles'?<section className="tm-shop-section"><div className="tm-shop-section-heading"><div><span>THE VEHICLE COLLECTION</span><h2>Explore Tesla vehicles</h2></div><button onClick={()=>setCategory('Tesla Vehicles')}>View all <ArrowUpRight size={15}/></button></div><div className="tm-shop-vehicle-strip">{vehicles.map(v=><button className="tm-shop-vehicle-tile" key={v.id} onClick={()=>onSelectModel(v.id)}><img src={v.image} alt={v.name}/><span><b>{v.name}</b><small>{v.description}</small></span><ArrowUpRight size={15}/></button>)}</div></section>:null}
-  <section className="tm-shop-section tm-shop-products"><div className="tm-shop-section-heading"><div><span>{category==='All'?'SHOP THE COLLECTION':category.toUpperCase()}</span><h2>{category==='All'?'Popular products':category+' collection'}</h2></div><label className="tm-shop-sort"><SlidersHorizontal size={15}/><select value={sort} onChange={e=>setSort(e.target.value)}><option>Featured</option><option>Name A–Z</option></select></label></div>
-   {category==='Solar & Energy'||category==='Batteries'||category==='Clothing'?<div className="tm-shop-empty-category"><b>{category} collection is being verified</b><p>We are adding exact product names, supplier details, specifications and genuine product photographs before publishing listings in this department.</p><button onClick={()=>onEnquire('I am interested in the '+category+' collection. Please contact me when verified products are available.')}>Ask about this collection <ArrowUpRight size={15}/></button></div>:<div className="tm-shop-product-grid">{(sort==='Name A–Z'?[...visible].sort((a,b)=>a.name.localeCompare(b.name)):visible).map(p=><article className="tm-shop-product-card" key={p.id}><button className="tm-shop-product-image" onClick={()=>openProduct(p)}><img src={p.image} alt={p.name} loading="lazy"/><span>{p.badge}</span></button><div className="tm-shop-product-copy"><small>{p.category}</small><button className="tm-shop-product-title" onClick={()=>openProduct(p)}>{p.name}</button><b>{p.price}</b><span className="tm-shop-price-note">Reference price · verify before purchase</span><div className="tm-shop-card-actions"><button onClick={()=>openProduct(p)}>View details</button><button aria-label={'Add '+p.name+' to cart'} onClick={()=>add(p.id)}><ShoppingBag size={16}/></button></div></div></article>)}</div>}
-   {category==='All'&&<p className="tm-shop-footnote">Product listings and reference prices are sourced from the official Tesla Shop where noted. Availability and regional pricing must be reconfirmed.</p>}
-  </section>
-  <section className="tm-shop-trust"><div><b>Verified product information</b><span>Source links and compatibility details</span></div><div><b>Clear order review</b><span>Confirm price and delivery before payment</span></div><div><b>Customer support</b><span>Help from the Tesla Markets team</span></div></section>
-  {selected&&<div className="tm-shop-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><section className="tm-shop-product-detail"><button className="tm-shop-back" onClick={()=>setSelected(null)}><ArrowLeft size={16}/> Back to shopping</button><button className="tm-shop-close" onClick={()=>setSelected(null)} aria-label="Close details"><X/></button><div className="tm-shop-detail-layout"><div className="tm-shop-detail-image"><img src={selected.image} alt={selected.name}/></div><div className="tm-shop-detail-copy"><small>{selected.sourceLabel}</small><h2>{selected.name}</h2><b className="tm-shop-detail-price">{selected.price}</b><p>{selected.description}</p><p className="tm-shop-detail-note">{selected.priceNote}</p><a href={selected.source} target="_blank" rel="noreferrer">Check original Tesla listing <ArrowUpRight size={14}/></a><div className="tm-shop-quantity"><button onClick={()=>setQty(Math.max(1,qty-1))}>−</button><b>{qty}</b><button onClick={()=>setQty(qty+1)}>+</button></div><button className="tm-shop-add-large" onClick={()=>{add(selected.id,qty);setSelected(null)}}>Add to cart <ShoppingBag size={17}/></button></div></div></section></div>}
-  {cartOpen&&<div className="tm-shop-overlay tm-shop-cart-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setCartOpen(false)}}><aside className="tm-shop-cart-drawer"><div className="tm-shop-cart-head"><div><small>YOUR SELECTION</small><h2>Shopping cart ({cartCount})</h2></div><button onClick={()=>setCartOpen(false)} aria-label="Close cart"><X/></button></div>{cart.length===0?<div className="tm-shop-cart-empty"><ShoppingBag size={32}/><b>Your cart is empty</b><p>Explore the marketplace and add products to your cart.</p><button onClick={()=>setCartOpen(false)}>Continue shopping</button></div>:<><div className="tm-shop-cart-lines">{cart.map(x=>{const p=products.find(y=>y.id===x.id);if(!p)return null;return <div className="tm-shop-cart-line" key={x.id}><img src={p.image} alt={p.name}/><div><b>{p.name}</b><small>{p.price} · Qty {x.qty}</small><button onClick={()=>remove(x.id)}>Remove</button></div><div className="tm-shop-line-qty"><button onClick={()=>add(x.id,-1)} disabled={x.qty<=1}>−</button>{x.qty}<button onClick={()=>add(x.id)}>+</button></div></div>})}</div><div className="tm-shop-cart-bottom"><p>Final pricing, stock, shipping and taxes are confirmed before payment. Reference prices are not a payment request.</p><button onClick={checkout}>Continue to checkout <ArrowRight size={17}/></button></div></>}</aside></div>}
- </main>
+function productPrice(product: StoreProduct) {
+  return getDiscountedPrice(product);
+}
+
+function discountValue(product: StoreProduct) {
+  const price = productPrice(product);
+  return price === null ? 0 : Math.max(0, product.originalPrice - price);
+}
+
+function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
+  product: StoreProduct; onOpen: () => void; onAdd: () => void; saved: boolean; onSave: () => void
+}) {
+  const sale = productPrice(product);
+  const hasDiscount = sale !== null && product.discountPercent > 0;
+  return (
+    <article className="tm-store-card">
+      <button className="tm-store-image" onClick={onOpen} aria-label={'View ' + product.name}>
+        {product.image ? <img src={product.image} alt={product.name} loading="lazy" /> : <div className="tm-store-image-placeholder"><ShoppingBag size={31}/><span>PRODUCT PHOTO</span></div>}
+        {hasDiscount && <span className="tm-store-sale-badge">{product.discountPercent}% OFF</span>}
+        {product.featured && <span className="tm-store-featured">FEATURED</span>}
+        <span className="tm-store-image-zoom">View item <ArrowUpRight size={13}/></span>
+      </button>
+      <div className="tm-store-card-copy">
+        <span className="tm-store-card-category">{product.category}</span>
+        <button className="tm-store-card-name" onClick={onOpen}>{product.name}</button>
+        <div className="tm-store-price-row">
+          {hasDiscount && <s>{money(product.originalPrice)}</s>}
+          {sale !== null ? <b>{money(sale)}</b> : <b className="tm-store-quote-price">Quote required</b>}
+        </div>
+        {hasDiscount && <small className="tm-store-saving">Save {money(discountValue(product))} · rounded payable price</small>}
+        {!hasDiscount && sale !== null && <small className="tm-store-saving-muted">US reference price</small>}
+        <div className="tm-store-card-actions">
+          <button onClick={onOpen}>Product details</button>
+          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null} onClick={onAdd}><ShoppingBag size={16}/></button>
+          <button className={'tm-store-save ' + (saved ? 'saved' : '')} onClick={onSave} aria-label={saved ? 'Remove from saved items' : 'Save item'}><Heart size={15} fill={saved ? 'currentColor' : 'none'}/></button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function Marketplace({ onSelectModel }: Props) {
+  const [department, setDepartment] = useState<Department>('All products');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState('Featured');
+  const [selected, setSelected] = useState<StoreProduct | null>(null);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [detailQuantity, setDetailQuantity] = useState(1);
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [saved, setSaved] = useState<string[]>([]);
+  const [showAllDepartments, setShowAllDepartments] = useState(false);
+
+  const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const visibleProducts = useMemo(() => {
+    let items = storeProducts.filter(product =>
+      (department === 'All products' || product.department === department) &&
+      (product.name + ' ' + product.category + ' ' + product.description).toLowerCase().includes(query.toLowerCase())
+    );
+    if (sort === 'Name A–Z') items = [...items].sort((a,b) => a.name.localeCompare(b.name));
+    if (sort === 'Price: low to high') items = [...items].sort((a,b) => (productPrice(a) ?? Infinity) - (productPrice(b) ?? Infinity));
+    if (sort === 'Price: high to low') items = [...items].sort((a,b) => (productPrice(b) ?? -1) - (productPrice(a) ?? -1));
+    if (sort === 'Biggest discount') items = [...items].sort((a,b) => b.discountPercent - a.discountPercent);
+    return items;
+  }, [department, query, sort]);
+
+  const cartLines = cart.map(line => {
+    const product = storeProducts.find(item => item.id === line.id);
+    return product ? { ...line, product, unitPrice: productPrice(product) ?? 0 } : null;
+  }).filter((line): line is NonNullable<typeof line> => Boolean(line));
+  const subtotal = cartLines.reduce((sum,line) => sum + line.unitPrice * line.quantity, 0);
+  const originalSubtotal = cartLines.reduce((sum,line) => sum + line.product.originalPrice * line.quantity, 0);
+  const totalSavings = originalSubtotal - subtotal;
+
+  const addToCart = (product: StoreProduct, quantity = 1, size?: string) => {
+    if (productPrice(product) === null) return;
+    const keySize = size || '';
+    setCart(current => {
+      const found = current.find(line => line.id === product.id && (line.selectedSize || '') === keySize);
+      return found
+        ? current.map(line => line.id === product.id && (line.selectedSize || '') === keySize ? { ...line, quantity: line.quantity + quantity } : line)
+        : [...current, { id: product.id, quantity, selectedSize: keySize || undefined }];
+    });
+    setSelected(null);
+    setCartOpen(true);
+  };
+
+  const changeQty = (id: string, delta: number, size?: string) => {
+    setCart(current => current.map(line =>
+      line.id === id && (line.selectedSize || '') === (size || '')
+        ? { ...line, quantity: Math.max(1, line.quantity + delta) } : line
+    ));
+  };
+
+  const openDetail = (product: StoreProduct) => {
+    setSelected(product);
+    setSelectedSize(product.sizes?.[0] || '');
+    setDetailQuantity(1);
+  };
+
+  const switchDepartment = (next: Department) => {
+    setDepartment(next);
+    setQuery('');
+    setSort('Featured');
+    setShowAllDepartments(false);
+  };
+
+  return (
+    <main className="tm-marketplace-v2">
+      <header className="tm-store-header">
+        <button className="tm-store-brand" onClick={() => switchDepartment('All products')} aria-label="Tesla Markets shop home">
+          <span className="tm-store-brand-mark">T</span>
+          <span><b>TESLA MARKETS</b><small>THE STORE</small></span>
+        </button>
+        <label className="tm-store-search">
+          <Search size={17}/>
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search products, collections, accessories..." />
+          {query && <button onClick={() => setQuery('')} aria-label="Clear search"><X size={14}/></button>}
+        </label>
+        <div className="tm-store-header-actions">
+          <button onClick={() => setSaved(current => current.length ? [] : current)}><Heart size={17}/><span>Saved</span></button>
+          <button onClick={() => setCartOpen(true)} className="tm-store-cart-button"><ShoppingBag size={18}/><span>Cart</span><b>{cartCount}</b></button>
+        </div>
+      </header>
+
+      <nav className="tm-store-departments" aria-label="Marketplace departments">
+        {departments.map(({name,icon:Icon}) => (
+          <button key={name} className={department === name ? 'active' : ''} onClick={() => switchDepartment(name)}>
+            <Icon size={15}/>{name}
+          </button>
+        ))}
+      </nav>
+
+      {department === 'All products' && !query && (
+        <>
+          <section className="tm-store-hero">
+            <div className="tm-store-hero-copy">
+              <span className="tm-store-eyebrow">TESLA MARKETS · CURATED COLLECTIONS</span>
+              <h1>Find your next<br/><em>everyday essential.</em></h1>
+              <p>Explore Tesla merchandise, vehicle accessories, charging and selected energy products in one organised store.</p>
+              <div className="tm-store-hero-actions">
+                <button onClick={() => switchDepartment('Lifestyle')}>Shop the collection <ArrowRight size={16}/></button>
+                <span>US reference prices · USD</span>
+              </div>
+            </div>
+            <div className="tm-store-hero-media">
+              <img src="https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/teslaweb/homepage/Lifestyle_home.jpg" alt="Tesla lifestyle collection featuring bags and drinkware"/>
+              <div className="tm-store-hero-caption"><b>DESIGNED FOR THE EVERYDAY</b><span>APPAREL · LIFESTYLE · ACCESSORIES</span></div>
+            </div>
+          </section>
+
+          <section className="tm-store-film">
+            <div className="tm-store-film-copy"><span className="tm-store-eyebrow">EXPLORE THE COLLECTION</span><h2>Beyond the drive.</h2><p>Discover merchandise, accessories and energy categories through the Tesla Markets collection.</p></div>
+            <video src="/resources/tesla-showreel.mp4" autoPlay muted loop playsInline controls aria-label="Tesla Markets visual collection video"/>
+          </section>
+
+          <section className="tm-store-section tm-store-vehicle-section">
+            <div className="tm-store-section-head"><div><span className="tm-store-eyebrow">THE VEHICLE COLLECTION</span><h2>Explore Tesla vehicles</h2></div><small>Vehicle purchases continue through the dedicated vehicle pages</small></div>
+            <div className="tm-store-vehicle-grid">
+              {vehicles.map(vehicle => <button key={vehicle.id} onClick={() => onSelectModel(vehicle.id)} className="tm-store-vehicle-card">
+                <img src={vehicle.image} alt={vehicle.name} loading="lazy"/>
+                <span><b>{vehicle.name}</b><small>{vehicle.desc}</small></span><ArrowUpRight size={15}/>
+              </button>)}
+            </div>
+          </section>
+
+          <section className="tm-store-section">
+            <div className="tm-store-section-head"><div><span className="tm-store-eyebrow">SHOP BY DEPARTMENT</span><h2>Explore the marketplace</h2></div><button className="tm-store-link-button" onClick={() => setShowAllDepartments(v => !v)}>{showAllDepartments ? 'Show less' : 'All departments'} <ArrowRight size={15}/></button></div>
+            <div className="tm-store-department-grid">
+              {(showAllDepartments ? departments.slice(1) : departments.slice(1,5)).map(({name,sub,icon:Icon}) => <button key={name} onClick={() => switchDepartment(name)} className="tm-store-department-card"><span><Icon size={21}/></span><b>{name}</b><small>{sub}</small><em>Browse department <ArrowUpRight size={13}/></em></button>)}
+            </div>
+          </section>
+        </>
+      )}
+
+      <section className="tm-store-section tm-store-catalogue">
+        <div className="tm-store-section-head">
+          <div><span className="tm-store-eyebrow">{department === 'All products' ? 'THE FULL COLLECTION' : department.toUpperCase()}</span><h2>{query ? 'Search results' : department === 'All products' ? 'Shop all products' : department}</h2><small>{visibleProducts.length} listings in this catalogue view</small></div>
+          <label className="tm-store-sort"><SlidersHorizontal size={15}/><select value={sort} onChange={event => setSort(event.target.value)}><option>Featured</option><option>Name A–Z</option><option>Price: low to high</option><option>Price: high to low</option><option>Biggest discount</option></select></label>
+        </div>
+        {visibleProducts.length ? <div className="tm-store-product-grid">
+          {visibleProducts.map(product => <ProductCard key={product.id} product={product} onOpen={() => openDetail(product)} onAdd={() => addToCart(product)} saved={saved.includes(product.id)} onSave={() => setSaved(current => current.includes(product.id) ? current.filter(id => id !== product.id) : [...current, product.id])}/>)}
+        </div> : <div className="tm-store-empty"><PackageCheck size={28}/><b>No matching products</b><p>Try another search or choose a different department.</p><button onClick={() => switchDepartment('All products')}>Back to all products</button></div>}
+        {department === 'All products' && <p className="tm-store-data-note">Tesla product names and reference prices are based on the official US Tesla Shop. Final availability, regional eligibility, taxes, shipping and delivery must be confirmed. Solar and battery partner products are quotation-only until supplier SKUs and prices are verified.</p>}
+      </section>
+
+      <section className="tm-store-benefits">
+        <div><ShieldCheck size={19}/><span><b>Product source transparency</b><small>Official listings are distinguished from partner-supplied products</small></span></div>
+        <div><Truck size={19}/><span><b>Delivery details before payment</b><small>Shipping and taxes are shown before order confirmation</small></span></div>
+        <div><CreditCard size={19}/><span><b>Secure checkout design</b><small>Payment is only confirmed after verified settlement</small></span></div>
+      </section>
+
+      {selected && (
+        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setSelected(null); }}>
+          <section className="tm-store-detail" role="dialog" aria-modal="true" aria-labelledby="tm-store-detail-title">
+            <button className="tm-store-detail-back" onClick={() => setSelected(null)}><ArrowLeft size={15}/> Continue shopping</button>
+            <button className="tm-store-close" onClick={() => setSelected(null)} aria-label="Close product details"><X size={19}/></button>
+            <div className="tm-store-detail-layout">
+              <div className="tm-store-detail-image">{selected.image ? <img src={selected.image} alt={selected.name}/> : <div className="tm-store-image-placeholder large"><ShoppingBag size={42}/><span>PRODUCT PHOTO TO BE ADDED</span></div>}</div>
+              <div className="tm-store-detail-copy">
+                <span className="tm-store-eyebrow">{selected.category} · {selected.sourceLabel}</span>
+                <h2 id="tm-store-detail-title">{selected.name}</h2>
+                <p>{selected.description}</p>
+                <div className="tm-store-detail-price">
+                  {productPrice(selected) !== null ? <>
+                    {selected.discountPercent > 0 && <s>{money(selected.originalPrice)}</s>}
+                    <b>{money(productPrice(selected)!)}</b>
+                    {selected.discountPercent > 0 && <span>{selected.discountPercent}% OFF</span>}
+                  </> : <b>Price on request</b>}
+                </div>
+                {selected.promoIsPreview && <div className="tm-store-preview-note">Preview promotion only — confirm this item’s actual discount before publishing</div>}
+                <small className="tm-store-stock">{selected.availability}</small>
+                {selected.sizes && <label className="tm-store-size">Choose size<select value={selectedSize} onChange={event => setSelectedSize(event.target.value)}>{selected.sizes.map(size => <option key={size}>{size}</option>)}</select></label>}
+                <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
+                <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
+                {selected.sourceUrl && <a className="tm-store-source-link" href={selected.sourceUrl} target="_blank" rel="noreferrer">View source listing <ArrowUpRight size={13}/></a>}
+                <p className="tm-store-product-disclaimer">{selected.brandType}. Tesla Markets is an independent marketplace and is not presented as Tesla’s official store or dealer. Product eligibility and source terms may limit resale.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {cartOpen && (
+        <div className="tm-store-overlay tm-store-cart-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setCartOpen(false); }}>
+          <aside className="tm-store-cart-drawer" aria-label="Shopping cart">
+            <div className="tm-store-cart-head"><div><span className="tm-store-eyebrow">YOUR SELECTION</span><h2>Shopping cart ({cartCount})</h2></div><button onClick={() => setCartOpen(false)} aria-label="Close cart"><X/></button></div>
+            {!cartLines.length ? <div className="tm-store-cart-empty"><ShoppingBag size={32}/><b>Your cart is empty</b><p>Choose a product from the collection to start an order.</p><button onClick={() => setCartOpen(false)}>Continue shopping</button></div> : <>
+              <div className="tm-store-cart-lines">
+                {cartLines.map(line => <div className="tm-store-cart-line" key={line.id + (line.selectedSize || '')}>
+                  <div className="tm-store-cart-line-image">{line.product.image ? <img src={line.product.image} alt={line.product.name}/> : <ShoppingBag size={19}/>}</div>
+                  <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.product.discountPercent > 0 ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
+                  <div className="tm-store-cart-qty"><button onClick={() => changeQty(line.id,-1,line.selectedSize)}>−</button><b>{line.quantity}</b><button onClick={() => changeQty(line.id,1,line.selectedSize)}>+</button></div>
+                </div>)}
+              </div>
+              <div className="tm-store-cart-summary">
+                <div><span>Original subtotal</span><s>{money(originalSubtotal)}</s></div>
+                <div><span>Product savings</span><b className="saving">−{money(totalSavings)}</b></div>
+                <div className="total"><span>Estimated product total</span><b>{money(subtotal)}</b></div>
+                <small>Shipping, taxes and any duties are calculated before the payment step. Prices are rounded to whole US dollars.</small>
+                <button onClick={() => {setCartOpen(false);setCheckoutOpen(true)}}>Continue to checkout <ArrowRight size={16}/></button>
+              </div>
+            </>}
+          </aside>
+        </div>
+      )}
+
+      {checkoutOpen && (
+        <div className="tm-store-overlay tm-store-checkout-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setCheckoutOpen(false); }}>
+          <section className="tm-store-checkout" role="dialog" aria-modal="true" aria-labelledby="tm-store-checkout-title">
+            <div className="tm-store-checkout-head"><button onClick={() => setCheckoutOpen(false)}><ArrowLeft size={15}/> Back to cart</button><button onClick={() => setCheckoutOpen(false)} aria-label="Close checkout"><X size={18}/></button></div>
+            <div className="tm-store-checkout-layout">
+              <div>
+                <span className="tm-store-eyebrow">DIRECT STORE CHECKOUT</span>
+                <h2 id="tm-store-checkout-title">Delivery details</h2>
+                <p>Customer and delivery information belongs to this store order. Vehicle purchases and investment enquiries remain separate.</p>
+                <div className="tm-store-checkout-form">
+                  <label>Full name<input placeholder="Customer name" autoComplete="name"/></label>
+                  <div className="tm-store-checkout-two"><label>Email address<input type="email" placeholder="you@example.com" autoComplete="email"/></label><label>Phone number<input type="tel" placeholder="+1..." autoComplete="tel"/></label></div>
+                  <label>Delivery address<input placeholder="Street address" autoComplete="street-address"/></label>
+                  <div className="tm-store-checkout-two"><label>City<input placeholder="City" autoComplete="address-level2"/></label><label>Postal code<input placeholder="Postal / ZIP code" autoComplete="postal-code"/></label></div>
+                  <label>Country / region<select defaultValue=""><option value="" disabled>Select country</option><option>United States</option><option>Canada</option><option>United Kingdom</option><option>Nigeria</option><option>France</option><option>Germany</option><option>Other</option></select></label>
+                </div>
+                <div className="tm-store-giftcard-panel"><div><CreditCard size={18}/><b>Gift-card payment</b><span className="tm-store-pending-chip">Integration required</span></div><p>The checkout is designed for direct gift-card payment, but a verified gift-card redemption service is not connected yet. Third-party gift-card PINs or scratch-card photos must not be collected here.</p><small>Once an authorised processor or Tesla Markets store-credit service is connected, customers can redeem a valid balance and pay directly without contacting the investment team.</small></div>
+              </div>
+              <aside className="tm-store-checkout-summary"><span className="tm-store-eyebrow">ORDER SUMMARY</span><h3>{cartCount} items</h3>{cartLines.map(line => <div key={line.id + (line.selectedSize || '')}><span>{line.product.name} × {line.quantity}{line.selectedSize ? ' · '+line.selectedSize : ''}</span><b>{money(line.unitPrice*line.quantity)}</b></div>)}<div className="tm-store-checkout-total"><span>Product total</span><b>{money(subtotal)}</b></div><div className="tm-store-checkout-saving">You save {money(totalSavings)} from listed retail prices</div><button disabled>Gift card payment is not connected</button><small>No payment is taken and no order is marked paid in this preview.</small></aside>
+            </div>
+          </section>
+        </div>
+      )}
+    </main>
+  );
 }
