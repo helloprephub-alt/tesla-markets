@@ -85,7 +85,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
         <div className="tm-store-price-row">
           {hasDiscount ? <><s>{money(product.originalPrice)}</s><b>{money(sale!)}</b></> : <b className="tm-store-quote-price">Price on request</b>}
         </div>
-        {hasDiscount ? <small className="tm-store-saving">Save {money(discountValue(product))} · December sale price</small> : <small className="tm-store-saving-muted">10% off confirmed final quote</small>}
+        {hasDiscount ? <small className="tm-store-saving">Save {money(discountValue(product))} · December sale price</small> : <small className="tm-store-saving-muted">Product-specific discount is applied to the confirmed quote</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
           <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null} onClick={onAdd}><ShoppingBag size={16}/></button>
