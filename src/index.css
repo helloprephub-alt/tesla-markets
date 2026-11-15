@@ -2693,3 +2693,18 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-catalogue-card-body>small{font-size:9px;color:#a51c26;font-weight:800}
 .tm-catalogue-card-body>button{margin-top:3px;border:0;background:#15191b;color:#fff;padding:9px 10px;display:flex;align-items:center;gap:7px;font-size:9px;font-weight:800}
 @media(max-width:560px){.tm-catalogue-grid{grid-template-columns:1fr}.tm-catalogue-card-art{height:75px}}
+
+.tm-market-toolbar{height:48px;padding:0 clamp(20px,6vw,88px);display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #eceeec}
+.tm-market-toolbar>span{font-size:8px;letter-spacing:.16em;font-weight:800;color:#858c8f}
+.tm-market-toolbar>button{display:flex;align-items:center;gap:8px;border:0;background:transparent;color:#1b2022;font-size:10px;font-weight:800}
+.tm-market-toolbar>button b{min-width:19px;height:19px;border-radius:50%;display:grid;place-items:center;background:#b51d27;color:#fff;font-size:9px}
+.tm-catalogue-card-body>button{margin-top:3px;border:0;background:#15191b;color:#fff;padding:9px 10px;display:flex;align-items:center;gap:7px;font-size:9px;font-weight:800;cursor:pointer}
+.tm-market-cart{width:min(100%,560px);max-height:min(85vh,720px);overflow:auto;background:#fff;padding:26px;box-shadow:0 24px 80px rgba(0,0,0,.25)}
+.tm-market-cart-empty{padding:45px 10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#899194}
+.tm-market-cart-empty b{color:#202426;font-size:14px}.tm-market-cart-empty span{font-size:11px}
+.tm-market-cart-items{padding:18px 0;display:flex;flex-direction:column;gap:0}
+.tm-market-cart-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid #eceeec}
+.tm-market-cart-row>div{display:flex;flex-direction:column;gap:5px}.tm-market-cart-row b{font-size:12px}.tm-market-cart-row small{font-size:10px;color:#788185}
+.tm-market-cart-row>button{border:0;background:transparent;color:#a71e27;font-size:10px;font-weight:800}
+.tm-market-cart-continue{width:100%;min-height:46px;background:#b51d27;color:#fff;border:0;display:flex;justify-content:center;align-items:center;gap:10px;font-size:11px;font-weight:800}
+@media(max-width:560px){.tm-market-toolbar{padding:0 16px}.tm-market-toolbar>span{font-size:7px}.tm-market-cart{padding:20px}}
