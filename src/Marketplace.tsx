@@ -90,6 +90,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
 }) {
   const sale = productPrice(product);
   const hasPrice = sale !== null;
+  const hasRange = Boolean(product.priceRange);
   const hasDiscount = hasPrice && product.discountPercent > 0;
   return (
     <article className="tm-store-card">
@@ -105,13 +106,17 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
         <div className="tm-store-price-row">
           {hasPrice
             ? <>{hasDiscount && <s>{money(product.originalPrice)}</s>}<b>{money(sale!)}</b></>
-            : <b className="tm-store-quote-price">Price on request</b>}
+            : hasRange
+              ? <b>{money(product.priceRange![0])}–{money(product.priceRange![1])}</b>
+              : <b className="tm-store-quote-price">Price on request</b>}
         </div>
         {hasDiscount
           ? <small className="tm-store-saving">Save {money(discountValue(product))} · Special offer</small>
           : hasPrice
             ? <small className="tm-store-saving-muted">Listed price</small>
-            : <small className="tm-store-saving-muted">Price confirmed before order</small>}
+            : hasRange
+              ? <small className="tm-store-saving-muted">Choose exact plug variant to confirm checkout price</small>
+              : <small className="tm-store-saving-muted">Price confirmed before order</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
           <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null} onClick={onAdd}><ShoppingBag size={16}/></button>
@@ -347,7 +352,10 @@ export function Marketplace({ onSelectModel }: Props) {
                 <h2 id="tm-store-detail-title">{selected.name}</h2>
                 <p>{selected.description}</p>
                 <div className="tm-store-detail-price">
-                  {productPrice(selected) !== null ? <>
+                  {selected.priceRange ? <>
+                    <b>{money(selected.priceRange[0])}–{money(selected.priceRange[1])}</b>
+                    <span>VARIES BY PLUG TYPE</span>
+                  </> : productPrice(selected) !== null ? <>
                     {selected.discountPercent > 0 && <s>{money(selected.originalPrice)}</s>}
                     <b>{money(productPrice(selected)!)}</b>
                     {selected.discountPercent > 0 && <span>{selected.discountPercent}% OFF</span>}
