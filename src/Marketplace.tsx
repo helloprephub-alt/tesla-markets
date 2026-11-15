@@ -5,6 +5,7 @@ import {
   ShoppingBag, SlidersHorizontal, Sun, Truck, X
 } from 'lucide-react';
 import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
+import { supabase } from './lib/supabase';
 
 type Props = { onSelectModel: (id: string) => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
@@ -129,30 +130,41 @@ export function Marketplace({ onSelectModel }: Props) {
   const [vehicleModelFilter, setVehicleModelFilter] = useState('All models');
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [showAllDepartments, setShowAllDepartments] = useState(false);
+  const [checkoutStage, setCheckoutStage] = useState<'details' | 'payment' | 'done'>('details');
+  const [checkoutDetails, setCheckoutDetails] = useState({
+    fullName: '', email: '', phone: '', address: '', city: '', postalCode: '', country: ''
+  });
+  const [checkoutOrderId, setCheckoutOrderId] = useState('');
+  const [checkoutReference, setCheckoutReference] = useState('');
+  const [checkoutAction, setCheckoutAction] = useState<'pay' | 'save'>('pay');
+  const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'visa_gift_card' | ''>('');
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [paymentProofPreview, setPaymentProofPreview] = useState('');
   const [paymentProofName, setPaymentProofName] = useState('');
   const [paymentProofError, setPaymentProofError] = useState('');
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState('');
+
+  const setCheckoutField = (field: keyof typeof checkoutDetails, value: string) => {
+    setCheckoutDetails(current => ({ ...current, [field]: value }));
+  };
 
   const handlePaymentProof = (file?: File) => {
     setPaymentProofError('');
-    if (!file) {
-      setPaymentProofPreview('');
-      setPaymentProofName('');
-      return;
-    }
+    setPaymentProofFile(null);
+    setPaymentProofPreview('');
+    setPaymentProofName('');
+    if (!file) return;
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       setPaymentProofError('Choose a JPG, PNG or WebP image.');
-      setPaymentProofPreview('');
-      setPaymentProofName('');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       setPaymentProofError('The image must be 5 MB or smaller.');
-      setPaymentProofPreview('');
-      setPaymentProofName('');
       return;
     }
+    setPaymentProofFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
@@ -162,8 +174,116 @@ export function Marketplace({ onSelectModel }: Props) {
         setPaymentProofError('This image could not be previewed. Please choose another file.');
       }
     };
-    reader.onerror = () => setPaymentProofError('This image could not be read. Please choose another file.');
+    reader.onerror = () => {
+      setPaymentProofFile(null);
+      setPaymentProofError('This image could not be read. Please choose another file.');
+    };
     reader.readAsDataURL(file);
+  };
+
+  const validateCheckoutDetails = () => {
+    const d = checkoutDetails;
+    if (!d.fullName.trim() || !d.email.trim() || !d.phone.trim() || !d.address.trim() || !d.city.trim() || !d.country.trim()) {
+      setCheckoutMessage('Complete your name, email, phone and delivery address first.');
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim())) {
+      setCheckoutMessage('Enter a valid email address.');
+      return false;
+    }
+    if (!cartLines.length || subtotal <= 0) {
+      setCheckoutMessage('Your cart is empty.');
+      return false;
+    }
+    setCheckoutMessage('');
+    return true;
+  };
+
+  const createStoreOrder = async (saveForLater: boolean) => {
+    if (checkoutBusy || !validateCheckoutDetails()) return;
+    setCheckoutBusy(true);
+    setCheckoutMessage('');
+    try {
+      const orderId = crypto.randomUUID();
+      const reference = 'TM-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + crypto.randomUUID().slice(0,6).toUpperCase();
+      const items = cartLines.map(line => ({
+        product_id: line.product.id,
+        name: line.product.name,
+        quantity: line.quantity,
+        selected_size: line.selectedSize || null,
+        original_unit_price: line.product.originalPrice,
+        discount_percent: line.product.discountPercent,
+        unit_price: line.unitPrice
+      }));
+      const { error } = await supabase.from('store_orders').insert({
+        id: orderId,
+        order_reference: reference,
+        customer_name: checkoutDetails.fullName.trim(),
+        customer_email: checkoutDetails.email.trim().toLowerCase(),
+        customer_phone: checkoutDetails.phone.trim(),
+        delivery_address: checkoutDetails.address.trim(),
+        delivery_city: checkoutDetails.city.trim(),
+        delivery_postal_code: checkoutDetails.postalCode.trim() || null,
+        delivery_country: checkoutDetails.country.trim(),
+        items,
+        subtotal,
+        discount_total: totalSavings,
+        currency: 'USD',
+        status: saveForLater ? 'saved_for_later' : 'awaiting_payment'
+      });
+      if (error) throw error;
+      setCheckoutOrderId(orderId);
+      setCheckoutReference(reference);
+      setCheckoutAction(saveForLater ? 'save' : 'pay');
+      if (saveForLater) {
+        setCheckoutStage('done');
+        setCheckoutMessage('Your order has been saved. No payment has been taken.');
+      } else {
+        setCheckoutStage('payment');
+        setCheckoutMessage('');
+      }
+    } catch (error) {
+      setCheckoutMessage(error instanceof Error ? error.message : 'We could not save this order. Please try again.');
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
+
+  const submitPaymentProof = async () => {
+    if (checkoutBusy) return;
+    if (!checkoutOrderId || !selectedGiftCard || !paymentProofFile) {
+      setPaymentProofError('Choose a gift card and upload its image or receipt.');
+      return;
+    }
+    setCheckoutBusy(true);
+    setPaymentProofError('');
+    setCheckoutMessage('');
+    try {
+      const ext = paymentProofFile.type === 'image/png' ? 'png' : paymentProofFile.type === 'image/webp' ? 'webp' : 'jpg';
+      const path = checkoutOrderId + '/' + crypto.randomUUID() + '.' + ext;
+      const { error: uploadError } = await supabase.storage.from('shop-payment-proofs').upload(path, paymentProofFile, {
+        contentType: paymentProofFile.type,
+        cacheControl: '3600',
+        upsert: false
+      });
+      if (uploadError) throw uploadError;
+      const { error: insertError } = await supabase.from('store_payment_submissions').insert({
+        order_id: checkoutOrderId,
+        payment_method: selectedGiftCard,
+        proof_storage_path: path,
+        status: 'pending'
+      });
+      if (insertError) throw insertError;
+      setCheckoutStage('done');
+      setCheckoutMessage('Your payment proof has been submitted for verification. Your order remains pending until settlement is confirmed.');
+      setPaymentProofFile(null);
+      setPaymentProofPreview('');
+      setPaymentProofName('');
+    } catch (error) {
+      setPaymentProofError(error instanceof Error ? error.message : 'We could not submit the payment proof. Please try again.');
+    } finally {
+      setCheckoutBusy(false);
+    }
   };
 
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
@@ -387,39 +507,96 @@ export function Marketplace({ onSelectModel }: Props) {
       {checkoutOpen && (
         <div className="tm-store-overlay tm-store-checkout-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setCheckoutOpen(false); }}>
           <section className="tm-store-checkout" role="dialog" aria-modal="true" aria-labelledby="tm-store-checkout-title">
-            <div className="tm-store-checkout-head"><button onClick={() => setCheckoutOpen(false)}><ArrowLeft size={15}/> Back to cart</button><button onClick={() => setCheckoutOpen(false)} aria-label="Close checkout"><X size={18}/></button></div>
-            <div className="tm-store-checkout-layout">
-              <div>
-                <span className="tm-store-eyebrow">DIRECT STORE CHECKOUT</span>
-                <h2 id="tm-store-checkout-title">Delivery details</h2>
-                <p>Customer and delivery information belongs to this store order. Vehicle purchases and investment enquiries remain separate.</p>
-                <div className="tm-store-checkout-form">
-                  <label>Full name<input placeholder="Customer name" autoComplete="name"/></label>
-                  <div className="tm-store-checkout-two"><label>Email address<input type="email" placeholder="you@example.com" autoComplete="email"/></label><label>Phone number<input type="tel" placeholder="+1..." autoComplete="tel"/></label></div>
-                  <label>Delivery address<input placeholder="Street address" autoComplete="street-address"/></label>
-                  <div className="tm-store-checkout-two"><label>City<input placeholder="City" autoComplete="address-level2"/></label><label>Postal code<input placeholder="Postal / ZIP code" autoComplete="postal-code"/></label></div>
-                  <label>Country / region<select defaultValue=""><option value="" disabled>Select country</option><option>United States</option><option>Canada</option><option>United Kingdom</option><option>Nigeria</option><option>France</option><option>Germany</option><option>Other</option></select></label>
+            <div className="tm-store-checkout-head">
+              <button onClick={() => checkoutStage === 'payment' ? setCheckoutStage('details') : setCheckoutOpen(false)}><ArrowLeft size={15}/> {checkoutStage === 'payment' ? 'Delivery details' : 'Back to cart'}</button>
+              <button onClick={() => setCheckoutOpen(false)} aria-label="Close checkout"><X size={18}/></button>
+            </div>
+            {checkoutStage === 'details' && (
+              <div className="tm-store-checkout-layout">
+                <div>
+                  <span className="tm-store-eyebrow">STEP 1 · DELIVERY INFORMATION</span>
+                  <h2 id="tm-store-checkout-title">Where should we deliver?</h2>
+                  <div className="tm-store-checkout-form">
+                    <label>Full name<input value={checkoutDetails.fullName} onChange={event => setCheckoutField('fullName',event.target.value)} placeholder="Customer name" autoComplete="name" required/></label>
+                    <div className="tm-store-checkout-two">
+                      <label>Email address<input type="email" value={checkoutDetails.email} onChange={event => setCheckoutField('email',event.target.value)} placeholder="you@example.com" autoComplete="email" required/></label>
+                      <label>Phone number<input type="tel" value={checkoutDetails.phone} onChange={event => setCheckoutField('phone',event.target.value)} placeholder="+1..." autoComplete="tel" required/></label>
+                    </div>
+                    <label>Delivery address<input value={checkoutDetails.address} onChange={event => setCheckoutField('address',event.target.value)} placeholder="Street address" autoComplete="street-address" required/></label>
+                    <div className="tm-store-checkout-two">
+                      <label>City<input value={checkoutDetails.city} onChange={event => setCheckoutField('city',event.target.value)} placeholder="City" autoComplete="address-level2" required/></label>
+                      <label>Postal code<input value={checkoutDetails.postalCode} onChange={event => setCheckoutField('postalCode',event.target.value)} placeholder="Postal / ZIP code" autoComplete="postal-code"/></label>
+                    </div>
+                    <label>Country / region<select value={checkoutDetails.country} onChange={event => setCheckoutField('country',event.target.value)} required>
+                      <option value="">Select country</option>
+                      <option>United States</option><option>Canada</option><option>United Kingdom</option><option>Nigeria</option><option>France</option><option>Germany</option><option>Other</option>
+                    </select></label>
+                  </div>
+                  {checkoutMessage && <p className="tm-store-checkout-message" role="alert">{checkoutMessage}</p>}
+                  <div className="tm-store-checkout-actions">
+                    <button type="button" disabled={checkoutBusy} onClick={() => void createStoreOrder(false)}>{checkoutBusy ? 'Saving…' : 'Pay now'}</button>
+                    <button type="button" className="tm-store-pay-later" disabled={checkoutBusy} onClick={() => void createStoreOrder(true)}>Save & pay later</button>
+                  </div>
                 </div>
-                <div className="tm-store-giftcard-panel">
-                  <div><CreditCard size={18}/><b>Gift-card payment</b><span className="tm-store-pending-chip">Manual review preview</span></div>
-                  <p>Choose a gift card for the order and attach a supporting image for review. Before uploading, fully cover the redemption code, PIN, barcode and any other redeemable details. Never upload an image that exposes a usable gift-card code.</p>
+                <aside className="tm-store-checkout-summary">
+                  <span className="tm-store-eyebrow">ORDER SUMMARY</span><h3>{cartCount} items</h3>
+                  {cartLines.map(line => <div key={line.id + (line.selectedSize || '')}><span>{line.product.name} × {line.quantity}{line.selectedSize ? ' · '+line.selectedSize : ''}</span><b>{money(line.unitPrice*line.quantity)}</b></div>)}
+                  <div className="tm-store-checkout-total"><span>Product total</span><b>{money(subtotal)}</b></div>
+                  <div className="tm-store-checkout-saving">You save {money(totalSavings)} from listed retail prices</div>
+                </aside>
+              </div>
+            )}
+            {checkoutStage === 'payment' && (
+              <div className="tm-store-payment-step">
+                <span className="tm-store-eyebrow">STEP 2 · PAYMENT METHOD</span>
+                <h2 id="tm-store-checkout-title">Choose your payment card</h2>
+                <div className="tm-store-payment-methods">
+                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'apple_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('apple_gift_card')}>
+                    <span className="tm-store-method-logo apple">Apple</span><b>Apple Gift Card</b>
+                  </button>
+                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'amazon_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('amazon_gift_card')}>
+                    <span className="tm-store-method-logo amazon">amazon</span><b>Amazon Gift Card</b>
+                  </button>
+                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'visa_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('visa_gift_card')}>
+                    <span className="tm-store-method-logo visa">VISA</span><b>Visa Gift Card</b>
+                  </button>
+                  <div className="tm-store-payment-method disabled" aria-disabled="true">
+                    <span className="tm-store-method-logo applepay">Apple Pay</span><b>Apple Pay</b><small>Not connected</small>
+                  </div>
+                </div>
+                <div className="tm-store-proof-panel">
                   <label className="tm-store-proof-upload">Upload gift-card image or purchase receipt
                     <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => handlePaymentProof(event.target.files?.[0])}/>
                   </label>
-                  {paymentProofError && <small role="alert" className="tm-store-proof-error">{paymentProofError}</small>}
                   {paymentProofPreview && <div className="tm-store-proof-preview">
-                    <img src={paymentProofPreview} alt="Selected gift-card proof preview"/>
-                    <span><b>{paymentProofName}</b><small>Selected on this device only · not submitted</small></span>
+                    <img src={paymentProofPreview} alt="Selected payment proof preview"/>
+                    <span><b>{paymentProofName}</b><small>Ready to submit for review</small></span>
                     <button type="button" onClick={() => handlePaymentProof()}>Remove</button>
                   </div>}
-                  <small>A gift-card redemption provider and secure order-review endpoint are not connected yet. This preview does not transmit the image, redeem a card or confirm payment.</small>
+                  {paymentProofError && <small role="alert" className="tm-store-proof-error">{paymentProofError}</small>}
+                  <p className="tm-store-proof-instruction">Upload the image. Your proof will be verified.</p>
                 </div>
+                {checkoutMessage && <p className="tm-store-checkout-message" role="alert">{checkoutMessage}</p>}
+                <div className="tm-store-checkout-actions">
+                  <button type="button" disabled={checkoutBusy||!selectedGiftCard||!paymentProofFile} onClick={() => void submitPaymentProof()}>{checkoutBusy ? 'Submitting…' : 'Submit payment proof'}</button>
+                </div>
+                <p className="tm-store-payment-reference">Order {checkoutReference}</p>
+                <p className="tm-store-payment-safety">Never upload an image that shows a redeemable code or PIN. Cover those details first. Proof approval does not mean funds have settled.</p>
               </div>
-              <aside className="tm-store-checkout-summary"><span className="tm-store-eyebrow">ORDER SUMMARY</span><h3>{cartCount} items</h3>{cartLines.map(line => <div key={line.id + (line.selectedSize || '')}><span>{line.product.name} × {line.quantity}{line.selectedSize ? ' · '+line.selectedSize : ''}</span><b>{money(line.unitPrice*line.quantity)}</b></div>)}<div className="tm-store-checkout-total"><span>Product total</span><b>{money(subtotal)}</b></div><div className="tm-store-checkout-saving">You save {money(totalSavings)} from listed retail prices</div><button disabled>Gift card payment is not connected</button><small>No payment is taken and no order is marked paid in this preview.</small></aside>
-            </div>
+            )}
+            {checkoutStage === 'done' && (
+              <div className="tm-store-checkout-complete">
+                <span className="tm-store-complete-mark"><Check size={26}/></span>
+                <span className="tm-store-eyebrow">ORDER {checkoutReference}</span>
+                <h2 id="tm-store-checkout-title">{checkoutAction === 'save' ? 'Your order is saved' : 'Proof submitted for verification'}</h2>
+                <p>{checkoutMessage}</p>
+                <button type="button" onClick={() => { setCheckoutOpen(false); setCart([]); setCheckoutStage('details'); setCheckoutMessage(''); setSelectedGiftCard(''); }}>Continue shopping</button>
+              </div>
+            )}
           </section>
         </div>
       )}
+
     </main>
   );
 }
