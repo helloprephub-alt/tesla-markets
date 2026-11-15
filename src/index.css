@@ -3032,3 +3032,16 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-store-product-photo{display:block;width:100%;height:100%;min-height:0;object-fit:contain;background:#f0f2f1}
 .tm-store-product-photo-large{width:100%;height:100%;min-height:395px;object-fit:contain}
 @media(max-width:640px){.tm-store-product-photo-large{min-height:225px}}
+
+
+/* Gift-card proof preview: local-only until a verified payment review service is connected. */
+.tm-store-proof-upload{display:flex;flex-direction:column;gap:8px;margin:12px 0;padding:12px;border:1px dashed #cfd6d8;background:#fff;color:#303a3f;font-size:9px;font-weight:800}
+.tm-store-proof-upload input{width:100%;max-width:100%;font-size:9px;font-weight:500}
+.tm-store-proof-upload input::file-selector-button{margin-right:9px;padding:7px 10px;border:1px solid #d8dfe1;background:#f5f7f7;color:#273137;border-radius:3px;font-size:9px;font-weight:800}
+.tm-store-proof-error{display:block;margin:6px 0;color:#b51e2c!important;font-size:9px!important}
+.tm-store-proof-preview{display:flex;align-items:center;gap:10px;margin:10px 0;padding:9px;border:1px solid #dfe5e6;background:#fff}
+.tm-store-proof-preview img{width:62px;height:62px;flex:0 0 62px;object-fit:cover;border:1px solid #e5e8e8;background:#f4f5f5}
+.tm-store-proof-preview span{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px}
+.tm-store-proof-preview b{overflow:hidden;color:#2f383d;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
+.tm-store-proof-preview small{color:#79848a;font-size:8px}
+.tm-store-proof-preview button{padding:6px 8px;border:1px solid #e3d0d2;background:#fff;color:#a51d2a;font-size:8px;font-weight:800}
