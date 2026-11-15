@@ -1,165 +1,56 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, ArrowUpRight, BatteryCharging, CarFront, ChevronRight, PlugZap, Search, Shirt, ShoppingBag, Sun, Wrench, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, BatteryCharging, CarFront, ChevronDown, Heart, Menu, PlugZap, Search, ShoppingBag, SlidersHorizontal, Sun, X } from 'lucide-react';
 
-type Props = {
-  onSelectModel: (id: string) => void;
-  onEnquire: (context: string) => void;
-};
+type Props = { onSelectModel: (id: string) => void; onEnquire: (context: string) => void };
+type Product = { id:string; name:string; category:string; department:string; image:string; images:string[]; description:string; price?:string; priceNote:string; source:string; sourceLabel:string; availability:string; badge?:string };
 
-const departments = [
-  { id: 'vehicles', title: 'Tesla Vehicles', description: 'Explore the vehicle collection and request availability.', count: '5 collections', icon: CarFront, tone: 'vehicle' },
-  { id: 'solar', title: 'Solar & Energy', description: 'Solar panels, home energy storage and power systems.', count: '5 collections', icon: Sun, tone: 'solar' },
-  { id: 'charging', title: 'EV Charging', description: 'Home and destination charging equipment and accessories.', count: '3 collections', icon: PlugZap, tone: 'charging' },
-  { id: 'accessories', title: 'Accessories', description: 'Vehicle accessories, practical upgrades and essentials.', count: 'Coming catalogue', icon: Wrench, tone: 'accessories' },
-  { id: 'lifestyle', title: 'Clothing & Lifestyle', description: 'Apparel and everyday lifestyle collections.', count: 'Coming catalogue', icon: Shirt, tone: 'lifestyle' },
-  { id: 'batteries', title: 'Batteries & Inverters', description: 'Battery storage, inverters and backup power equipment.', count: '4 collections', icon: BatteryCharging, tone: 'batteries' },
+const products:Product[] = [
+ {id:'m3-liners',name:'Model 3 All-Weather Interior Liners',category:'Vehicle accessories',department:'Accessories',image:'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/studio/CAR_ACCESSORIES/MODEL_3/INTERIOR/1974087-00-A_01_2000_1.jpg',images:['https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/studio/CAR_ACCESSORIES/MODEL_3/INTERIOR/1974087-00-A_01_2000_1.jpg'],description:'Thermoplastic elastomer interior liners with raised sides to help protect the vehicle carpet. Tesla lists compatibility with Model 3 vehicles produced in 2024 and later.',price:'$225',priceNote:'Tesla US Shop listing price; stock and eligibility can change. Confirm final price and availability before order.',source:'https://shop.tesla.com/product/model-3-all-weather-interior-liners',sourceLabel:'Tesla Official Shop',availability:'Official listing · stock must be reconfirmed',badge:'Tesla product'},
+ {id:'wall-connector',name:'Wall Connector',category:'Home charging',department:'EV Charging',image:'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/CAR_ACCESSORIES/MODEL_3/CHARGING_ADAPTERS/1457768-02-H_01_2000.png',images:['https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/CAR_ACCESSORIES/MODEL_3/CHARGING_ADAPTERS/1457768-02-H_01_2000.png'],description:'Tesla home charging equipment with Wi-Fi connectivity, Tesla app controls and indoor/outdoor installation options. Installation must be completed by a qualified electrician.',price:'$535',priceNote:'Tesla US Shop listing price; regional pricing, compatibility and stock vary. Confirm before order.',source:'https://shop.tesla.com/product/wall-connector',sourceLabel:'Tesla Official Shop',availability:'Official listing · stock must be reconfirmed',badge:'Tesla product'},
+ {id:'universal-wall-connector',name:'Universal Wall Connector',category:'Home charging',department:'EV Charging',image:'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/CHARGING/UNIVERSAL_WALL_CONNECTOR/1734411-00-A_01.jpg',images:['https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/CHARGING/UNIVERSAL_WALL_CONNECTOR/1734411-00-A_01.jpg'],description:'Tesla home charging unit with an integrated J1772 adapter for compatible non-Tesla electric vehicles as well as Tesla vehicles. Electrical compatibility and installation must be checked.',price:'$600',priceNote:'Tesla US Shop listing price; regional pricing, compatibility and stock vary. Confirm before order.',source:'https://shop.tesla.com/product/universal-wall-connector',sourceLabel:'Tesla Official Shop',availability:'Official listing · stock must be reconfirmed',badge:'Tesla product'}
 ];
 
-
-type CatalogueProduct = { id: string; department: string; category: string; name: string; description: string; availability: string };
-const catalogue: CatalogueProduct[] = [
-  {id:'m3-floor-mats',department:'accessories',category:'Model 3 Accessories',name:'Model 3 All-Weather Floor Mats',description:'Interior floor protection. Fitment and model-year compatibility confirmed before order.',availability:'Enquire for availability'},
-  {id:'m3-trunk-mat',department:'accessories',category:'Model 3 Accessories',name:'Model 3 Cargo & Trunk Mat',description:'Cargo-area protection for everyday use.',availability:'Enquire for availability'},
-  {id:'m3-console',department:'accessories',category:'Model 3 Accessories',name:'Model 3 Centre Console Organiser',description:'Interior storage organiser. Compatibility subject to vehicle year.',availability:'Enquire for availability'},
-  {id:'m3-screen',department:'accessories',category:'Model 3 Accessories',name:'Model 3 Screen Protector',description:'Display protection accessory with fitment checked before purchase.',availability:'Enquire for availability'},
-  {id:'m3-sunshade',department:'accessories',category:'Model 3 Accessories',name:'Model 3 Glass Roof Sunshade',description:'Cabin shade accessory for compatible configurations.',availability:'Enquire for availability'},
-  {id:'my-floor-mats',department:'accessories',category:'Model Y Accessories',name:'Model Y All-Weather Floor Mats',description:'Interior floor protection. Fitment and model-year compatibility confirmed before order.',availability:'Enquire for availability'},
-  {id:'my-cargo',department:'accessories',category:'Model Y Accessories',name:'Model Y Cargo & Trunk Mat',description:'Cargo-area protection for everyday use.',availability:'Enquire for availability'},
-  {id:'my-organiser',department:'accessories',category:'Model Y Accessories',name:'Model Y Storage Organiser',description:'Practical storage accessory for compatible Model Y interiors.',availability:'Enquire for availability'},
-  {id:'my-screen',department:'accessories',category:'Model Y Accessories',name:'Model Y Screen Protector',description:'Display protection accessory with fitment checked before purchase.',availability:'Enquire for availability'},
-  {id:'cyber-bed',department:'accessories',category:'Cybertruck Accessories',name:'Cybertruck Bed Protection',description:'Utility-bed protection enquiry. Configuration and fitment to be confirmed.',availability:'Enquire for availability'},
-  {id:'cyber-mats',department:'accessories',category:'Cybertruck Accessories',name:'Cybertruck Interior Mat Set',description:'Interior protection accessory. Compatibility to be confirmed.',availability:'Enquire for availability'},
-  {id:'wall-connector',department:'charging',category:'Wall Connectors',name:'Home Wall Connector',description:'Fixed home EV charging equipment. Electrical assessment may be required.',availability:'Enquire for availability'},
-  {id:'mobile-connector',department:'charging',category:'Mobile Chargers',name:'Mobile EV Charging Connector',description:'Portable charging equipment. Plug and regional compatibility must be checked.',availability:'Enquire for availability'},
-  {id:'charging-cable',department:'charging',category:'Charging Accessories',name:'EV Charging Cable',description:'Charging cable options with connector compatibility confirmed before order.',availability:'Enquire for availability'},
-  {id:'charging-adapter',department:'charging',category:'Charging Accessories',name:'Charging Adapter',description:'Adapter options for supported vehicle and charger combinations.',availability:'Enquire for availability'},
-  {id:'solar-panel-400',department:'solar',category:'Solar Panels',name:'Residential Solar Panel',description:'Residential panel options. Output, dimensions and certification supplied with quote.',availability:'Request a quote'},
-  {id:'solar-panel-commercial',department:'solar',category:'Solar Panels',name:'Commercial Solar Panel',description:'Commercial panel options for project sizing and supplier confirmation.',availability:'Request a quote'},
-  {id:'solar-mount',department:'solar',category:'Solar Accessories',name:'Solar Mounting Rail & Bracket Kit',description:'Roof or ground mounting components selected for the installation type.',availability:'Enquire for availability'},
-  {id:'solar-cable',department:'solar',category:'Solar Accessories',name:'Solar DC Cable & Connector Set',description:'Solar wiring and connector options with specification confirmation.',availability:'Enquire for availability'},
-  {id:'solar-protection',department:'solar',category:'Solar Accessories',name:'Solar DC Protection & Combiner Box',description:'Protection and combiner equipment sized to the system design.',availability:'Request a quote'},
-  {id:'lifepo4-5',department:'batteries',category:'Lithium Batteries',name:'5 kWh LiFePO4 Battery',description:'Residential energy storage option. Voltage, BMS and compatibility to be confirmed.',availability:'Request a quote'},
-  {id:'lifepo4-10',department:'batteries',category:'Lithium Batteries',name:'10 kWh LiFePO4 Battery',description:'Residential energy storage option. Voltage, BMS and compatibility to be confirmed.',availability:'Request a quote'},
-  {id:'rack-battery',department:'batteries',category:'Lithium Batteries',name:'48V Rack-Mount Battery',description:'Modular battery option for compatible inverter systems.',availability:'Request a quote'},
-  {id:'hybrid-inverter',department:'batteries',category:'Inverters',name:'Hybrid Solar Inverter',description:'Hybrid inverter options selected to match panel and battery configuration.',availability:'Request a quote'},
-  {id:'offgrid-inverter',department:'batteries',category:'Inverters',name:'Off-Grid Inverter',description:'Off-grid inverter options for standalone power systems.',availability:'Request a quote'},
-  {id:'gridtie-inverter',department:'batteries',category:'Inverters',name:'Grid-Tie Inverter',description:'Grid-connected inverter options subject to local requirements.',availability:'Request a quote'},
-  {id:'home-storage',department:'batteries',category:'Home Battery Storage',name:'Home Energy Storage System',description:'Home backup and storage enquiry. Installation assessment and local availability required.',availability:'Request a quote'},
-  {id:'commercial-storage',department:'batteries',category:'Commercial Storage',name:'Commercial Energy Storage System',description:'Large-scale storage enquiry with project sizing and supplier consultation.',availability:'Request a quote'},
-  {id:'apparel-tee',department:'lifestyle',category:'Apparel',name:'Everyday Graphic T-Shirt',description:'Lifestyle apparel listing. Brand, sizing and supplier authenticity confirmed before sale.',availability:'Enquire for availability'},
-  {id:'apparel-cap',department:'lifestyle',category:'Apparel',name:'Everyday Cap',description:'Lifestyle accessory listing. Brand and supplier details confirmed before sale.',availability:'Enquire for availability'},
-  {id:'lifestyle-bottle',department:'lifestyle',category:'Lifestyle',name:'Reusable Travel Bottle',description:'Everyday lifestyle product. Specifications and supplier details confirmed before sale.',availability:'Enquire for availability'},
+const categories = [
+ {name:'All',icon:Menu},{name:'Tesla Vehicles',icon:CarFront},{name:'Accessories',icon:SlidersHorizontal},{name:'EV Charging',icon:PlugZap},{name:'Solar & Energy',icon:Sun},{name:'Batteries',icon:BatteryCharging},{name:'Clothing',icon:Heart}
+];
+const vehicles=[
+ {id:'model-3',name:'Model 3',image:'/resources/model-3-1.jpg',description:'Electric sedan'},
+ {id:'model-y',name:'Model Y',image:'/resources/model-y-1.jpg',description:'Electric SUV'},
+ {id:'cybertruck',name:'Cybertruck',image:'/resources/cybertruck-1.jpg',description:'Electric pickup'},
+ {id:'roadster',name:'Roadster',image:'/resources/roadster-1.jpg',description:'Electric sports car'},
+ {id:'semi',name:'Tesla Semi',image:'/resources/semi-1.jpg',description:'Electric semi truck'}
 ];
 
-const vehicleItems = [
-  { id: 'model-3', name: 'Model 3', image: '/resources/model-3-1.jpg', detail: 'Electric sedan' },
-  { id: 'model-y', name: 'Model Y', image: '/resources/model-y-1.jpg', detail: 'Electric SUV' },
-  { id: 'cybertruck', name: 'Cybertruck', image: '/resources/cybertruck-1.jpg', detail: 'All-electric pickup' },
-  { id: 'roadster', name: 'Roadster', image: '/resources/roadster-1.jpg', detail: 'Performance vehicle' },
-  { id: 'semi', name: 'Tesla Semi', image: '/resources/semi-1.jpg', detail: 'Electric truck' },
-];
-
-const subcategories: Record<string, { title: string; description: string }[]> = {
-  solar: [
-    { title: 'Solar Panels', description: 'Residential and commercial solar panel enquiries' },
-    { title: 'Solar Accessories', description: 'Mounting, wiring, protection and connection equipment' },
-    { title: 'Solar Packages', description: 'System sizing and installation enquiries' },
-  ],
-  batteries: [
-    { title: 'Home Battery Storage', description: 'Home energy storage and backup systems' },
-    { title: 'Lithium Batteries', description: 'LiFePO4 and other battery configurations' },
-    { title: 'Inverters', description: 'Hybrid, off-grid and grid-tie inverter enquiries' },
-    { title: 'Commercial Storage', description: 'Large-scale energy storage enquiries' },
-  ],
-  charging: [
-    { title: 'Wall Connectors', description: 'Home and workplace EV charging' },
-    { title: 'Mobile Chargers', description: 'Portable charging equipment and cables' },
-    { title: 'Charging Accessories', description: 'Adapters, connectors and installation accessories' },
-  ],
-  accessories: [
-    { title: 'Model 3 Accessories', description: 'Interior, exterior and practical accessories' },
-    { title: 'Model Y Accessories', description: 'Interior, exterior and practical accessories' },
-    { title: 'Cybertruck Accessories', description: 'Utility and vehicle accessories' },
-  ],
-  lifestyle: [
-    { title: 'Apparel', description: 'Clothing collection enquiries' },
-    { title: 'Lifestyle', description: 'Everyday products and branded merchandise enquiries' },
-  ],
-};
-
-export function Marketplace({ onSelectModel, onEnquire }: Props) {
-  const [activeDepartment, setActiveDepartment] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [catalogueSearch, setCatalogueSearch] = useState('');
-  const [search, setSearch] = useState('');
-  const [cart, setCart] = useState<{id:string;quantity:number}[]>([]);
-  const [cartOpen, setCartOpen] = useState(false);
-  const cartCount = cart.reduce((total,item)=>total+item.quantity,0);
-  const addToCart = (id:string) => setCart(current => current.some(item=>item.id===id) ? current.map(item=>item.id===id?{...item,quantity:item.quantity+1}:item) : [...current,{id,quantity:1}]);
-  const removeFromCart = (id:string) => setCart(current=>current.filter(item=>item.id!==id));
-  const active = departments.find(item => item.id === activeDepartment);
-  const filteredVehicles = useMemo(() => vehicleItems.filter(item => (item.name + ' ' + item.detail).toLowerCase().includes(search.toLowerCase())), [search]);
-
-  return (
-    <main className="tm-marketplace">
-      <div className="tm-market-toolbar"><span>THE TESLA MARKETS COLLECTION</span><button onClick={()=>setCartOpen(true)}><ShoppingBag size={17}/> Enquiry basket <b>{cartCount}</b></button></div>
-      <section className="tm-market-hero">
-        <div className="tm-market-hero-copy">
-          <span className="tm-market-eyebrow">TESLA MARKETS / THE COLLECTION</span>
-          <h1>Discover your<br /><em>next essential.</em></h1>
-          <p>Explore vehicles, energy products, charging equipment and selected lifestyle collections in one destination.</p>
-          <div className="tm-market-hero-actions">
-            <a href="#tm-departments">Explore departments <ArrowDownRightFallback /></a>
-            <span>Exclusive collections · Enquiry-led availability</span>
-          </div>
-        </div>
-        <div className="tm-market-hero-art">
-          <img src="/resources/tesla-hero.jpg" alt="Tesla Markets featured vehicle" />
-          <div className="tm-market-art-label"><b>TESLA MARKETS</b><span>CURATED COLLECTIONS</span></div>
-        </div>
-      </section>
-
-      <section className="tm-market-promo">
-        <div><span>FEATURED COLLECTIONS</span><h2>One marketplace.<br /><em>More to explore.</em></h2></div>
-        <p>Product availability, configurations and delivery are confirmed with the management team before an order is finalised.</p>
-      </section>
-
-      <section className="tm-market-section" id="tm-departments">
-        <div className="tm-market-section-head"><div><span className="tm-market-eyebrow">SHOP BY DEPARTMENT</span><h2>Explore the <em>departments.</em></h2></div><span className="tm-market-count">06 COLLECTION AREAS</span></div>
-        <div className="tm-department-grid">
-          {departments.map(({id,title,description,count,icon:Icon,tone}) => (
-            <button className={`tm-department-card ${tone}`} key={id} onClick={() => setActiveDepartment(id)}>
-              <span className="tm-department-icon"><Icon size={22}/></span><span className="tm-department-copy"><b>{title}</b><small>{description}</small><em>{count} <ArrowUpRight size={14}/></em></span><ChevronRight className="tm-department-chevron" size={18}/>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="tm-market-section tm-market-vehicles">
-        <div className="tm-market-section-head"><div><span className="tm-market-eyebrow">THE VEHICLE COLLECTION</span><h2>Explore <em>Tesla vehicles.</em></h2></div><span className="tm-market-count">05 MODELS</span></div>
-        <label className="tm-market-search"><Search size={18}/><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search vehicle collection" /><span>{filteredVehicles.length} results</span></label>
-        <div className="tm-vehicle-grid">
-          {filteredVehicles.map(item => <button className="tm-vehicle-card" key={item.id} onClick={() => onSelectModel(item.id)}>
-            <div className="tm-vehicle-image"><img src={item.image} alt={item.name} loading="lazy"/><span>VIEW MODEL <ArrowUpRight size={13}/></span></div>
-            <div className="tm-vehicle-info"><div><b>{item.name}</b><small>{item.detail}</small></div><ArrowRight size={17}/></div>
-          </button>)}
-        </div>
-      </section>
-
-      <section className="tm-market-contact"><div><span className="tm-market-eyebrow">NEED HELP CHOOSING?</span><h2>Talk to the <em>team.</em></h2><p>Ask about product specifications, availability, configurations or delivery arrangements.</p></div><button onClick={() => onEnquire('Marketplace product enquiry — I would like help choosing a product and checking availability.')}>Contact management <ArrowUpRight size={16}/></button></section>
-
-      {cartOpen && <div className="tm-market-modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setCartOpen(false);}}><section className="tm-market-cart" role="dialog" aria-modal="true" aria-labelledby="tm-cart-title"><div className="tm-market-modal-head"><div><span className="tm-market-eyebrow">YOUR SELECTION</span><h2 id="tm-cart-title">Enquiry basket</h2><p>Collect products here before requesting availability and a confirmed quotation.</p></div><button onClick={()=>setCartOpen(false)} aria-label="Close basket"><X size={20}/></button></div>{cart.length===0?<div className="tm-market-cart-empty"><ShoppingBag size={28}/><b>Your basket is empty</b><span>Add products from a department to get started.</span></div>:<><div className="tm-market-cart-items">{cart.map(entry=>{const item=catalogue.find(product=>product.id===entry.id);if(!item)return null;return <div className="tm-market-cart-row" key={entry.id}><div><b>{item.name}</b><small>{item.category} · Quantity {entry.quantity}</small></div><button onClick={()=>removeFromCart(entry.id)}>Remove</button></div>;})}</div><button className="tm-market-cart-continue" onClick={()=>{const summary=cart.map(entry=>{const item=catalogue.find(product=>product.id===entry.id);return item?item.name+" (quantity "+entry.quantity+")":"";}).filter(Boolean).join("; ");setCartOpen(false);onEnquire("Marketplace basket enquiry: "+summary+". Please confirm availability, product authenticity, final prices and delivery options before an order is placed.");}}>Request quotation for {cartCount} item{cartCount===1?'':'s'} <ArrowUpRight size={15}/></button></>}</section></div>}
-      {active && <div className="tm-market-modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setActiveDepartment(null); }}>
-        <section className="tm-market-modal" role="dialog" aria-modal="true" aria-labelledby="tm-department-title">
-          <div className="tm-market-modal-head"><div><span className="tm-market-eyebrow">DEPARTMENT COLLECTION</span><h2 id="tm-department-title">{active.title}</h2><p>{active.description}</p></div><button onClick={() => setActiveDepartment(null)} aria-label="Close department"><X size={20}/></button></div>
-          {active.id === 'vehicles' ? <div className="tm-market-modal-list">{vehicleItems.map(item => <button key={item.id} onClick={() => onSelectModel(item.id)}><span>{item.name}</span><ArrowUpRight size={15}/></button>)}</div> : activeCategory ? <div className="tm-catalogue-view"><button className="tm-catalogue-back" onClick={() => {setActiveCategory(null);setCatalogueSearch('');}}>← All {active.title} collections</button><label className="tm-market-search"><Search size={17}/><input value={catalogueSearch} onChange={event=>setCatalogueSearch(event.target.value)} placeholder={`Search ${activeCategory}`}/></label><div className="tm-catalogue-grid">{catalogue.filter(item=>item.department===active.id&&item.category===activeCategory&&(item.name+' '+item.description).toLowerCase().includes(catalogueSearch.toLowerCase())).map(item=><article className="tm-catalogue-card" key={item.id}><div className="tm-catalogue-card-art"><Wrench size={24}/><span>{item.category}</span></div><div className="tm-catalogue-card-body"><b>{item.name}</b><p>{item.description}</p><small>{item.availability}</small><button onClick={()=>addToCart(item.id)}><ShoppingBag size={14}/> Add to basket</button></div></article>)}</div></div> : <div className="tm-market-subcategory-grid">{(subcategories[active.id] || []).map(item => <button key={item.title} onClick={() => { setActiveCategory(item.title); setCatalogueSearch(''); }}><b>{item.title}</b><small>{item.description}</small><span>View products <ArrowUpRight size={14}/></span></button>)}</div>}
-          <p className="tm-market-modal-note">Listings are enquiry-led. Prices, stock, product authenticity, specifications and delivery are confirmed before an order is accepted. Tesla branding does not imply that every accessory is manufactured or endorsed by Tesla.</p>
-        </section>
-      </div>}
-    </main>
-  );
-}
-
-function ArrowDownRightFallback() {
-  return <ArrowUpRight size={15}/>;
+export function Marketplace({onSelectModel,onEnquire}:Props){
+ const [category,setCategory]=useState('All');
+ const [query,setQuery]=useState('');
+ const [cart,setCart]=useState<{id:string;qty:number}[]>([]);
+ const [cartOpen,setCartOpen]=useState(false);
+ const [selected,setSelected]=useState<Product|null>(null);
+ const [qty,setQty]=useState(1);
+ const [favorites,setFavorites]=useState<string[]>([]);
+ const [sort,setSort]=useState('Featured');
+ const cartCount=cart.reduce((n,x)=>n+x.qty,0);
+ const visible=useMemo(()=>products.filter(p=>(category==='All'||p.department===category||category==='Accessories'&&p.department==='Accessories'||category==='EV Charging'&&p.department==='EV Charging')&&(p.name+' '+p.category+' '+p.description).toLowerCase().includes(query.toLowerCase())),[category,query]);
+ const add=(id:string,n=1)=>setCart(old=>old.some(x=>x.id===id)?old.map(x=>x.id===id?{...x,qty:x.qty+n}:x):[...old,{id,qty:n}]);
+ const remove=(id:string)=>setCart(old=>old.filter(x=>x.id!==id));
+ const openProduct=(p:Product)=>{setSelected(p);setQty(1)};
+ const checkout=()=>{const summary=cart.map(x=>{const p=products.find(y=>y.id===x.id);return p?p.name+' × '+x.qty:''}).filter(Boolean).join('; ');onEnquire('Marketplace checkout request: '+summary+'. Please confirm current price, stock, product authenticity, shipping cost and delivery estimate before payment.');setCartOpen(false)};
+ return <main className="tm-shop">
+  <header className="tm-shop-header">
+   <button className="tm-shop-brand" onClick={()=>{setCategory('All');setQuery('')}} aria-label="Tesla Markets home"><span className="tm-shop-mark">T</span><span><b>TESLA MARKETS</b><small>MARKETPLACE</small></span></button>
+   <label className="tm-shop-search"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search products, categories and more"/><button onClick={()=>setQuery('')} aria-label="Clear search"><X size={15}/></button></label>
+   <div className="tm-shop-actions"><button aria-label="Your account" onClick={()=>onEnquire('I would like help with my Tesla Markets customer account.')}><span>Account</span></button><button className="tm-shop-cart-button" onClick={()=>setCartOpen(true)} aria-label="Open shopping cart"><ShoppingBag size={20}/><span>Cart</span><b>{cartCount}</b></button></div>
+  </header>
+  <nav className="tm-shop-categories" aria-label="Shop categories">{categories.map(({name,icon:Icon})=><button key={name} className={category===name?'active':''} onClick={()=>setCategory(name)}><Icon size={16}/>{name}</button>)}</nav>
+  <section className="tm-shop-promo"><div><span>TESLA MARKETS · THE COLLECTION</span><h1>Find what moves<br/><em>you forward.</em></h1><p>Vehicles, charging, energy and selected accessories in one marketplace.</p><button onClick={()=>setCategory('Tesla Vehicles')}>Explore vehicles <ArrowRight size={16}/></button></div><div className="tm-shop-promo-art"><img src="/resources/tesla-hero.jpg" alt="Tesla Markets featured collection"/></div></section>
+  {category==='All'||category==='Tesla Vehicles'?<section className="tm-shop-section"><div className="tm-shop-section-heading"><div><span>THE VEHICLE COLLECTION</span><h2>Explore Tesla vehicles</h2></div><button onClick={()=>setCategory('Tesla Vehicles')}>View all <ArrowUpRight size={15}/></button></div><div className="tm-shop-vehicle-strip">{vehicles.map(v=><button className="tm-shop-vehicle-tile" key={v.id} onClick={()=>onSelectModel(v.id)}><img src={v.image} alt={v.name}/><span><b>{v.name}</b><small>{v.description}</small></span><ArrowUpRight size={15}/></button>)}</div></section>:null}
+  <section className="tm-shop-section tm-shop-products"><div className="tm-shop-section-heading"><div><span>{category==='All'?'SHOP THE COLLECTION':category.toUpperCase()}</span><h2>{category==='All'?'Popular products':category+' collection'}</h2></div><label className="tm-shop-sort"><SlidersHorizontal size={15}/><select value={sort} onChange={e=>setSort(e.target.value)}><option>Featured</option><option>Name A–Z</option></select></label></div>
+   {category==='Solar & Energy'||category==='Batteries'||category==='Clothing'?<div className="tm-shop-empty-category"><b>{category} collection is being verified</b><p>We are adding exact product names, supplier details, specifications and genuine product photographs before publishing listings in this department.</p><button onClick={()=>onEnquire('I am interested in the '+category+' collection. Please contact me when verified products are available.')}>Ask about this collection <ArrowUpRight size={15}/></button></div>:<div className="tm-shop-product-grid">{(sort==='Name A–Z'?[...visible].sort((a,b)=>a.name.localeCompare(b.name)):visible).map(p=><article className="tm-shop-product-card" key={p.id}><button className="tm-shop-product-image" onClick={()=>openProduct(p)}><img src={p.image} alt={p.name} loading="lazy"/><span>{p.badge}</span></button><div className="tm-shop-product-copy"><small>{p.category}</small><button className="tm-shop-product-title" onClick={()=>openProduct(p)}>{p.name}</button><b>{p.price}</b><span className="tm-shop-price-note">Reference price · verify before purchase</span><div className="tm-shop-card-actions"><button onClick={()=>openProduct(p)}>View details</button><button aria-label={'Add '+p.name+' to cart'} onClick={()=>add(p.id)}><ShoppingBag size={16}/></button></div></div></article>)}</div>}
+   {category==='All'&&<p className="tm-shop-footnote">Product listings and reference prices are sourced from the official Tesla Shop where noted. Availability and regional pricing must be reconfirmed.</p>}
+  </section>
+  <section className="tm-shop-trust"><div><b>Verified product information</b><span>Source links and compatibility details</span></div><div><b>Clear order review</b><span>Confirm price and delivery before payment</span></div><div><b>Customer support</b><span>Help from the Tesla Markets team</span></div></section>
+  {selected&&<div className="tm-shop-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><section className="tm-shop-product-detail"><button className="tm-shop-back" onClick={()=>setSelected(null)}><ArrowLeft size={16}/> Back to shopping</button><button className="tm-shop-close" onClick={()=>setSelected(null)} aria-label="Close details"><X/></button><div className="tm-shop-detail-layout"><div className="tm-shop-detail-image"><img src={selected.image} alt={selected.name}/></div><div className="tm-shop-detail-copy"><small>{selected.sourceLabel}</small><h2>{selected.name}</h2><b className="tm-shop-detail-price">{selected.price}</b><p>{selected.description}</p><p className="tm-shop-detail-note">{selected.priceNote}</p><a href={selected.source} target="_blank" rel="noreferrer">Check original Tesla listing <ArrowUpRight size={14}/></a><div className="tm-shop-quantity"><button onClick={()=>setQty(Math.max(1,qty-1))}>−</button><b>{qty}</b><button onClick={()=>setQty(qty+1)}>+</button></div><button className="tm-shop-add-large" onClick={()=>{add(selected.id,qty);setSelected(null)}}>Add to cart <ShoppingBag size={17}/></button></div></div></section></div>}
+  {cartOpen&&<div className="tm-shop-overlay tm-shop-cart-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setCartOpen(false)}}><aside className="tm-shop-cart-drawer"><div className="tm-shop-cart-head"><div><small>YOUR SELECTION</small><h2>Shopping cart ({cartCount})</h2></div><button onClick={()=>setCartOpen(false)} aria-label="Close cart"><X/></button></div>{cart.length===0?<div className="tm-shop-cart-empty"><ShoppingBag size={32}/><b>Your cart is empty</b><p>Explore the marketplace and add products to your cart.</p><button onClick={()=>setCartOpen(false)}>Continue shopping</button></div>:<><div className="tm-shop-cart-lines">{cart.map(x=>{const p=products.find(y=>y.id===x.id);if(!p)return null;return <div className="tm-shop-cart-line" key={x.id}><img src={p.image} alt={p.name}/><div><b>{p.name}</b><small>{p.price} · Qty {x.qty}</small><button onClick={()=>remove(x.id)}>Remove</button></div><div className="tm-shop-line-qty"><button onClick={()=>add(x.id,-1)} disabled={x.qty<=1}>−</button>{x.qty}<button onClick={()=>add(x.id)}>+</button></div></div>})}</div><div className="tm-shop-cart-bottom"><p>Final pricing, stock, shipping and taxes are confirmed before payment. Reference prices are not a payment request.</p><button onClick={checkout}>Continue to checkout <ArrowRight size={17}/></button></div></>}</aside></div>}
+ </main>
 }
