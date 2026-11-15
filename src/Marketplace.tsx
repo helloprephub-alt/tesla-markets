@@ -66,16 +66,36 @@ function discountValue(product: StoreProduct) {
   return price === null ? 0 : Math.max(0, product.originalPrice - price);
 }
 
+function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; variant?: 'card' | 'large' | 'thumb' }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  if (product.image && !imageFailed) {
+    return <img
+      className={'tm-store-product-photo' + (variant === 'large' ? ' tm-store-product-photo-large' : '')}
+      src={product.image}
+      alt={product.name}
+      loading="lazy"
+      onError={() => setImageFailed(true)}
+    />;
+  }
+  const artClass = variant === 'large'
+    ? 'tm-store-product-art tm-store-product-art-large'
+    : variant === 'thumb'
+      ? 'tm-store-product-art tm-store-product-art-thumb'
+      : 'tm-store-product-art';
+  return <div className={artClass} style={productArtStyle(product)} role="img" aria-label={product.name}/>;
+}
+
 function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   product: StoreProduct; onOpen: () => void; onAdd: () => void; saved: boolean; onSave: () => void
 }) {
   const sale = productPrice(product);
-  const hasDiscount = sale !== null;
+  const hasPrice = sale !== null;
+  const hasDiscount = hasPrice && product.discountPercent > 0;
   return (
     <article className="tm-store-card">
       <button className="tm-store-image" onClick={onOpen} aria-label={'View ' + product.name}>
-        <span className="tm-store-product-art" style={productArtStyle(product)} role="img" aria-label={product.name}/>
-        <span className="tm-store-sale-badge">{product.discountPercent}% OFF</span>
+        <ProductVisual product={product} />
+        {hasDiscount && <span className="tm-store-sale-badge">{product.discountPercent}% OFF</span>}
         {product.featured && <span className="tm-store-featured">FEATURED</span>}
         <span className="tm-store-image-zoom">View item <ArrowUpRight size={13}/></span>
       </button>
@@ -83,9 +103,15 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
         <span className="tm-store-card-category">{product.category}</span>
         <button className="tm-store-card-name" onClick={onOpen}>{product.name}</button>
         <div className="tm-store-price-row">
-          {hasDiscount ? <><s>{money(product.originalPrice)}</s><b>{money(sale!)}</b></> : <b className="tm-store-quote-price">Price on request</b>}
+          {hasPrice
+            ? <>{hasDiscount && <s>{money(product.originalPrice)}</s>}<b>{money(sale!)}</b></>
+            : <b className="tm-store-quote-price">Price on request</b>}
         </div>
-        {hasDiscount ? <small className="tm-store-saving">Save {money(discountValue(product))} · December sale price</small> : <small className="tm-store-saving-muted">Product-specific discount is applied to the confirmed quote</small>}
+        {hasDiscount
+          ? <small className="tm-store-saving">Save {money(discountValue(product))} · Special offer</small>
+          : hasPrice
+            ? <small className="tm-store-saving-muted">Listed price</small>
+            : <small className="tm-store-saving-muted">Price confirmed before order</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
           <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null} onClick={onAdd}><ShoppingBag size={16}/></button>
@@ -111,6 +137,42 @@ export function Marketplace({ onSelectModel }: Props) {
   const [vehicleModelFilter, setVehicleModelFilter] = useState('All models');
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [showAllDepartments, setShowAllDepartments] = useState(false);
+  const [paymentProofPreview, setPaymentProofPreview] = useState('');
+  const [paymentProofName, setPaymentProofName] = useState('');
+  const [paymentProofError, setPaymentProofError] = useState('');
+
+  const handlePaymentProof = (file?: File) => {
+    setPaymentProofError('');
+    if (!file) {
+      setPaymentProofPreview('');
+      setPaymentProofName('');
+      return;
+    }
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setPaymentProofError('Choose a JPG, PNG or WebP image.');
+      setPaymentProofPreview('');
+      setPaymentProofName('');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPaymentProofError('The image must be 5 MB or smaller.');
+      setPaymentProofPreview('');
+      setPaymentProofName('');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setPaymentProofPreview(reader.result);
+        setPaymentProofName(file.name);
+      } else {
+        setPaymentProofError('This image could not be previewed. Please choose another file.');
+      }
+    };
+    reader.onerror = () => setPaymentProofError('This image could not be read. Please choose another file.');
+    reader.readAsDataURL(file);
+  };
 
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const categoryOptions = useMemo(() => {
@@ -279,16 +341,16 @@ export function Marketplace({ onSelectModel }: Props) {
             <button className="tm-store-detail-back" onClick={() => setSelected(null)}><ArrowLeft size={15}/> Continue shopping</button>
             <button className="tm-store-close" onClick={() => setSelected(null)} aria-label="Close product details"><X size={19}/></button>
             <div className="tm-store-detail-layout">
-              <div className="tm-store-detail-image"><div className="tm-store-product-art tm-store-product-art-large" style={productArtStyle(selected)} role="img" aria-label={selected.name}/></div>
+              <div className="tm-store-detail-image"><ProductVisual product={selected} variant="large" /></div>
               <div className="tm-store-detail-copy">
                 <span className="tm-store-eyebrow">{selected.category} · {selected.sourceLabel}</span>
                 <h2 id="tm-store-detail-title">{selected.name}</h2>
                 <p>{selected.description}</p>
                 <div className="tm-store-detail-price">
                   {productPrice(selected) !== null ? <>
-                    <s>{money(selected.originalPrice)}</s>
+                    {selected.discountPercent > 0 && <s>{money(selected.originalPrice)}</s>}
                     <b>{money(productPrice(selected)!)}</b>
-                    <span>{selected.discountPercent}% OFF</span>
+                    {selected.discountPercent > 0 && <span>{selected.discountPercent}% OFF</span>}
                   </> : <b>Price on request</b>}
                 </div>
                 <small className="tm-store-stock">{selected.availability}</small>
@@ -310,7 +372,7 @@ export function Marketplace({ onSelectModel }: Props) {
             {!cartLines.length ? <div className="tm-store-cart-empty"><ShoppingBag size={32}/><b>Your cart is empty</b><p>Choose a product from the collection to start an order.</p><button onClick={() => setCartOpen(false)}>Continue shopping</button></div> : <>
               <div className="tm-store-cart-lines">
                 {cartLines.map(line => <div className="tm-store-cart-line" key={line.id + (line.selectedSize || '')}>
-                  <div className="tm-store-cart-line-image"><div className="tm-store-product-art tm-store-product-art-thumb" style={productArtStyle(line.product)} role="img" aria-label={line.product.name}/></div>
+                  <div className="tm-store-cart-line-image"><ProductVisual product={line.product} variant="thumb" /></div>
                   <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.product.discountPercent > 0 ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
                   <div className="tm-store-cart-qty"><button onClick={() => changeQty(line.id,-1,line.selectedSize)}>−</button><b>{line.quantity}</b><button onClick={() => changeQty(line.id,1,line.selectedSize)}>+</button></div>
                 </div>)}
@@ -343,7 +405,20 @@ export function Marketplace({ onSelectModel }: Props) {
                   <div className="tm-store-checkout-two"><label>City<input placeholder="City" autoComplete="address-level2"/></label><label>Postal code<input placeholder="Postal / ZIP code" autoComplete="postal-code"/></label></div>
                   <label>Country / region<select defaultValue=""><option value="" disabled>Select country</option><option>United States</option><option>Canada</option><option>United Kingdom</option><option>Nigeria</option><option>France</option><option>Germany</option><option>Other</option></select></label>
                 </div>
-                <div className="tm-store-giftcard-panel"><div><CreditCard size={18}/><b>Gift-card payment</b><span className="tm-store-pending-chip">Integration required</span></div><p>The checkout is designed for direct gift-card payment, but a verified gift-card redemption service is not connected yet. Third-party gift-card PINs or scratch-card photos must not be collected here.</p><small>Once an authorised processor or Tesla Markets store-credit service is connected, customers can redeem a valid balance and pay directly without contacting the investment team.</small></div>
+                <div className="tm-store-giftcard-panel">
+                  <div><CreditCard size={18}/><b>Gift-card payment</b><span className="tm-store-pending-chip">Manual review preview</span></div>
+                  <p>Choose a gift card for the order and attach a supporting image for review. Before uploading, fully cover the redemption code, PIN, barcode and any other redeemable details. Never upload an image that exposes a usable gift-card code.</p>
+                  <label className="tm-store-proof-upload">Upload gift-card image or purchase receipt
+                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => handlePaymentProof(event.target.files?.[0])}/>
+                  </label>
+                  {paymentProofError && <small role="alert" className="tm-store-proof-error">{paymentProofError}</small>}
+                  {paymentProofPreview && <div className="tm-store-proof-preview">
+                    <img src={paymentProofPreview} alt="Selected gift-card proof preview"/>
+                    <span><b>{paymentProofName}</b><small>Selected on this device only · not submitted</small></span>
+                    <button type="button" onClick={() => handlePaymentProof()}>Remove</button>
+                  </div>}
+                  <small>A gift-card redemption provider and secure order-review endpoint are not connected yet. This preview does not transmit the image, redeem a card or confirm payment.</small>
+                </div>
               </div>
               <aside className="tm-store-checkout-summary"><span className="tm-store-eyebrow">ORDER SUMMARY</span><h3>{cartCount} items</h3>{cartLines.map(line => <div key={line.id + (line.selectedSize || '')}><span>{line.product.name} × {line.quantity}{line.selectedSize ? ' · '+line.selectedSize : ''}</span><b>{money(line.unitPrice*line.quantity)}</b></div>)}<div className="tm-store-checkout-total"><span>Product total</span><b>{money(subtotal)}</b></div><div className="tm-store-checkout-saving">You save {money(totalSavings)} from listed retail prices</div><button disabled>Gift card payment is not connected</button><small>No payment is taken and no order is marked paid in this preview.</small></aside>
             </div>
