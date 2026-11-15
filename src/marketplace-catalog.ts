@@ -109,7 +109,7 @@ export const storeProducts: StoreProduct[] = [
   {id:'caraokemic',name:'CaraokeMic',department:'Lifestyle',category:'Outdoor & Tech',originalPrice:215,discountPercent:10,description:'Tesla Caraoke microphone accessory. Confirm compatibility before purchase.',sourceLabel:'Tesla Shop product listing',availability:'Compatibility and stock must be reconfirmed',brandType:'Tesla Shop listing'},
 
   // Vehicle accessories and charging — US Tesla Shop reference prices, USD
-  {id:'model-3-liner-bundle',name:'Model 3 All-Weather Liner Bundle',department:'Vehicle Accessories',category:'Model 3 · Floor Mats',originalPrice:370,discountPercent:10,image:'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/studio/CAR_ACCESSORIES/MODEL_3/INTERIOR/1974087-00-A_01_2000_1.jpg',description:'Complete all-weather liner bundle for compatible Model 3 vehicles. Model year and configuration must be checked.',sourceLabel:'Tesla Shop product listing',availability:'Fitment and stock must be reconfirmed',brandType:'Tesla Shop listing',featured:true},
+  {id:'model-3-liner-bundle',name:'Model 3 All-Weather Liner Bundle',department:'Vehicle Accessories',category:'Model 3 · Floor Mats',originalPrice:330,discountPercent:10,image:'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/studio/CAR_ACCESSORIES/MODEL_3/INTERIOR/1974087-00-A_01_2000_1.jpg',description:'Complete all-weather liner bundle for compatible Model 3 vehicles. Model year and configuration must be checked.',sourceLabel:'Tesla Shop product listing',availability:'Fitment and stock must be reconfirmed',brandType:'Tesla Shop listing',featured:true},
   {id:'model-3-rear-trunk-liner',name:'Model 3 All-Weather Rear Trunk Liner',department:'Vehicle Accessories',category:'Model 3 · Floor Mats',originalPrice:125,discountPercent:10,description:'All-weather rear trunk liner for compatible Model 3 vehicles.',sourceLabel:'Tesla Shop product listing',availability:'Fitment and stock must be reconfirmed',brandType:'Tesla Shop listing'},
   {id:'model-3-interior-liners',name:'Model 3 All-Weather Interior Liners',department:'Vehicle Accessories',category:'Model 3 · Floor Mats',originalPrice:225,discountPercent:10,description:'All-weather interior liners for compatible Model 3 vehicles.',sourceUrl:`${SHOP}/product/model-3-all-weather-interior-liners`,sourceLabel:'Tesla Shop product listing',availability:'Fitment and stock must be reconfirmed',brandType:'Tesla Shop listing'},
   {id:'model-3-rear-well-liner',name:'Model 3 All-Weather Rear Well Liner',department:'Vehicle Accessories',category:'Model 3 · Floor Mats',originalPrice:65,discountPercent:10,description:'Rear well liner for compatible Model 3 vehicles.',sourceLabel:'Tesla Shop product listing',availability:'Fitment and stock must be reconfirmed',brandType:'Tesla Shop listing'},
@@ -183,30 +183,44 @@ export const storeProducts: StoreProduct[] = [
 /** Every shop listing carries an individual 10% December offer. Prices are rounded to whole USD. */
 export function getProductImageIndex(product: StoreProduct): number {
   const id = product.id.toLowerCase();
-  const name = (product.name + ' ' + product.category).toLowerCase();
+  const text = (product.name + ' ' + product.category + ' ' + product.description).toLowerCase();
+  if (id.includes('winter-holiday-sweater')) return 35;
+  if (id.includes('winter-holiday-scarf')) return 34;
+  if (id.includes('winter-holiday-beanie')) return 31;
+  if (id.includes('winter-holiday-mug')) return 30;
+  if (id.includes('winter-holiday-blanket')) return 32;
+  if (id.includes('winter-holiday-dog-sweater')) return 33;
+  if (id.includes('winter-holiday-tee') || id.includes('holiday-tee')) return 37;
+  if (id.includes('holiday-cat')) return 11;
+  if (id.includes('holiday-dog')) return 12;
+  if (id.includes('tesla-ornament')) return 29;
+  if (id.includes('cybertruck-rc-racer')) return 26;
+  if (id.includes('cybertruck-pullback') || id.includes('cybertruck-wind-up')) return 8;
+  if (id.includes('cybercab-pullback') || id.includes('cybercab-wind-up')) return 6;
+  if (id.includes('cybertruck-holiday-diecast')) return 5;
   if (id.includes('cybercab-diecast')) return 0;
-  if (id.includes('pullback') || id.includes('rc-racer')) return 2;
-  if (id.includes('cybertruck-diecast') || id.includes('holiday-diecast')) return 5;
-  if (id.includes('cybertruck-reflective-jacket')) return 6;
-  if (id.includes('cybertruck-reflective-tee')) return 7;
-  if (id.includes('holiday-cat') || id.includes('holiday-dog')) return 8;
-  if (name.includes('winter holiday') || name.includes('beanie') || name.includes('scarf')) return 9;
-  if (name.includes('cybercab') && name.includes('tee')) return 10;
-  if (name.includes('model 3')) return 11;
-  if (name.includes('model s')) return 12;
-  if (name.includes('model x')) return 13;
-  if (name.includes('model y')) return 14;
-  if (name.includes('cybertruck')) return 4;
-  if (name.includes('optimus') || name.includes('semi')) return 15;
-  if (id.includes('action-figure') || name.includes('action figure')) return 16;
-  if (name.includes('wooden toy') || name.includes('playset')) return 17;
-  if (name.includes('drinkware') || name.includes('mug') || name.includes('cup') || name.includes('vessel') || name.includes('tumbler') || name.includes('espresso')) return 19;
-  if (product.department === 'Lifestyle') return 18;
-  if (product.department === 'Vehicle Accessories') return 11;
-  if (product.department === 'Apparel') return 15;
-  return 18;
+  if (id.includes('model-3-diecast')) return 20;
+  if (id.includes('model-y-diecast')) return 16;
+  if (id.includes('cybertruck-diecast')) return 5;
+  if (id.includes('wooden-toy') || id.includes('playset')) return 25;
+  if (id.includes('action-figure') || id.includes('bot-action')) return 24;
+  if (text.includes('cybertruck')) return 4;
+  if (text.includes('model 3')) return 15;
+  if (text.includes('model s')) return 17;
+  if (text.includes('model x')) return 18;
+  if (text.includes('model y')) return 19;
+  if (text.includes('semi')) return 23;
+  if (text.includes('optimus') && (text.includes('hoodie') || text.includes('sweatshirt'))) return 1;
+  if (text.includes('hoodie') || text.includes('jacket')) return 22;
+  if (text.includes('tee') || text.includes('t-shirt') || text.includes('shirt')) return 3;
+  if (text.includes('mug') || text.includes('cup') || text.includes('vessel') || text.includes('tumbler') || text.includes('drinkware') || text.includes('espresso')) return 30;
+  if (text.includes('backpack') || text.includes('bag') || text.includes('lifestyle') || text.includes('travel kit')) return 27;
+  if (text.includes('solar') || text.includes('battery') || text.includes('inverter') || text.includes('energy')) return 27;
+  if (product.department === 'Apparel') return 3;
+  if (product.department === 'Vehicle Accessories') return 15;
+  if (product.department === 'EV Charging') return 27;
+  return 27;
 }
-
 export function getDiscountedPrice(product: StoreProduct): number | null {
   if (!product.originalPrice || product.originalPrice <= 0) return null;
   if (!Number.isFinite(product.discountPercent) || product.discountPercent <= 0) return Math.round(product.originalPrice);
