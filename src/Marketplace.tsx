@@ -131,7 +131,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
             : hasRange
               ? <small className="tm-store-saving-muted">Choose exact plug variant to confirm checkout price</small>
               : <small className="tm-store-saving-muted">Price confirmed before order</small>}
-        {product.purchaseEnabled === false && <small className="tm-store-stock-check-note">Supplier stock check required before purchase</small>}
+        {product.purchaseEnabled === false && <small className="tm-store-stock-check-note">{product.promoIsPreview ? product.discountPercent + '% preview offer · confirm supplier stock and final price' : 'Supplier stock check required before purchase'}</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
           <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null || product.purchaseEnabled === false} onClick={onAdd}><ShoppingBag size={16}/></button>
@@ -554,7 +554,6 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
                   <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
                   <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
                 </>}
-                {selected.sourceUrl && <a className="tm-store-source-link" href={selected.sourceUrl} target="_blank" rel="noreferrer">View source listing <ArrowUpRight size={13}/></a>}
                 <p className="tm-store-product-disclaimer">{selected.brandType}. Tesla Markets is an independent marketplace and is not presented as Tesla’s official store or dealer. Product eligibility and source terms may limit resale.</p>
               </div>
             </div>
