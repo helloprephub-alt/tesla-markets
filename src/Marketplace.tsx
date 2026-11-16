@@ -70,20 +70,33 @@ function discountValue(product: StoreProduct) {
 
 function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; variant?: 'card' | 'large' | 'thumb' }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  useEffect(() => {
+    setImageFailed(false);
+    setImageLoaded(false);
+  }, [product.image]);
+  const variantClass = variant === 'large' ? ' tm-store-photo-frame-large' : variant === 'thumb' ? ' tm-store-photo-frame-thumb' : '';
+  const unavailableClass = variant === 'large' ? ' tm-store-image-unavailable-large' : variant === 'thumb' ? ' tm-store-image-unavailable-thumb' : '';
   if (!product.image || imageFailed) {
-    return <div className={'tm-store-image-unavailable' + (variant === 'large' ? ' tm-store-image-unavailable-large' : '')} role="img" aria-label={'Product image unavailable for ' + product.name}>
-      <span>IMAGE UNAVAILABLE</span>
+    return <div className={'tm-store-image-unavailable' + unavailableClass} role="img" aria-label={'Product photo unavailable for ' + product.name}>
+      <PackageCheck size={22} aria-hidden="true" />
+      <span>PRODUCT PHOTO UNAVAILABLE</span>
+      <small>{product.name}</small>
     </div>;
   }
-  return <img
-    className={'tm-store-product-photo' + (variant === 'large' ? ' tm-store-product-photo-large' : '')}
-    src={product.image}
-    alt={product.name}
-    loading="lazy"
-    decoding="async"
-    referrerPolicy="no-referrer"
-    onError={() => setImageFailed(true)}
-  />;
+  return <div className={'tm-store-photo-frame' + variantClass + (imageLoaded ? ' is-loaded' : '')}>
+    {!imageLoaded && <div className="tm-store-photo-loading" aria-hidden="true"><span>Loading product photo</span></div>}
+    <img
+      className={'tm-store-product-photo' + (variant === 'large' ? ' tm-store-product-photo-large' : '')}
+      src={product.image}
+      alt={product.name}
+      loading={variant === 'card' ? 'lazy' : 'eager'}
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onLoad={() => setImageLoaded(true)}
+      onError={() => setImageFailed(true)}
+    />
+  </div>;
 }
 
 function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
@@ -118,9 +131,10 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
             : hasRange
               ? <small className="tm-store-saving-muted">Choose exact plug variant to confirm checkout price</small>
               : <small className="tm-store-saving-muted">Price confirmed before order</small>}
+        {product.purchaseEnabled === false && <small className="tm-store-stock-check-note">Supplier stock check required before purchase</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
-          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null} onClick={onAdd}><ShoppingBag size={16}/></button>
+          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null || product.purchaseEnabled === false} onClick={onAdd}><ShoppingBag size={16}/></button>
           <button className={'tm-store-save ' + (saved ? 'saved' : '')} onClick={onSave} aria-label={saved ? 'Remove from saved items' : 'Save item'}><Heart size={15} fill={saved ? 'currentColor' : 'none'}/></button>
         </div>
       </div>
@@ -128,7 +142,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   );
 }
 
-export function Marketplace({ onSelectModel, onRequireAuth }: Props) {
+export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
@@ -534,8 +548,12 @@ export function Marketplace({ onSelectModel, onRequireAuth }: Props) {
                 </div>
                 <small className="tm-store-stock">{selected.availability}</small>
                 {selected.sizes && <label className="tm-store-size">Choose size<select value={selectedSize} onChange={event => setSelectedSize(event.target.value)}>{selected.sizes.map(size => <option key={size}>{size}</option>)}</select></label>}
-                <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
-                <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
+                {selected.purchaseEnabled === false ? (
+                  <button className="tm-store-add-large" onClick={() => onEnquire('Please confirm current supplier stock, delivery options, warranty and the final price for ' + selected.name + '. The 50% displayed offer is a preview promotion pending supplier confirmation.')}>Check supplier availability <ArrowRight size={17}/></button>
+                ) : <>
+                  <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
+                  <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
+                </>}
                 {selected.sourceUrl && <a className="tm-store-source-link" href={selected.sourceUrl} target="_blank" rel="noreferrer">View source listing <ArrowUpRight size={13}/></a>}
                 <p className="tm-store-product-disclaimer">{selected.brandType}. Tesla Markets is an independent marketplace and is not presented as Tesla’s official store or dealer. Product eligibility and source terms may limit resale.</p>
               </div>
