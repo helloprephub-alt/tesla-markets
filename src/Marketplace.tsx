@@ -447,20 +447,21 @@ export function Marketplace({ onSelectModel, onRequireAuth }: Props) {
 
       {department === 'All products' && !query && (
         <>
-          <section className="tm-store-hero">
-            <div className="tm-store-hero-copy">
+          <section className="tm-store-hero tm-store-christmas-video" aria-label="Tesla Markets Christmas collection">
+            <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-hidden="true">
+              <source src="/resources/883457.webm" type="video/webm"/>
+            </video>
+            <div className="tm-store-christmas-video-overlay" aria-hidden="true"/>
+            <div className="tm-store-hero-copy tm-store-hero-copy-on-video">
               <span className="tm-store-eyebrow">TESLA MARKETS · CHRISTMAS COLLECTION</span>
-              <h1>Christmas<br/><em>special offers.</em></h1>
-              <p>Discover Tesla apparel, drinkware, miniatures, vehicle accessories, charging and energy products — with different Christmas discounts across the collection.</p>
+              <h1>Holiday moments.<br/><em>Made to move.</em></h1>
+              <p>Discover the Christmas collection, from Tesla apparel and everyday accessories to vehicle-inspired gifts, with product-specific offers across selected items.</p>
               <div className="tm-store-hero-actions">
                 <button onClick={() => switchDepartment('All products')}>Shop all Christmas offers <ArrowRight size={16}/></button>
-                <span>Product-specific Christmas discounts</span>
+                <span>Different discounts on selected products</span>
               </div>
             </div>
-            <div className="tm-store-hero-media">
-              <img src="https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla/teslaweb/homepage/Lifestyle_home.jpg" alt="Tesla lifestyle collection featuring bags and drinkware"/>
-              <div className="tm-store-hero-caption"><b>DESIGNED FOR THE EVERYDAY</b><span>APPAREL · LIFESTYLE · ACCESSORIES</span></div>
-            </div>
+            <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY EDIT</b><span>CHRISTMAS COLLECTION · SELECTED OFFERS</span></div>
           </section>
 
           <section className="tm-store-section tm-store-vehicle-section">

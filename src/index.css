@@ -3137,3 +3137,49 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
   .tm-store-detail-image,.tm-store-detail-image img{min-height:230px}
   .tm-store-gallery-thumbnails button{width:64px;height:64px}
 }
+
+
+/* Edge-to-edge Christmas video hero; the source is the selected 640:900 portrait WebM. */
+.tm-store-hero.tm-store-christmas-video{
+  position:relative;isolation:isolate;display:flex;align-items:flex-end;justify-content:flex-start;
+  width:100%;max-width:none;min-height:clamp(520px,76svh,880px);margin:0;padding:clamp(32px,6vw,92px);
+  overflow:hidden;background:#090a0b;
+}
+.tm-store-christmas-video-media{
+  position:absolute;inset:0;z-index:0;width:100%;height:100%;min-height:0;
+  display:block;object-fit:cover;object-position:center 44%;background:#090a0b;
+}
+.tm-store-christmas-video-overlay{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.76) 0%,rgba(0,0,0,.43) 46%,rgba(0,0,0,.08) 100%),
+             linear-gradient(0deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.12) 54%,rgba(0,0,0,.05) 100%);
+}
+.tm-store-hero-copy-on-video{
+  position:relative;z-index:2;max-width:610px;padding:0;background:transparent;color:#fff;
+}
+.tm-store-hero-copy-on-video .tm-store-eyebrow{color:#f0d5a4}
+.tm-store-hero-copy-on-video h1{font-size:clamp(42px,6vw,82px);line-height:.96}
+.tm-store-hero-copy-on-video p{max-width:480px;color:rgba(255,255,255,.86);font-size:clamp(12px,1.15vw,15px)}
+.tm-store-hero-copy-on-video .tm-store-hero-actions span{color:rgba(255,255,255,.78)}
+.tm-store-christmas-video .tm-store-hero-caption{
+  z-index:2;left:auto;right:clamp(18px,4vw,64px);bottom:clamp(18px,3vw,42px);
+  text-align:right;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.85);
+}
+.tm-store-christmas-video .tm-store-hero-caption b{font-size:9px;letter-spacing:.2em}
+.tm-store-christmas-video .tm-store-hero-caption span{font-size:8px;letter-spacing:.16em}
+@media(max-width:980px){
+  .tm-store-hero.tm-store-christmas-video{min-height:clamp(500px,72svh,760px);padding:40px 28px}
+  .tm-store-hero-copy-on-video{max-width:540px}
+}
+@media(max-width:640px){
+  .tm-store-hero.tm-store-christmas-video{min-height:clamp(520px,78svh,720px);margin-top:0;padding:30px 18px 76px}
+  .tm-store-hero-copy-on-video h1{font-size:clamp(39px,12vw,54px)}
+  .tm-store-hero-copy-on-video p{font-size:11px;line-height:1.7;max-width:340px}
+  .tm-store-hero-copy-on-video .tm-store-hero-actions{align-items:flex-start;gap:10px}
+  .tm-store-christmas-video .tm-store-hero-caption{left:18px;right:18px;bottom:17px;text-align:left}
+  .tm-store-christmas-video .tm-store-hero-caption b{font-size:8px}
+  .tm-store-christmas-video .tm-store-hero-caption span{font-size:7px}
+}
+@media(prefers-reduced-motion:reduce){
+  .tm-store-christmas-video-media{animation:none}
+}
