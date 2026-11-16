@@ -299,17 +299,17 @@ const allStoreProducts: StoreProduct[] = [
 ];
 
 /**
- * Publish only products with at least two distinct direct Tesla Shop photos.
- * Listings without a verified second view are held back rather than shown
- * with duplicated, unrelated or fabricated images. No URL can be reused
- * between products or within a product gallery.
+ * Publish priced products that have at least one verified direct Tesla Shop photo.
+ * A product may have a single primary photo; galleries are optional. Every
+ * image URL is unique across the catalogue and no URL can be reused by another item.
  */
 const usedStoreImageUrls = new Set<string>();
 export const storeProducts: StoreProduct[] = allStoreProducts.filter(product => {
   if (!product.name.trim() || !product.image || !product.image.startsWith('https://digitalassets-shop.tesla.com/')) return false;
   if (!Number.isFinite(product.originalPrice) || product.originalPrice <= 0 || product.priceRange) return false;
-  const photos = [...new Set([product.image, ...(product.gallery || [])].filter((src): src is string => Boolean(src)))];
-  if (photos.length < 2 || photos.some(src => !src.startsWith('https://digitalassets-shop.tesla.com/'))) return false;
+  const rawPhotos = [product.image, ...(product.gallery || [])].filter((src): src is string => Boolean(src));
+  const photos = [...new Set(rawPhotos)];
+  if (photos.length !== rawPhotos.length || photos.length < 1 || photos.some(src => !src.startsWith('https://digitalassets-shop.tesla.com/'))) return false;
   if (photos.some(src => usedStoreImageUrls.has(src))) return false;
   photos.forEach(src => usedStoreImageUrls.add(src));
   return true;
