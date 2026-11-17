@@ -25,6 +25,7 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  RefreshCw,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -156,6 +157,7 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
   const [refreshing,setRefreshing]=useState(false);
   const [error,setError]=useState('');
   const [tab,setTab]=useState<'all'|'saved'|'submitted'>('all');
+  const [refreshKey,setRefreshKey]=useState(0);
 
   useEffect(()=>{
     let active=true;
@@ -187,7 +189,7 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
       .subscribe();
     const timer=window.setInterval(()=>{void load();},30000);
     return()=>{active=false;window.clearInterval(timer);void supabase.removeChannel(channel);};
-  },[]);
+  },[refreshKey]);
 
   const visibleOrders=orders.filter(order=>tab==='all'||(tab==='saved'?order.status==='saved_for_later':order.status!=='saved_for_later'));
   const getLatestProof=(orderId:string)=>proofs.find(proof=>proof.order_id===orderId);
@@ -215,7 +217,7 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
         <button type="button" className={tab==='saved'?'active':''} onClick={()=>setTab('saved')}>Saved <b>{orders.filter(o=>o.status==='saved_for_later').length}</b></button>
         <button type="button" className={tab==='submitted'?'active':''} onClick={()=>setTab('submitted')}>Submitted <b>{orders.filter(o=>o.status!=='saved_for_later').length}</b></button>
       </div>
-      <button type="button" className="customer-orders-refresh" onClick={()=>window.location.reload()} disabled={refreshing}><RefreshCw size={14}/> {refreshing?'Refreshing…':'Refresh status'}</button>
+      <button type="button" className="customer-orders-refresh" onClick={()=>setRefreshKey(value=>value+1)} disabled={refreshing}><RefreshCw size={14}/> {refreshing?'Refreshing…':'Refresh status'}</button>
     </div>
     {loading?<div className="customer-orders-state"><span className="customer-orders-spinner"/>Loading your orders…</div>
     :error?<div className="customer-orders-empty"><h2>Sign in to track your orders</h2><p>{error}</p><button className="btn btn-red" onClick={onLogin}>Sign in</button></div>
@@ -384,7 +386,7 @@ function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    const fallback: Record<Page, Page> = {home:'home',how:'home',markets:'home',ai:'home',shop:'home',about:'home',contact:'home',faq:'home',login:'home',signup:'home',dashboard:'home',portfolio:'dashboard',history:'dashboard',profile:'dashboard',admin:'home',chat:'home','model-y':'shop','model-3':'shop',cybertruck:'shop',roadster:'shop',semi:'shop'};
+    const fallback: Record<Page, Page> = {home:'home',how:'home',markets:'home',ai:'home',shop:'home',about:'home',contact:'home',faq:'home',login:'home',signup:'home',dashboard:'home',portfolio:'dashboard',history:'dashboard',profile:'dashboard',orders:'home',admin:'home',chat:'home','model-y':'shop','model-3':'shop',cybertruck:'shop',roadster:'shop',semi:'shop'};
     go(fallback[page] || 'home');
   };
   useEffect(() => {
