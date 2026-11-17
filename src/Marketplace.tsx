@@ -659,7 +659,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
                     <span className="tm-store-method-logo apple"><img src="https://cdn.simpleicons.org/apple/111111" alt="Apple logo"/></span><b>Apple Gift Card</b><small>Apple</small>
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'amazon_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('amazon_gift_card')}>
-                    <span className="tm-store-method-logo amazon"><img src="https://cdn.simpleicons.org/amazon/111111" alt="Amazon logo"/></span><b>Amazon Gift Card</b><small>Amazon</small>
+                    <span className="tm-store-method-logo amazon"><span className="tm-store-amazon-wordmark" role="img" aria-label="Amazon">amazon</span></span><b>Amazon Gift Card</b><small>Amazon</small>
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'visa_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('visa_gift_card')}>
                     <span className="tm-store-method-logo visa"><img src="https://cdn.simpleicons.org/visa/1A1F71" alt="Visa logo"/></span><b>Visa Gift Card</b><small>Visa</small>
