@@ -12,7 +12,7 @@ type Department = StoreDepartment | 'All products';
 type CartLine = { id: string; quantity: number; selectedSize?: string };
 type CheckoutIntent = {
   cart: CartLine[];
-  checkoutDetails?: { fullName: string; email: string; phone: string; address: string; city: string; postalCode: string; country: string };
+  checkoutDetails?: { fullName: string; email: string; phone: string; address: string; city: string; region?: string; postalCode: string; country: string };
 };
 const CHECKOUT_INTENT_KEY = 'tesla-markets-checkout-intent';
 const GUEST_CART_KEY = 'tesla-markets-saved-cart';
@@ -213,7 +213,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     void supabase.auth.getSession().then(({data})=>restoreCustomerCart(data.session?.user.id));
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{
       setCartHydrated(false);
-      void restoreCustomerCart(session?.user.id);
+      window.setTimeout(()=>{void restoreCustomerCart(session?.user.id);},0);
     });
     const savedIntent=readCheckoutIntent();
     if(savedIntent){if(savedIntent.checkoutDetails)setCheckoutDetails(savedIntent.checkoutDetails);setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');localStorage.removeItem(CHECKOUT_INTENT_KEY);}
