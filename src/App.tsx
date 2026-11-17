@@ -170,7 +170,7 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
         return;
       }
       const [orderResult,proofResult]=await Promise.all([
-        supabase.from('store_orders').select('id,order_reference,items,subtotal,currency,status,created_at,updated_at').eq('customer_id',user.id).order('created_at',{ascending:false}).limit(100),
+        supabase.from('store_orders').select('id,order_reference,items,subtotal,currency,status,delivery_carrier,tracking_number,tracking_url,created_at,updated_at').eq('customer_id',user.id).order('created_at',{ascending:false}).limit(100),
         supabase.from('store_payment_submissions').select('id,order_id,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(300)
       ]);
       if(!active)return;
@@ -238,6 +238,7 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
         <div className="customer-order-total"><span>Order total</span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:order.currency||'USD',maximumFractionDigits:0}).format(Number(order.subtotal||0))}</b></div>
         <div className="customer-order-status-line"><span className={'customer-order-badge '+state.tone}><i/>{state.label}</span><p>{state.detail}</p></div>
         <div className="customer-order-progress">{stages.map((stage,index)=><div className={'customer-order-progress-step '+(stage.done?'done':'')} key={stage.label}><span className="customer-order-progress-dot">{stage.done?'✓':index+1}</span><small>{stage.label}</small></div>)}</div>
+        {(order.tracking_number||order.tracking_url)&&<div className="customer-order-tracking"><b>Delivery tracking</b><span>{order.delivery_carrier||'Delivery carrier'} · {order.tracking_number||'Tracking number pending'}</span>{order.tracking_url&&<a href={order.tracking_url} target="_blank" rel="noreferrer">Track shipment <ArrowUpRight size={13}/></a>}</div>}
         {proof?.review_note&&<div className={'customer-order-review-note '+(proof.status==='rejected'?'rejected':'')}><b>{proof.status==='rejected'?'Management review note':'Management update'}</b><p>{proof.review_note}</p></div>}
         {order.status==='saved_for_later'&&<div className="customer-order-saved-hint">Saved order · Return to the shop to continue browsing or rebuild your cart.</div>}
         <div className="customer-order-footer"><small>Last updated {new Date(order.updated_at||order.created_at).toLocaleString()}</small><button type="button" onClick={onShop}>Open shop <ArrowUpRight size={14}/></button></div>
