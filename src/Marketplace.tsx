@@ -160,12 +160,12 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
   const [showAllDepartments, setShowAllDepartments] = useState(false);
   const [checkoutStage, setCheckoutStage] = useState<'details' | 'payment' | 'done'>('details');
   const [checkoutDetails, setCheckoutDetails] = useState(() => readCheckoutIntent()?.checkoutDetails || ({
-    fullName: '', email: '', phone: '', address: '', city: '', postalCode: '', country: ''
+    fullName: '', email: '', phone: '', address: '', city: '', region: '', postalCode: '', country: ''
   }));
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [checkoutReference, setCheckoutReference] = useState('');
   const [checkoutAction, setCheckoutAction] = useState<'pay' | 'save'>('pay');
-  const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'visa_gift_card' | ''>('');
+  const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'visa_gift_card' | 'google_play_gift_card' | 'razor_gold_gift_card' | ''>('');
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [paymentProofPreview, setPaymentProofPreview] = useState('');
   const [paymentProofName, setPaymentProofName] = useState('');
@@ -286,6 +286,7 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
         customer_phone: checkoutDetails.phone.trim(),
         delivery_address: checkoutDetails.address.trim(),
         delivery_city: checkoutDetails.city.trim(),
+        delivery_region: checkoutDetails.region.trim() || null,
         delivery_postal_code: checkoutDetails.postalCode.trim() || null,
         delivery_country: checkoutDetails.country.trim(),
         items,
@@ -606,8 +607,9 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
                     <label>Delivery address<input value={checkoutDetails.address} onChange={event => setCheckoutField('address',event.target.value)} placeholder="Street address" autoComplete="street-address" required/></label>
                     <div className="tm-store-checkout-two">
                       <label>City<input value={checkoutDetails.city} onChange={event => setCheckoutField('city',event.target.value)} placeholder="City" autoComplete="address-level2" required/></label>
-                      <label>Postal code<input value={checkoutDetails.postalCode} onChange={event => setCheckoutField('postalCode',event.target.value)} placeholder="Postal / ZIP code" autoComplete="postal-code"/></label>
+                      <label>State / region<input value={checkoutDetails.region} onChange={event => setCheckoutField('region',event.target.value)} placeholder="State / region" autoComplete="address-level1"/></label>
                     </div>
+                    <label>Postal code<input value={checkoutDetails.postalCode} onChange={event => setCheckoutField('postalCode',event.target.value)} placeholder="Postal / ZIP code" autoComplete="postal-code"/></label>
                     <label>Country / region<select value={checkoutDetails.country} onChange={event => setCheckoutField('country',event.target.value)} required>
                       <option value="">Select country</option>
                       <option>United States</option><option>Canada</option><option>United Kingdom</option><option>Nigeria</option><option>France</option><option>Germany</option><option>Other</option>
@@ -641,12 +643,15 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'visa_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('visa_gift_card')}>
                     <span className="tm-store-method-logo visa">VISA</span><b>Visa Gift Card</b>
                   </button>
-                  <div className="tm-store-payment-method disabled" aria-disabled="true">
-                    <span className="tm-store-method-logo applepay">Apple Pay</span><b>Apple Pay</b><small>Not connected</small>
-                  </div>
+                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'google_play_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('google_play_gift_card')}>
+                    <span className="tm-store-method-logo google">Google Play</span><b>Google Play Gift Card</b>
+                  </button>
+                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'razor_gold_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('razor_gold_gift_card')}>
+                    <span className="tm-store-method-logo razor">Razer Gold</span><b>Razer Gold Gift Card</b>
+                  </button>
                 </div>
                 <div className="tm-store-proof-panel">
-                  <label className="tm-store-proof-upload">Upload gift-card image or purchase receipt
+                  <label className="tm-store-proof-upload">Upload image
                     <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => handlePaymentProof(event.target.files?.[0])}/>
                   </label>
                   {paymentProofPreview && <div className="tm-store-proof-preview">
@@ -655,14 +660,12 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
                     <button type="button" onClick={() => handlePaymentProof()}>Remove</button>
                   </div>}
                   {paymentProofError && <small role="alert" className="tm-store-proof-error">{paymentProofError}</small>}
-                  <p className="tm-store-proof-instruction">Upload a clear purchase receipt or payment image. Do not upload or reveal gift-card redemption codes, PINs, or full card details. Evidence is private and remains awaiting administrator verification; uploading a screenshot does not mark the order as paid.</p>
                 </div>
                 {checkoutMessage && <p className="tm-store-checkout-message" role="alert">{checkoutMessage}</p>}
                 <div className="tm-store-checkout-actions">
                   <button type="button" disabled={checkoutBusy||!selectedGiftCard||!paymentProofFile} onClick={() => void submitPaymentProof()}>{checkoutBusy ? 'Submitting…' : 'Submit payment proof'}</button>
                 </div>
                 <p className="tm-store-payment-reference">Order {checkoutReference}</p>
-                <p className="tm-store-payment-safety">Never upload an image that shows a redeemable code or PIN. Cover those details first. Proof approval does not mean funds have settled.</p>
               </div>
             )}
             {checkoutStage === 'done' && (
