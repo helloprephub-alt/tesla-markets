@@ -1185,6 +1185,7 @@ function App() {
           <div className="dash-box">
             <h3>{page === 'profile' ? 'Profile workspace' : 'Personal workspace'}</h3>
             <p className="muted">This information workspace is a preview. Financial accounts and trade execution are not connected.</p>
+            <div className="customer-orders-shortcut"><button className="btn btn-dark" onClick={() => go('orders')}>My saved orders & tracking <ArrowUpRight size={15}/></button></div>
             <button className="btn btn-red" onClick={() => go('markets')}>Explore markets <ArrowUpRight size={15}/></button>
           </div>
         )}
@@ -1211,6 +1212,7 @@ function App() {
     'portfolio',
     'history',
     'profile',
+    'orders',
   ].includes(page);
   const hideSiteChrome = dashboardPage || page === 'admin' || page === 'signup' || page === 'login' || page === 'chat';
   const hasOwnBack = page === 'chat' || ['model-y','model-3','cybertruck','roadster','semi'].includes(page);
