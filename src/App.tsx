@@ -255,7 +255,7 @@ function App() {
       const route = new URLSearchParams(location.search).get('page');
       const hash = location.hash.replace(/^#\/?/, '');
       const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : '');
-      const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
+      const allowed: Page[] = ['home','how','markets','ai','shop','vehicles','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       return allowed.includes(requested as Page) ? requested as Page : 'home';
     }
   );
