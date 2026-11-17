@@ -3419,3 +3419,13 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .vehicle-offer-summary del{color:#8b969a;font-size:11px}
 .vehicle-offer-summary b{margin-left:auto;color:#172126;font-size:19px;font-weight:900}
 .vehicle-card-discount{display:inline-block;margin-left:6px;padding:4px 6px;background:#a72c36;color:#fff;font-size:8px;font-weight:900;vertical-align:middle}
+
+/* Premium, distinct vehicle collection affordances */
+.vehicle-promo-ribbon{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 17px;margin:0 0 30px;border:1px solid #ead8d8;border-radius:10px;background:linear-gradient(110deg,#fff8f7,#fff);color:#8d2630;font:700 10px Manrope;letter-spacing:.12em}
+.vehicle-promo-ribbon b{padding:6px 9px;border-radius:4px;background:#a92835;color:#fff;letter-spacing:.08em}
+.vehicle-promo-ribbon small{font:500 11px Manrope;letter-spacing:0;color:#737e84}
+.vehicle-view-all-cta{display:inline-flex;align-items:center;justify-content:center;gap:12px;padding:15px 20px;border:1px solid #17242c;border-radius:7px;background:linear-gradient(135deg,#17242c,#34444d);color:#fff;font:700 13px Manrope;letter-spacing:.02em;box-shadow:0 8px 22px rgba(16,27,34,.16);cursor:pointer;transition:transform .2s,box-shadow .2s,background .2s}
+.vehicle-view-all-cta:hover{transform:translateY(-2px);box-shadow:0 13px 28px rgba(16,27,34,.22);background:linear-gradient(135deg,#263943,#101b22)}
+.home-model-grid span{flex-wrap:wrap;gap:5px 10px}
+.home-model-grid span small{display:block;flex-basis:100%;color:#a32935;font:700 9px Manrope;letter-spacing:.08em}
+@media(max-width:640px){.vehicle-promo-ribbon{gap:8px;padding:11px 12px;margin-bottom:22px}.vehicle-view-all-cta{padding:12px 13px;font-size:11px;white-space:nowrap}.home-model-preview .section-head{align-items:flex-start}.home-model-grid span{padding:12px;font-size:12px}}
