@@ -149,53 +149,98 @@ es:{home:'Inicio',vehicles:'Vehículos / Tienda',investments:'Inversiones',about
 };
 
 
-function CustomerOrders({onShop}:{onShop:()=>void}) {
+function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
   const [orders,setOrders]=useState<any[]>([]);
   const [proofs,setProofs]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
+  const [refreshing,setRefreshing]=useState(false);
   const [error,setError]=useState('');
+  const [tab,setTab]=useState<'all'|'saved'|'submitted'>('all');
+
   useEffect(()=>{
     let active=true;
     const load=async()=>{
-      setLoading(true);
+      if(active)setRefreshing(true);
       const {data:{user},error:userError}=await supabase.auth.getUser();
-      if(userError||!user){if(active){setError('Sign in to view your saved orders and order updates.');setLoading(false);}return;}
+      if(userError||!user){
+        if(active){setOrders([]);setProofs([]);setError('Sign in to see your saved orders and order updates.');setLoading(false);setRefreshing(false);}
+        return;
+      }
       const [orderResult,proofResult]=await Promise.all([
         supabase.from('store_orders').select('id,order_reference,items,subtotal,currency,status,created_at,updated_at').eq('customer_id',user.id).order('created_at',{ascending:false}).limit(100),
-        supabase.from('store_payment_submissions').select('id,order_id,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(200)
+        supabase.from('store_payment_submissions').select('id,order_id,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(300)
       ]);
       if(!active)return;
-      if(orderResult.error){setError(orderResult.error.message);setLoading(false);return;}
+      if(orderResult.error){setError(orderResult.error.message);setLoading(false);setRefreshing(false);return;}
       const orderRows=orderResult.data||[];
       const ownIds=new Set(orderRows.map(row=>row.id));
       setOrders(orderRows);
       setProofs((proofResult.data||[]).filter(row=>ownIds.has(row.order_id)));
+      setError('');
       setLoading(false);
+      setRefreshing(false);
     };
     void load();
-    const channel=supabase.channel('customer-store-orders').on('postgres_changes',{event:'*',schema:'public',table:'store_orders'},()=>{void load();}).on('postgres_changes',{event:'*',schema:'public',table:'store_payment_submissions'},()=>{void load();}).subscribe();
-    return()=>{active=false;void supabase.removeChannel(channel);};
+    const channel=supabase.channel('customer-store-order-tracking')
+      .on('postgres_changes',{event:'*',schema:'public',table:'store_orders'},()=>{void load();})
+      .on('postgres_changes',{event:'*',schema:'public',table:'store_payment_submissions'},()=>{void load();})
+      .subscribe();
+    const timer=window.setInterval(()=>{void load();},30000);
+    return()=>{active=false;window.clearInterval(timer);void supabase.removeChannel(channel);};
   },[]);
-  const label=(status:string)=>{
-    const map:Record<string,string>={saved_for_later:'Saved for later',awaiting_payment:'Order submitted',proof_approved_pending_settlement:'Submission accepted · fulfilment review',payment_proof_rejected:'Submission rejected',processing:'Processing',completed:'Completed',cancelled:'Cancelled',refunded:'Refunded'};
-    return map[status]||status.replaceAll('_',' ');
+
+  const visibleOrders=orders.filter(order=>tab==='all'||(tab==='saved'?order.status==='saved_for_later':order.status!=='saved_for_later'));
+  const getLatestProof=(orderId:string)=>proofs.find(proof=>proof.order_id===orderId);
+  const stateFor=(order:any)=>{
+    const proof=getLatestProof(order.id);
+    if(order.status==='saved_for_later')return {label:'Saved for later',tone:'saved',detail:'This order is saved and has not been submitted.'};
+    if(order.status==='payment_proof_rejected'||proof?.status==='rejected')return {label:'Needs attention',tone:'rejected',detail:'Management has reviewed this submission. See the review note below.'};
+    if(proof?.status==='pending'||order.status==='proof_submitted')return {label:'Review pending',tone:'pending',detail:'Your submission has been received and is awaiting review.'};
+    if(proof?.status==='approved_pending_settlement'||order.status==='proof_approved_pending_settlement')return {label:'Review accepted',tone:'accepted',detail:'Your submission has been reviewed. Order fulfilment updates will appear here.'};
+    if(order.status==='delivered'||order.status==='completed')return {label:'Delivered',tone:'accepted',detail:'This order is marked as completed.'};
+    if(order.status==='shipped')return {label:'Shipped',tone:'accepted',detail:'Your order has been marked as shipped.'};
+    if(order.status==='processing')return {label:'Processing',tone:'accepted',detail:'Your order is being prepared.'};
+    if(order.status==='cancelled')return {label:'Cancelled',tone:'rejected',detail:'This order has been cancelled.'};
+    return {label:'Order submitted',tone:'pending',detail:'Your order is saved. Its next update will appear here.'};
   };
-  return <section className="customer-orders-page">
-    <div className="customer-orders-head"><span className="eyebrow dark">CUSTOMER ORDER CENTRE</span><h2>Saved orders & tracking</h2><p>Return to an unfinished order and follow updates to orders you have submitted.</p><button className="btn btn-outline" onClick={onShop}>Continue shopping</button></div>
-    {loading?<p className="muted">Loading your orders…</p>:error?<p role="alert" className="customer-orders-error">{error}</p>:orders.length===0?<div className="customer-orders-empty"><h3>No orders yet</h3><p>Your saved and submitted orders will appear here.</p><button className="btn btn-red" onClick={onShop}>Visit shop</button></div>:<div className="customer-orders-list">{orders.map(order=>{
-      const orderProofs=proofs.filter(proof=>proof.order_id===order.id);
-      const latest=orderProofs[0];
-      const status=order.status||'awaiting_payment';
+
+  return <main className="customer-orders-page">
+    <div className="customer-orders-hero">
+      <div><span className="eyebrow dark">TESLA MARKETS · CUSTOMER AREA</span><h1>My orders</h1><p>See what you have saved, check your submissions and follow every order update in one place.</p></div>
+      <button className="customer-orders-shop-btn" onClick={onShop}><ShoppingBag size={16}/> Continue shopping</button>
+    </div>
+    <div className="customer-orders-toolbar">
+      <div className="customer-orders-tabs" role="tablist" aria-label="Order filters">
+        <button type="button" className={tab==='all'?'active':''} onClick={()=>setTab('all')}>All orders <b>{orders.length}</b></button>
+        <button type="button" className={tab==='saved'?'active':''} onClick={()=>setTab('saved')}>Saved <b>{orders.filter(o=>o.status==='saved_for_later').length}</b></button>
+        <button type="button" className={tab==='submitted'?'active':''} onClick={()=>setTab('submitted')}>Submitted <b>{orders.filter(o=>o.status!=='saved_for_later').length}</b></button>
+      </div>
+      <button type="button" className="customer-orders-refresh" onClick={()=>window.location.reload()} disabled={refreshing}><RefreshCw size={14}/> {refreshing?'Refreshing…':'Refresh status'}</button>
+    </div>
+    {loading?<div className="customer-orders-state"><span className="customer-orders-spinner"/>Loading your orders…</div>
+    :error?<div className="customer-orders-empty"><h2>Sign in to track your orders</h2><p>{error}</p><button className="btn btn-red" onClick={onLogin}>Sign in</button></div>
+    :visibleOrders.length===0?<div className="customer-orders-empty"><span className="customer-orders-empty-icon"><ShoppingBag size={23}/></span><h2>{tab==='saved'?'No saved orders yet':tab==='submitted'?'No submitted orders yet':'Your order list is empty'}</h2><p>Orders you save or submit from the shop will appear here with their latest status.</p><button className="btn btn-red" onClick={onShop}>Visit the shop</button></div>
+    :<div className="customer-orders-list">{visibleOrders.map(order=>{
+      const proof=getLatestProof(order.id);
+      const state=stateFor(order);
+      const stages=[
+        {label:'Order created',done:true},
+        {label:'Submission received',done:Boolean(proof)},
+        {label:'Management review',done:Boolean(proof&&proof.status!=='pending')},
+        {label:'Fulfilment',done:['processing','shipped','delivered','completed'].includes(order.status)}
+      ];
       return <article className="customer-order-card" key={order.id}>
-        <div className="customer-order-top"><b>{order.order_reference}</b><span className={'tm-store-review-status '+status}>{label(status)}</span></div>
-        <p>{(order.items||[]).map((item:any)=>item.name+' × '+item.quantity).join(' · ')}</p>
+        <div className="customer-order-top"><div><span className="customer-order-reference">ORDER REFERENCE</span><b>{order.order_reference}</b><small>{new Date(order.created_at).toLocaleString()}</small></div><span className={'customer-order-badge '+state.tone}><i/>{state.label}</span></div>
+        <div className="customer-order-items">{(order.items||[]).map((item:any,index:number)=><div key={item.product_id||index}><span>{item.name} <small>× {item.quantity}</small></span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:order.currency||'USD',maximumFractionDigits:0}).format(Number(item.unit_price||0)*Number(item.quantity||1))}</b></div>)}</div>
         <div className="customer-order-total"><span>Order total</span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:order.currency||'USD',maximumFractionDigits:0}).format(Number(order.subtotal||0))}</b></div>
-        <div className="customer-order-steps"><span className="done">Order saved / submitted</span><span className={latest?'done':''}>Payment submission {latest?'received':'not submitted'}</span><span className={latest&&latest.status!=='pending'?'done':''}>Management review</span><span className={['processing','completed'].includes(status)?'done':''}>Fulfilment</span></div>
-        {latest?.review_note&&<div className={'customer-order-note '+(latest.status==='rejected'?'rejected':'')}>{latest.review_note}</div>}
-        <small>Last updated {new Date(order.updated_at||order.created_at).toLocaleString()}</small>
+        <div className="customer-order-status-line"><span className={'customer-order-badge '+state.tone}><i/>{state.label}</span><p>{state.detail}</p></div>
+        <div className="customer-order-progress">{stages.map((stage,index)=><div className={'customer-order-progress-step '+(stage.done?'done':'')} key={stage.label}><span className="customer-order-progress-dot">{stage.done?'✓':index+1}</span><small>{stage.label}</small></div>)}</div>
+        {proof?.review_note&&<div className={'customer-order-review-note '+(proof.status==='rejected'?'rejected':'')}><b>{proof.status==='rejected'?'Management review note':'Management update'}</b><p>{proof.review_note}</p></div>}
+        {order.status==='saved_for_later'&&<div className="customer-order-saved-hint">Saved order · Return to the shop to continue browsing or rebuild your cart.</div>}
+        <div className="customer-order-footer"><small>Last updated {new Date(order.updated_at||order.created_at).toLocaleString()}</small><button type="button" onClick={onShop}>Open shop <ArrowUpRight size={14}/></button></div>
       </article>;
     })}</div>}
-  </section>;
+  </main>;
 }
 
 function App() {
@@ -225,7 +270,7 @@ function App() {
       const hash = location.hash.replace(/^#\/?/, '');
       const path = location.pathname.replace(/^\/+|\/+$/g, '');
       const requested = route || hash || (path === 'admin' ? 'admin' : 'home');
-      const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
+      const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       if (allowed.includes(requested as Page)) setPage(requested as Page);
     };
     window.addEventListener('hashchange', syncRoute);
@@ -1177,7 +1222,7 @@ function App() {
           <ShieldCheck size={16} /> PREVIEW DATA — this workspace is not
           connected to live accounts or financial services.
         </div>
-        {page === 'orders' ? <CustomerOrders onShop={()=>go('shop')} /> : page === 'admin' ? (
+        {page === 'admin' ? (
           <>
 <AdminConsole />
           </>
@@ -1202,6 +1247,7 @@ function App() {
   else if (page === 'markets') content = <Markets />;
   else if (page === 'ai') content = <AI />;
   else if (page === 'shop') content = <Shop />;
+  else if (page === 'orders') content = <CustomerOrders onShop={()=>go('shop')} onLogin={()=>go('login')} />;
   else if (page === 'about' || page === 'contact' || page === 'faq')
     content = <Info kind={page} />;
   else if (page === 'signup' || page === 'login')
@@ -1212,7 +1258,6 @@ function App() {
     'portfolio',
     'history',
     'profile',
-    'orders',
   ].includes(page);
   const hideSiteChrome = dashboardPage || page === 'admin' || page === 'signup' || page === 'login' || page === 'chat';
   const hasOwnBack = page === 'chat' || ['model-y','model-3','cybertruck','roadster','semi'].includes(page);
