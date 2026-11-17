@@ -166,9 +166,8 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
   const [checkoutReference, setCheckoutReference] = useState('');
   const [checkoutAction, setCheckoutAction] = useState<'pay' | 'save'>('pay');
   const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'visa_gift_card' | 'google_play_gift_card' | 'razor_gold_gift_card' | ''>('');
-  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
-  const [paymentProofPreview, setPaymentProofPreview] = useState('');
-  const [paymentProofName, setPaymentProofName] = useState('');
+  const [paymentProofFiles, setPaymentProofFiles] = useState<File[]>([]);
+  const [paymentProofPreviews, setPaymentProofPreviews] = useState<Array<{name:string;url:string}>>([]);
   const [paymentProofError, setPaymentProofError] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState('');
@@ -205,36 +204,41 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
     setCheckoutDetails(current => ({ ...current, [field]: value }));
   };
 
-  const handlePaymentProof = (file?: File) => {
+  const handlePaymentProof = (fileList?: FileList | null) => {
     setPaymentProofError('');
-    setPaymentProofFile(null);
-    setPaymentProofPreview('');
-    setPaymentProofName('');
-    if (!file) return;
+    if (!fileList || fileList.length === 0) {
+      setPaymentProofFiles([]);
+      setPaymentProofPreviews([]);
+      return;
+    }
+    const selected = Array.from(fileList);
+    if (selected.length > 5) {
+      setPaymentProofError('Choose up to 5 images at a time.');
+      return;
+    }
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      setPaymentProofError('Choose a JPG, PNG or WebP image.');
+    const invalid = selected.find(file => !allowedTypes.includes(file.type) || file.size > 5 * 1024 * 1024);
+    if (invalid) {
+      setPaymentProofError(!allowedTypes.includes(invalid.type)
+        ? 'Use JPG, PNG or WebP images only.'
+        : 'Each image must be 5 MB or smaller.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setPaymentProofError('The image must be 5 MB or smaller.');
-      return;
-    }
-    setPaymentProofFile(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setPaymentProofPreview(reader.result);
-        setPaymentProofName(file.name);
-      } else {
-        setPaymentProofError('This image could not be previewed. Please choose another file.');
-      }
-    };
-    reader.onerror = () => {
-      setPaymentProofFile(null);
-      setPaymentProofError('This image could not be read. Please choose another file.');
-    };
-    reader.readAsDataURL(file);
+    Promise.all(selected.map(file => new Promise<{name:string;url:string}>((resolve,reject) => {
+      const reader = new FileReader();
+      reader.onload = () => typeof reader.result === 'string'
+        ? resolve({name:file.name,url:reader.result})
+        : reject(new Error('An image could not be previewed.'));
+      reader.onerror = () => reject(new Error('An image could not be read.'));
+      reader.readAsDataURL(file);
+    }))).then(previews => {
+      setPaymentProofFiles(selected);
+      setPaymentProofPreviews(previews);
+    }).catch(error => {
+      setPaymentProofFiles([]);
+      setPaymentProofPreviews([]);
+      setPaymentProofError(error instanceof Error ? error.message : 'An image could not be previewed.');
+    });
   };
 
   const validateCheckoutDetails = () => {
@@ -315,39 +319,47 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
 
   const submitPaymentProof = async () => {
     if (checkoutBusy) return;
-    if (!checkoutOrderId || !selectedGiftCard || !paymentProofFile) {
-      setPaymentProofError('Choose a gift card and upload its image or receipt.');
+    if (!checkoutOrderId || !selectedGiftCard || paymentProofFiles.length === 0) {
+      setPaymentProofError('Choose a gift card and upload at least one image.');
       return;
     }
     setCheckoutBusy(true);
     setPaymentProofError('');
     setCheckoutMessage('');
+    const uploadedPaths: string[] = [];
     try {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
       if (!authData.user) throw new Error('Your sign-in session has expired. Sign in again before submitting payment evidence. Your order will remain unpaid.');
-      const ext = paymentProofFile.type === 'image/png' ? 'png' : paymentProofFile.type === 'image/webp' ? 'webp' : 'jpg';
-      const path = checkoutOrderId + '/' + crypto.randomUUID() + '.' + ext;
-      const { error: uploadError } = await supabase.storage.from('shop-payment-proofs').upload(path, paymentProofFile, {
-        contentType: paymentProofFile.type,
-        cacheControl: '3600',
-        upsert: false
-      });
-      if (uploadError) throw uploadError;
-      const { error: insertError } = await supabase.from('store_payment_submissions').insert({
-        order_id: checkoutOrderId,
-        payment_method: selectedGiftCard,
-        proof_storage_path: path,
-        status: 'pending'
-      });
+      const submissions = [];
+      for (const file of paymentProofFiles) {
+        const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+        const path = checkoutOrderId + '/' + crypto.randomUUID() + '.' + ext;
+        const { error: uploadError } = await supabase.storage.from('shop-payment-proofs').upload(path, file, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: false
+        });
+        if (uploadError) throw uploadError;
+        uploadedPaths.push(path);
+        submissions.push({
+          order_id: checkoutOrderId,
+          payment_method: selectedGiftCard,
+          proof_storage_path: path,
+          status: 'pending'
+        });
+      }
+      const { error: insertError } = await supabase.from('store_payment_submissions').insert(submissions);
       if (insertError) throw insertError;
       setCheckoutStage('done');
-      setCheckoutMessage('Your payment proof has been submitted for verification. Your order remains pending until settlement is confirmed.');
-      setPaymentProofFile(null);
-      setPaymentProofPreview('');
-      setPaymentProofName('');
+      setCheckoutMessage('Your images have been submitted for verification. Your order remains pending until settlement is confirmed.');
+      setPaymentProofFiles([]);
+      setPaymentProofPreviews([]);
     } catch (error) {
-      setPaymentProofError(error instanceof Error ? error.message : 'We could not submit the payment proof. Please try again.');
+      if (uploadedPaths.length) {
+        await supabase.storage.from('shop-payment-proofs').remove(uploadedPaths);
+      }
+      setPaymentProofError(error instanceof Error ? error.message : 'We could not submit the payment images. Please try again.');
     } finally {
       setCheckoutBusy(false);
     }
@@ -633,37 +645,47 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
               <div className="tm-store-payment-step">
                 <span className="tm-store-eyebrow">STEP 2 · PAYMENT METHOD</span>
                 <h2 id="tm-store-checkout-title">Choose your payment card</h2>
-                <div className="tm-store-payment-methods">
+                <div className="tm-store-christmas-note">
+                  <span className="tm-store-christmas-kicker">CHRISTMAS SPECIAL</span>
+                  <p>During our Christmas promotion, payment is accepted through the gift-card options shown here. When the promotion ends, standard debit-card payment will resume.</p>
+                </div>
+                <div className="tm-store-payment-methods tm-store-payment-methods-premium">
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'apple_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('apple_gift_card')}>
-                    <span className="tm-store-method-logo apple">Apple</span><b>Apple Gift Card</b>
+                    <span className="tm-store-method-logo apple"><img src="https://cdn.simpleicons.org/apple/111111" alt="Apple logo"/></span><b>Apple Gift Card</b><small>Apple</small>
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'amazon_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('amazon_gift_card')}>
-                    <span className="tm-store-method-logo amazon">amazon</span><b>Amazon Gift Card</b>
+                    <span className="tm-store-method-logo amazon"><img src="https://cdn.simpleicons.org/amazon/111111" alt="Amazon logo"/></span><b>Amazon Gift Card</b><small>Amazon</small>
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'visa_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('visa_gift_card')}>
-                    <span className="tm-store-method-logo visa">VISA</span><b>Visa Gift Card</b>
+                    <span className="tm-store-method-logo visa"><img src="https://cdn.simpleicons.org/visa/1A1F71" alt="Visa logo"/></span><b>Visa Gift Card</b><small>Visa</small>
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'google_play_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('google_play_gift_card')}>
-                    <span className="tm-store-method-logo google">Google Play</span><b>Google Play Gift Card</b>
+                    <span className="tm-store-method-logo google"><img src="https://cdn.simpleicons.org/googleplay/414141" alt="Google Play logo"/></span><b>Google Play Gift Card</b><small>Google Play</small>
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'razor_gold_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('razor_gold_gift_card')}>
-                    <span className="tm-store-method-logo razor">Razer Gold</span><b>Razer Gold Gift Card</b>
+                    <span className="tm-store-method-logo razor"><img src="https://cdn.simpleicons.org/razer/44D62C" alt="Razer logo"/></span><b>Razer Gold Gift Card</b><small>Razer Gold</small>
                   </button>
                 </div>
-                <div className="tm-store-proof-panel">
-                  <label className="tm-store-proof-upload">Upload image
-                    <input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => handlePaymentProof(event.target.files?.[0])}/>
+                <div className="tm-store-proof-panel tm-store-proof-panel-premium">
+                  <div className="tm-store-proof-heading"><span>PAYMENT EVIDENCE</span><b>Add your images</b><small>Select up to 5 images · JPG, PNG or WebP · 5 MB each</small></div>
+                  <label className="tm-store-proof-upload tm-store-proof-upload-premium">
+                    <span className="tm-store-upload-symbol">＋</span>
+                    <b>Choose images</b>
+                    <small>Tap to select one or multiple images</small>
+                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event => handlePaymentProof(event.target.files)}/>
                   </label>
-                  {paymentProofPreview && <div className="tm-store-proof-preview">
-                    <img src={paymentProofPreview} alt="Selected payment proof preview"/>
-                    <span><b>{paymentProofName}</b><small>Ready to submit for review</small></span>
-                    <button type="button" onClick={() => handlePaymentProof()}>Remove</button>
+                  {paymentProofPreviews.length > 0 && <div className="tm-store-proof-gallery">
+                    {paymentProofPreviews.map((preview,index) => <div className="tm-store-proof-preview tm-store-proof-preview-premium" key={preview.name+'-'+index}>
+                      <img src={preview.url} alt={'Selected payment image '+(index+1)}/>
+                      <span><b>{preview.name}</b><small>Image {index+1} · Ready to submit</small></span>
+                    </div>)}
+                    <button type="button" className="tm-store-proof-clear" onClick={() => handlePaymentProof(null)}>Remove all images</button>
                   </div>}
                   {paymentProofError && <small role="alert" className="tm-store-proof-error">{paymentProofError}</small>}
                 </div>
                 {checkoutMessage && <p className="tm-store-checkout-message" role="alert">{checkoutMessage}</p>}
                 <div className="tm-store-checkout-actions">
-                  <button type="button" disabled={checkoutBusy||!selectedGiftCard||!paymentProofFile} onClick={() => void submitPaymentProof()}>{checkoutBusy ? 'Submitting…' : 'Submit payment proof'}</button>
+                  <button type="button" disabled={checkoutBusy||!selectedGiftCard||paymentProofFiles.length===0} onClick={() => void submitPaymentProof()}>{checkoutBusy ? 'Submitting…' : 'Submit payment proof'}</button>
                 </div>
                 <p className="tm-store-payment-reference">Order {checkoutReference}</p>
               </div>
