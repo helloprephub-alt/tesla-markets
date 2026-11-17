@@ -3248,3 +3248,40 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
   .auth-page,.auth-form-wrap,.auth-orbit,.auth-feedback{animation:none!important}
   .auth-form-wrap input,.auth-form-wrap select,.auth-form-wrap .btn{transition:none!important}
 }
+
+
+/* Premium checkout gift-card selection and multi-image proof upload */
+.tm-store-payment-step{max-width:900px;margin:0 auto}
+.tm-store-payment-methods-premium{grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:18px 0 22px}
+.tm-store-payment-methods-premium .tm-store-payment-method{position:relative;min-height:142px;padding:18px 12px;border:1px solid #dfe3e2;border-radius:3px;background:linear-gradient(145deg,#fff 0%,#fafafa 100%);box-shadow:0 5px 18px rgba(15,22,25,.045);transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+.tm-store-payment-methods-premium .tm-store-payment-method:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#a91f2d,#d6ad69);opacity:0;transition:opacity .18s ease}
+.tm-store-payment-methods-premium .tm-store-payment-method.selected{border:1px solid #ad2631;background:linear-gradient(145deg,#fff 0%,#fffafa 100%);box-shadow:0 8px 22px rgba(115,25,35,.11)}
+.tm-store-payment-methods-premium .tm-store-payment-method.selected:before{opacity:1}
+.tm-store-payment-methods-premium .tm-store-payment-method b{font-size:11px;line-height:1.35}
+.tm-store-payment-methods-premium .tm-store-payment-method small{font-size:9px;letter-spacing:.08em;text-transform:uppercase}
+.tm-store-method-logo{width:100%;min-height:46px;display:flex;align-items:center;justify-content:center}
+.tm-store-method-logo img{display:block;width:auto;max-width:112px;height:35px;object-fit:contain}
+.tm-store-method-logo.apple img{height:39px}
+.tm-store-method-logo.amazon img{max-width:125px}
+.tm-store-method-logo.visa img{max-width:112px;height:39px}
+.tm-store-method-logo.google img{max-width:125px;height:32px}
+.tm-store-method-logo.razor img{height:39px}
+.tm-store-christmas-note{margin:16px 0 20px;padding:16px 18px;border:1px solid #e7d9c2;background:linear-gradient(115deg,#fffaf1,#fff 70%);display:flex;flex-direction:column;gap:6px}
+.tm-store-christmas-kicker{font-size:9px;font-weight:950;letter-spacing:.19em;color:#9b2732}
+.tm-store-christmas-note p{margin:0;color:#4d5559;font-size:11px;line-height:1.65}
+.tm-store-proof-panel-premium{margin-top:4px;padding:20px;border:1px solid #dfe4e2;background:linear-gradient(145deg,#fbfcfb,#f5f7f6)}
+.tm-store-proof-heading{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.tm-store-proof-heading>span{font-size:8px;font-weight:950;letter-spacing:.18em;color:#a52b35}
+.tm-store-proof-heading>b{font-size:17px;letter-spacing:-.025em;color:#1a2023}
+.tm-store-proof-heading>small{font-size:10px;color:#758086}
+.tm-store-proof-upload-premium{position:relative;min-height:145px;margin:0;align-items:center;justify-content:center;gap:8px;border:1px dashed #b9c4c0;border-radius:3px;background:rgba(255,255,255,.82);cursor:pointer;text-align:center}
+.tm-store-proof-upload-premium input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.tm-store-upload-symbol{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;background:#f7eeee;color:#a32330;font-size:25px;font-weight:400}
+.tm-store-proof-upload-premium>b{font-size:12px;color:#252d31}
+.tm-store-proof-upload-premium>small{font-size:9px;color:#7b858a}
+.tm-store-proof-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}
+.tm-store-proof-preview-premium{min-width:0;margin:0;padding:8px;border-radius:3px}
+.tm-store-proof-preview-premium img{width:58px;height:58px}
+.tm-store-proof-preview-premium b{font-size:9px}
+.tm-store-proof-clear{grid-column:1/-1;justify-self:start;padding:7px 10px;border:1px solid #e2cdd0;background:#fff;color:#a12531;font-size:9px;font-weight:850}
+@media(max-width:640px){.tm-store-payment-methods-premium{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tm-store-payment-methods-premium .tm-store-payment-method{min-height:130px;padding:14px 8px}.tm-store-method-logo img{max-width:95px}.tm-store-proof-panel-premium{padding:14px}.tm-store-proof-gallery{grid-template-columns:1fr}}
