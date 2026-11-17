@@ -7,7 +7,7 @@ import {
 import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
 import { supabase } from './lib/supabase';
 
-type Props = { onSelectModel: (id: string) => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
+type Props = { onSelectModel: (id: string) => void; onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
 type CartLine = { id: string; quantity: number; selectedSize?: string };
 type CheckoutIntent = {
@@ -142,7 +142,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   );
 }
 
-export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) {
+export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
@@ -352,7 +352,7 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
       const { error: insertError } = await supabase.from('store_payment_submissions').insert(submissions);
       if (insertError) throw insertError;
       setCheckoutStage('done');
-      setCheckoutMessage('Your images have been submitted for verification. Your order remains pending until settlement is confirmed.');
+      setCheckoutMessage('Your images have been submitted. Review may take up to 30 minutes. You can track the decision in My Orders.');
       setPaymentProofFiles([]);
       setPaymentProofPreviews([]);
     } catch (error) {
@@ -701,7 +701,10 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
                 <span className="tm-store-eyebrow">ORDER {checkoutReference}</span>
                 <h2 id="tm-store-checkout-title">{checkoutAction === 'save' ? 'Your order is saved' : 'Proof submitted for verification'}</h2>
                 <p>{checkoutMessage}</p>
-                <button type="button" onClick={() => { setCheckoutOpen(false); setCart([]); setCheckoutStage('details'); setCheckoutMessage(''); setSelectedGiftCard(''); }}>Continue shopping</button>
+                <div className="tm-store-complete-actions">
+                  <button type="button" className="tm-store-track-order-btn" onClick={() => { setCheckoutOpen(false); setCart([]); setCheckoutStage('details'); setCheckoutMessage(''); setSelectedGiftCard(''); onOrders(); }}>View my orders <ArrowRight size={15}/></button>
+                  <button type="button" className="tm-store-continue-btn" onClick={() => { setCheckoutOpen(false); setCart([]); setCheckoutStage('details'); setCheckoutMessage(''); setSelectedGiftCard(''); }}>Continue shopping</button>
+                </div>
               </div>
             )}
           </section>
