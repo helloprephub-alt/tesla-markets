@@ -602,7 +602,7 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
         <div className="tm-store-overlay tm-store-checkout-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setCheckoutOpen(false); }}>
           <section className="tm-store-checkout" role="dialog" aria-modal="true" aria-labelledby="tm-store-checkout-title">
             <div className="tm-store-checkout-head">
-              <button onClick={() => checkoutStage === 'payment' ? setCheckoutStage('details') : setCheckoutOpen(false)}><ArrowLeft size={15}/> {checkoutStage === 'payment' ? 'Delivery details' : 'Back to cart'}</button>
+              <button onClick={() => checkoutStage === 'payment' ? setCheckoutStage('details') : setCheckoutOpen(false)}><ArrowLeft size={15}/> {checkoutStage === 'payment' ? 'Edit delivery details' : 'Back to cart'}</button>
               <button onClick={() => setCheckoutOpen(false)} aria-label="Close checkout"><X size={18}/></button>
             </div>
             {checkoutStage === 'details' && (
@@ -611,6 +611,11 @@ export function Marketplace({ onSelectModel, onRequireAuth, onEnquire }: Props) 
                   <span className="tm-store-eyebrow">STEP 1 · DELIVERY INFORMATION</span>
                   <h2 id="tm-store-checkout-title">Where should we deliver?</h2>
                   <div className="tm-store-checkout-form">
+                    <div className="tm-store-checkout-promo">
+                      <span>CHRISTMAS PROMOTION · PAYMENT INFORMATION</span>
+                      <p>Gift-card image submissions are the only payment method offered during this promotion. Select an available gift-card option on the next step. When the promotion ends, standard debit-card options may return.</p>
+                      <small>You can return to this delivery-details step from the payment screen at any time before submitting.</small>
+                    </div>
                     <label>Full name<input value={checkoutDetails.fullName} onChange={event => setCheckoutField('fullName',event.target.value)} placeholder="Customer name" autoComplete="name" required/></label>
                     <div className="tm-store-checkout-two">
                       <label>Email address<input type="email" value={checkoutDetails.email} onChange={event => setCheckoutField('email',event.target.value)} placeholder="you@example.com" autoComplete="email" required/></label>
