@@ -65,7 +65,8 @@ type Page =
   | 'semi';
 const navItems: { label: string; page: Page }[] = [
   { label: 'Home', page: 'home' },
-  { label: 'Vehicles / Shop', page: 'shop' },
+  { label: 'Vehicles', page: 'vehicles' },
+  { label: 'Shop', page: 'shop' },
   { label: 'My Orders', page: 'orders' },
   { label: 'Investments', page: 'markets' },
   { label: 'About', page: 'about' },
@@ -655,7 +656,7 @@ function App() {
         </div>
       </section>
       <section className="home-model-preview">
-        <div className="section-head"><div><div className="eyebrow dark">{t("collection")}</div><h2>{t("choose")}<br/><em>{t("next")}</em></h2></div><button className="text-link" onClick={()=>go('shop')}>{t("viewAll")} <ArrowUpRight size={15}/></button></div>
+        <div className="section-head"><div><div className="eyebrow dark">{t("collection")}</div><h2>{t("choose")}<br/><em>{t("next")}</em></h2></div><button className="text-link" onClick={()=>go('vehicles')}>{t("viewAll")} <ArrowUpRight size={15}/></button></div>
         <div className="home-model-grid">
           <button onClick={()=>go('model-3')}><img src="/resources/model-3-1.jpg" alt="Model 3 vehicle preview" loading="lazy"/><span>Model 3 <ArrowUpRight size={14}/></span></button>
           <button onClick={()=>go('model-y')}><img src="/resources/model-y-1.jpg" alt="Model Y vehicle preview" loading="lazy"/><span>Model Y <ArrowUpRight size={14}/></span></button>
