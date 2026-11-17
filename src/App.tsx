@@ -65,6 +65,7 @@ type Page =
 const navItems: { label: string; page: Page }[] = [
   { label: 'Home', page: 'home' },
   { label: 'Vehicles / Shop', page: 'shop' },
+  { label: 'My Orders', page: 'orders' },
   { label: 'Investments', page: 'markets' },
   { label: 'About', page: 'about' },
   { label: 'FAQs', page: 'faq' },
