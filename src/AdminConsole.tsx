@@ -438,11 +438,18 @@ export function AdminConsole() {
       const {user:current,isAdmin}=await isCurrentUserAdmin();
       if(!current||!isAdmin) throw new Error('Administrator session expired.');
       const now=new Date().toISOString();
+      const rejectionReason = decision === 'reject'
+        ? window.prompt('Enter the reason for rejecting this submission. The customer will be able to see this note:', '')
+        : null;
+      if (decision === 'reject' && !rejectionReason?.trim()) {
+        setReviewingShopProof(null);
+        return;
+      }
       const proofStatus=decision==='approve'?'approved_pending_settlement':'rejected';
       const orderStatus=decision==='approve'?'proof_approved_pending_settlement':'payment_proof_rejected';
       const note=decision==='approve'
-        ? 'Proof approved by management. Payment settlement is still unverified.'
-        : 'Payment proof rejected by management. A replacement submission or alternate payment arrangement is required.';
+        ? 'Your submission has been reviewed and accepted by management. Order fulfilment will be updated separately.'
+        : rejectionReason!.trim();
       const {error:proofError}=await supabase.from('store_payment_submissions').update({
         status:proofStatus,review_note:note,reviewed_by:current.id,reviewed_at:now
       }).eq('id',proofId);
@@ -755,7 +762,7 @@ export function AdminConsole() {
           {section === 'orders' && <>
             <section className="admin-console-panel">
               <div className="admin-console-panel-head">
-                <div><div className="eyebrow dark">SHOP PAYMENT PROOF REVIEW</div><h2>{shopProofs.filter(proof=>proof.status==='pending').length} pending reviews</h2><p>Review the uploaded gift-card image, then approve or reject the evidence. Approval is not payment settlement.</p></div>
+                <div><div className="eyebrow dark">SHOP PAYMENT PROOF REVIEW</div><h2>{shopProofs.filter(proof=>proof.status==='pending').length} pending reviews</h2><p>Review the uploaded gift-card image, then approve or reject the evidence. Accepted submissions move to fulfilment review; rejected submissions include a reason for the customer.</p></div>
                 <button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button>
               </div>
               {shopProofs.length ? <div className="tm-shop-review-grid">
