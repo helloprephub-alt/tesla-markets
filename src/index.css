@@ -3291,3 +3291,30 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-store-checkout-promo>span{font-size:8px;font-weight:950;letter-spacing:.15em;color:#9d2935}
 .tm-store-checkout-promo p{margin:0;color:#3e484d;font-size:10px;line-height:1.6}
 .tm-store-checkout-promo small{color:#788187;font-size:9px;line-height:1.5}
+
+
+.customer-orders-page{width:min(100%,920px);margin:0 auto;padding:26px 22px 64px}
+.customer-orders-head{padding:24px 0 20px;border-bottom:1px solid #e4e7e6;margin-bottom:18px}
+.customer-orders-head h2{font-size:clamp(27px,5vw,38px);margin:8px 0}
+.customer-orders-head p{color:#788187;line-height:1.6;font-size:13px}
+.customer-orders-head .btn{margin-top:10px}
+.customer-orders-list{display:grid;gap:14px}
+.customer-order-card{padding:18px;border:1px solid #e1e5e3;background:#fff;box-shadow:0 8px 24px rgba(20,28,32,.04)}
+.customer-order-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.customer-order-top>b{font-size:12px;letter-spacing:.08em}
+.tm-store-review-status{font-size:9px;font-weight:850;letter-spacing:.04em;text-transform:uppercase;padding:7px 9px;background:#f0f2f1;color:#4d585d}
+.tm-store-review-status.pending,.tm-store-review-status.awaiting_payment{background:#fff5e7;color:#94611b}
+.tm-store-review-status.rejected,.tm-store-review-status.payment_proof_rejected{background:#fff0f0;color:#a32932}
+.tm-store-review-status.completed,.tm-store-review-status.processing{background:#eaf5ef;color:#28764c}
+.customer-order-card>p{font-size:12px;color:#69747a;line-height:1.6;margin:12px 0}
+.customer-order-total{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid #eef0ef;border-bottom:1px solid #eef0ef;font-size:12px}
+.customer-order-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:14px 0}
+.customer-order-steps span{font-size:9px;line-height:1.45;color:#899196;padding:8px;background:#f4f5f4;border-top:2px solid #d9dedb}
+.customer-order-steps span.done{color:#276c49;border-top-color:#3c9666;background:#f0f7f2}
+.customer-order-note{padding:12px;margin:10px 0;background:#f1f7f3;border-left:3px solid #3d8c62;color:#315b43;font-size:11px;line-height:1.6}
+.customer-order-note.rejected{background:#fff3f2;border-left-color:#b72e39;color:#8c2932}
+.customer-order-card>small{font-size:9px;color:#879096}
+.customer-orders-empty{padding:30px 20px;text-align:center;border:1px dashed #d7ddda}
+.customer-orders-error{padding:14px;background:#fff1f0;color:#922b32}
+.customer-orders-shortcut{margin:16px 0}
+@media(max-width:620px){.customer-orders-page{padding:20px 16px 46px}.customer-order-card{padding:14px}.customer-order-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
