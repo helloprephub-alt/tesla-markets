@@ -216,7 +216,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       void restoreCustomerCart(session?.user.id);
     });
     const savedIntent=readCheckoutIntent();
-    if(savedIntent){setCheckoutDetails(savedIntent.checkoutDetails||current=>current);setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');}
+    if(savedIntent){if(savedIntent.checkoutDetails)setCheckoutDetails(savedIntent.checkoutDetails);setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');localStorage.removeItem(CHECKOUT_INTENT_KEY);}
     return()=>{active=false;subscription.unsubscribe();};
   }, []);
 
