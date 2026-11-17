@@ -540,16 +540,6 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
             <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY EDIT</b><span>CHRISTMAS COLLECTION · SELECTED OFFERS</span></div>
           </section>
 
-          <section className="tm-store-section tm-store-vehicle-section">
-            <div className="tm-store-section-head"><div><span className="tm-store-eyebrow">THE VEHICLE COLLECTION</span><h2>Explore Tesla vehicles</h2></div><small>Vehicle purchases continue through the dedicated vehicle pages</small></div>
-            <div className="tm-store-vehicle-grid">
-              {vehicles.map(vehicle => <button key={vehicle.id} onClick={() => onSelectModel(vehicle.id)} className="tm-store-vehicle-card">
-                <img src={vehicle.image} alt={vehicle.name} loading="lazy"/>
-                <span><b>{vehicle.name}</b><small>{vehicle.desc}</small></span><ArrowUpRight size={15}/>
-              </button>)}
-            </div>
-          </section>
-
           <section className="tm-store-section">
             <div className="tm-store-section-head"><div><span className="tm-store-eyebrow">SHOP BY DEPARTMENT</span><h2>Explore the marketplace</h2></div><button className="tm-store-link-button" onClick={() => setShowAllDepartments(v => !v)}>{showAllDepartments ? 'Show less' : 'All departments'} <ArrowRight size={15}/></button></div>
             <div className="tm-store-department-grid">
