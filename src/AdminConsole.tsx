@@ -12,7 +12,7 @@ type OperationalOrder = {id:string;reference:string;item:string;status:string;am
 type OperationalPayment = {id:string;reference:string;orderId:string;amount:number;currency:string;method:string;providerReference:string|null;status:string;createdAt:number};
 type ShopOrderReview = {
   id:string; reference:string; customerName:string; email:string; phone:string;
-  address:string; city:string; postalCode:string|null; country:string;
+  address:string; city:string; region:string|null; postalCode:string|null; country:string;
   items:Array<{product_id?:string;name:string;quantity:number;selected_size?:string|null;unit_price:number;original_unit_price?:number;discount_percent?:number}>;
   subtotal:number; discountTotal:number; currency:string; status:string; createdAt:number;
 };
@@ -289,7 +289,7 @@ export function AdminConsole() {
         supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
         supabase.from('business_orders').select('id,order_reference,item_description,status,agreed_amount,currency,customer_id,conversation_id,payment_url,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,method,provider_reference,status,created_at').order('created_at',{ascending:false}).limit(200),
-        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_postal_code,delivery_country,items,subtotal,discount_total,currency,status,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_region,delivery_postal_code,delivery_country,items,subtotal,discount_total,currency,status,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('store_payment_submissions').select('id,order_id,payment_method,proof_storage_path,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_tasks').select('id,title,description,status,priority,due_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),
@@ -315,7 +315,7 @@ export function AdminConsole() {
       setPayments((paymentRows.data||[]).map(row=>({id:row.id,reference:row.payment_reference,orderId:row.order_id,amount:Number(row.amount||0),currency:row.currency||'USD',method:row.method||'unknown',providerReference:row.provider_reference||null,status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));
       setShopOrders((storeOrderRows.data||[]).map(row=>({
         id:row.id,reference:row.order_reference,customerName:row.customer_name,email:row.customer_email,phone:row.customer_phone,
-        address:row.delivery_address,city:row.delivery_city,postalCode:row.delivery_postal_code||null,country:row.delivery_country,
+        address:row.delivery_address,city:row.delivery_city,region:row.delivery_region||null,postalCode:row.delivery_postal_code||null,country:row.delivery_country,
         items:Array.isArray(row.items)?row.items:[],subtotal:Number(row.subtotal||0),discountTotal:Number(row.discount_total||0),
         currency:row.currency||'USD',status:row.status||'awaiting_payment',createdAt:new Date(row.created_at).getTime()
       })));
@@ -766,7 +766,7 @@ export function AdminConsole() {
                     {order && <>
                       <h3>{order.customerName}</h3>
                       <p>{order.email} · {order.phone}</p>
-                      <p>{order.address}, {order.city}{order.postalCode?' '+order.postalCode:''}, {order.country}</p>
+                      <p>{order.address}, {order.city}{order.region?', '+order.region:''}{order.postalCode?' '+order.postalCode:''}, {order.country}</p>
                       <div className="tm-shop-review-items">{order.items.map((item,index)=><div key={item.product_id||index}><span>{item.name} × {item.quantity}{item.selected_size?' · '+item.selected_size:''}</span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(item.unit_price*item.quantity)}</b></div>)}</div>
                       <div className="tm-shop-review-total"><span>Order total</span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(order.subtotal)}</b></div>
                     </>}
