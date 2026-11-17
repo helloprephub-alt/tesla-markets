@@ -53,6 +53,7 @@ type Page =
   | 'portfolio'
   | 'history'
   | 'profile'
+  | 'orders'
   | 'admin'
   | 'chat'
   | 'model-y'
@@ -148,13 +149,62 @@ es:{home:'Inicio',vehicles:'Vehículos / Tienda',investments:'Inversiones',about
 };
 
 
+function CustomerOrders({onShop}:{onShop:()=>void}) {
+  const [orders,setOrders]=useState<any[]>([]);
+  const [proofs,setProofs]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    const load=async()=>{
+      setLoading(true);
+      const {data:{user},error:userError}=await supabase.auth.getUser();
+      if(userError||!user){if(active){setError('Sign in to view your saved orders and order updates.');setLoading(false);}return;}
+      const [orderResult,proofResult]=await Promise.all([
+        supabase.from('store_orders').select('id,order_reference,items,subtotal,currency,status,created_at,updated_at').eq('customer_id',user.id).order('created_at',{ascending:false}).limit(100),
+        supabase.from('store_payment_submissions').select('id,order_id,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(200)
+      ]);
+      if(!active)return;
+      if(orderResult.error){setError(orderResult.error.message);setLoading(false);return;}
+      const orderRows=orderResult.data||[];
+      const ownIds=new Set(orderRows.map(row=>row.id));
+      setOrders(orderRows);
+      setProofs((proofResult.data||[]).filter(row=>ownIds.has(row.order_id)));
+      setLoading(false);
+    };
+    void load();
+    const channel=supabase.channel('customer-store-orders').on('postgres_changes',{event:'*',schema:'public',table:'store_orders'},()=>{void load();}).on('postgres_changes',{event:'*',schema:'public',table:'store_payment_submissions'},()=>{void load();}).subscribe();
+    return()=>{active=false;void supabase.removeChannel(channel);};
+  },[]);
+  const label=(status:string)=>{
+    const map:Record<string,string>={saved_for_later:'Saved for later',awaiting_payment:'Order submitted',proof_approved_pending_settlement:'Submission accepted · fulfilment review',payment_proof_rejected:'Submission rejected',processing:'Processing',completed:'Completed',cancelled:'Cancelled',refunded:'Refunded'};
+    return map[status]||status.replaceAll('_',' ');
+  };
+  return <section className="customer-orders-page">
+    <div className="customer-orders-head"><span className="eyebrow dark">CUSTOMER ORDER CENTRE</span><h2>Saved orders & tracking</h2><p>Return to an unfinished order and follow updates to orders you have submitted.</p><button className="btn btn-outline" onClick={onShop}>Continue shopping</button></div>
+    {loading?<p className="muted">Loading your orders…</p>:error?<p role="alert" className="customer-orders-error">{error}</p>:orders.length===0?<div className="customer-orders-empty"><h3>No orders yet</h3><p>Your saved and submitted orders will appear here.</p><button className="btn btn-red" onClick={onShop}>Visit shop</button></div>:<div className="customer-orders-list">{orders.map(order=>{
+      const orderProofs=proofs.filter(proof=>proof.order_id===order.id);
+      const latest=orderProofs[0];
+      const status=order.status||'awaiting_payment';
+      return <article className="customer-order-card" key={order.id}>
+        <div className="customer-order-top"><b>{order.order_reference}</b><span className={'tm-store-review-status '+status}>{label(status)}</span></div>
+        <p>{(order.items||[]).map((item:any)=>item.name+' × '+item.quantity).join(' · ')}</p>
+        <div className="customer-order-total"><span>Order total</span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:order.currency||'USD',maximumFractionDigits:0}).format(Number(order.subtotal||0))}</b></div>
+        <div className="customer-order-steps"><span className="done">Order saved / submitted</span><span className={latest?'done':''}>Payment submission {latest?'received':'not submitted'}</span><span className={latest&&latest.status!=='pending'?'done':''}>Management review</span><span className={['processing','completed'].includes(status)?'done':''}>Fulfilment</span></div>
+        {latest?.review_note&&<div className={'customer-order-note '+(latest.status==='rejected'?'rejected':'')}>{latest.review_note}</div>}
+        <small>Last updated {new Date(order.updated_at||order.created_at).toLocaleString()}</small>
+      </article>;
+    })}</div>}
+  </section>;
+}
+
 function App() {
   const [page, setPage] = useState<Page>(
     () => {
       const route = new URLSearchParams(location.search).get('page');
       const hash = location.hash.replace(/^#\/?/, '');
       const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : '');
-      const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
+      const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       return allowed.includes(requested as Page) ? requested as Page : 'home';
     }
   );
@@ -1127,7 +1177,7 @@ function App() {
           <ShieldCheck size={16} /> PREVIEW DATA — this workspace is not
           connected to live accounts or financial services.
         </div>
-        {page === 'admin' ? (
+        {page === 'orders' ? <CustomerOrders onShop={()=>go('shop')} /> : page === 'admin' ? (
           <>
 <AdminConsole />
           </>
