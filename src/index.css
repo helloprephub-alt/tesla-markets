@@ -3212,3 +3212,39 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
   .tm-store-photo-frame-thumb{min-height:60px}
   .tm-store-image-unavailable-thumb{min-height:60px}
 }
+
+/* Premium, keyboard-friendly customer authentication */
+.auth-page{animation:authPageEnter .55s cubic-bezier(.2,.75,.25,1) both}
+.auth-art{background-image:radial-gradient(circle at 78% 18%,#31434d 0,transparent 38%),linear-gradient(145deg,#101a21,#182a34)}
+.auth-orbit{animation:authOrbitFloat 18s ease-in-out infinite alternate}
+.auth-orbit.two{animation-duration:23s;animation-direction:alternate-reverse}
+.auth-form-wrap{animation:authFormEnter .55s .06s cubic-bezier(.2,.75,.25,1) both}
+.auth-form-wrap input,.auth-form-wrap select{min-height:54px;transition:border-color .2s,box-shadow .2s,background .2s}
+.auth-form-wrap input:focus,.auth-form-wrap select:focus{border-color:#c92f35;box-shadow:0 0 0 4px #c92f3514;outline:none}
+.auth-form-wrap .btn{min-height:58px;transition:transform .2s,box-shadow .2s,background .2s}
+.auth-form-wrap .btn:hover{transform:translateY(-2px);box-shadow:0 12px 24px #c92f3525}
+.auth-form-wrap form label{min-width:0}
+.auth-form-wrap input,.auth-form-wrap select{scroll-margin-block:120px;touch-action:manipulation}
+.auth-feedback{animation:authFeedbackIn .25s ease both}
+@keyframes authPageEnter{from{opacity:0}to{opacity:1}}
+@keyframes authFormEnter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes authOrbitFloat{from{transform:translate3d(0,0,0) rotate(-8deg)}to{transform:translate3d(-18px,16px,0) rotate(8deg)}}
+@keyframes authFeedbackIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:720px){
+  .auth-page{display:block;min-height:100svh;min-height:100dvh;overflow:visible}
+  .auth-art{display:none}
+  .auth-panel{display:block;min-height:100svh;min-height:100dvh;padding:34px 22px 40px;align-content:start}
+  .auth-form-wrap{width:100%;max-width:480px;margin:0 auto}
+  .auth-form-wrap h1{font-size:clamp(29px,8vw,38px);line-height:1.12}
+  .auth-form-wrap>p{font-size:14px;line-height:1.65}
+  .auth-form-wrap form{gap:16px}
+  .auth-form-wrap input,.auth-form-wrap select{font-size:16px;min-height:56px}
+  .auth-form-wrap .form-row{grid-template-columns:1fr;gap:14px}
+  .auth-form-wrap .checkline{align-items:flex-start;line-height:1.5}
+  .auth-form-wrap .checkline input{width:22px;min-height:22px;flex:0 0 22px;margin-top:1px}
+  .auth-form-wrap .auth-switch{margin-top:22px;flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){
+  .auth-page,.auth-form-wrap,.auth-orbit,.auth-feedback{animation:none!important}
+  .auth-form-wrap input,.auth-form-wrap select,.auth-form-wrap .btn{transition:none!important}
+}
