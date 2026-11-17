@@ -3285,3 +3285,9 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .tm-store-proof-preview-premium b{font-size:9px}
 .tm-store-proof-clear{grid-column:1/-1;justify-self:start;padding:7px 10px;border:1px solid #e2cdd0;background:#fff;color:#a12531;font-size:9px;font-weight:850}
 @media(max-width:640px){.tm-store-payment-methods-premium{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tm-store-payment-methods-premium .tm-store-payment-method{min-height:130px;padding:14px 8px}.tm-store-method-logo img{max-width:95px}.tm-store-proof-panel-premium{padding:14px}.tm-store-proof-gallery{grid-template-columns:1fr}}
+
+
+.tm-store-checkout-promo{margin:0 0 16px;padding:15px 16px;border:1px solid #e8d8be;border-left:3px solid #ad2734;background:linear-gradient(110deg,#fff9ef,#fff 78%);display:flex;flex-direction:column;gap:7px}
+.tm-store-checkout-promo>span{font-size:8px;font-weight:950;letter-spacing:.15em;color:#9d2935}
+.tm-store-checkout-promo p{margin:0;color:#3e484d;font-size:10px;line-height:1.6}
+.tm-store-checkout-promo small{color:#788187;font-size:9px;line-height:1.5}
