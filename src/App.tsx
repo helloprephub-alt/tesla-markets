@@ -197,11 +197,11 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
     const proof=getLatestProof(order.id);
     if(order.status==='saved_for_later')return {label:'Saved for later',tone:'saved',detail:'This order is saved and has not been submitted.'};
     if(order.status==='payment_proof_rejected'||proof?.status==='rejected')return {label:'Needs attention',tone:'rejected',detail:'Management has reviewed this submission. See the review note below.'};
-    if(proof?.status==='pending'||order.status==='proof_submitted')return {label:'Review pending',tone:'pending',detail:'Your submission has been received and is awaiting review.'};
-    if(proof?.status==='approved_pending_settlement'||order.status==='proof_approved_pending_settlement')return {label:'Review accepted',tone:'accepted',detail:'Your submission has been reviewed. Order fulfilment updates will appear here.'};
-    if(order.status==='delivered'||order.status==='completed')return {label:'Delivered',tone:'accepted',detail:'This order is marked as completed.'};
+    if(order.status==='completed'||order.status==='delivered')return {label:'Delivered',tone:'accepted',detail:'This order is marked as completed.'};
     if(order.status==='shipped')return {label:'Shipped',tone:'accepted',detail:'Your order has been marked as shipped.'};
     if(order.status==='processing')return {label:'Processing',tone:'accepted',detail:'Your order is being prepared.'};
+    if(proof?.status==='pending'||order.status==='proof_submitted')return {label:'Review pending',tone:'pending',detail:'Your submission has been received. Review may take up to 30 minutes. Check back here for the decision.'};
+    if(proof?.status==='approved_pending_settlement'||order.status==='proof_approved_pending_settlement')return {label:'Review accepted',tone:'accepted',detail:'Your submission has been reviewed and accepted. Any fulfilment updates will appear here.'};
     if(order.status==='cancelled')return {label:'Cancelled',tone:'rejected',detail:'This order has been cancelled.'};
     return {label:'Order submitted',tone:'pending',detail:'Your order is saved. Its next update will appear here.'};
   };
@@ -833,7 +833,7 @@ function App() {
       </section>
     </>
   );
-  const Shop = () => <><div className="shop-order-shortcut"><button type="button" onClick={()=>go('orders')}>My orders & tracking <ArrowUpRight size={14}/></button></div><Marketplace onSelectModel={(id)=>go(id as Page)} onRequireAuth={()=>go('login')} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Marketplace',type:'product',context}));go('chat')}} /></>;
+  const Shop = () => <><div className="shop-order-shortcut"><button type="button" onClick={()=>go('orders')}>My orders & tracking <ArrowUpRight size={14}/></button></div><Marketplace onSelectModel={(id)=>go(id as Page)} onOrders={()=>go('orders')} onRequireAuth={()=>go('login')} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Marketplace',type:'product',context}));go('chat')}} /></>;
   const VehicleDetail = () => <VehicleExperience language={detectedLanguage as PublicLanguage} modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('shop')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
   const Info = ({ kind }: { kind: 'about' | 'contact' | 'faq' }) => (
     <>
