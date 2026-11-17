@@ -204,7 +204,7 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
     if(proof?.status==='pending'||order.status==='proof_submitted')return {label:'Review pending',tone:'pending',detail:'Your submission has been received. Review may take up to 30 minutes. Check back here for the decision.'};
     if(proof?.status==='approved_pending_settlement'||order.status==='proof_approved_pending_settlement')return {label:'Review accepted',tone:'accepted',detail:'Your submission has been reviewed and accepted. Any fulfilment updates will appear here.'};
     if(order.status==='cancelled')return {label:'Cancelled',tone:'rejected',detail:'This order has been cancelled.'};
-    return {label:'Order submitted',tone:'pending',detail:'Your order is saved. Its next update will appear here.'};
+    return {label:'Not submitted yet',tone:'not-submitted',detail:'This order has been created, but no submission has been received yet.'};
   };
 
   return <main className="customer-orders-page">
