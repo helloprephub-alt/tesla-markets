@@ -3408,3 +3408,4 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 }
 
 .tm-store-amazon-wordmark{position:relative;display:inline-block;padding:0 2px 7px;color:#111;font-size:27px;font-weight:850;letter-spacing:-.075em;line-height:1}.tm-store-amazon-wordmark:after{content:"";position:absolute;left:8%;right:2%;bottom:0;height:4px;border-bottom:3px solid #f3a847;border-radius:0 0 85% 85%;transform:rotate(-2deg)}
+.customer-order-badge.not-submitted{border-color:#efcdd0;background:#fff4f4;color:#9c2832}.customer-order-badge.not-submitted i{background:#bd303b;box-shadow:0 0 0 3px #bd303b1f}
