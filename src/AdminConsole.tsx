@@ -14,7 +14,7 @@ type ShopOrderReview = {
   id:string; reference:string; customerName:string; email:string; phone:string;
   address:string; city:string; region:string|null; postalCode:string|null; country:string;
   items:Array<{product_id?:string;name:string;quantity:number;selected_size?:string|null;unit_price:number;original_unit_price?:number;discount_percent?:number}>;
-  subtotal:number; discountTotal:number; currency:string; status:string; createdAt:number;
+  subtotal:number; discountTotal:number; currency:string; status:string; createdAt:number; carrier:string|null; trackingNumber:string|null; trackingUrl:string|null;
 };
 type ShopProofReview = {
   id:string; orderId:string; method:string; storagePath:string; signedUrl:string;
@@ -70,6 +70,7 @@ export function AdminConsole() {
   const [reviewingShopProof,setReviewingShopProof]=useState<string|null>(null);
   const [shopProofRejectionReasons,setShopProofRejectionReasons]=useState<Record<string,string>>({});
   const [updatingShopOrder,setUpdatingShopOrder]=useState<string|null>(null);
+  const [trackingDrafts,setTrackingDrafts]=useState<Record<string,{carrier:string;number:string;url:string}>>({});
   const [paymentLinks,setPaymentLinks]=useState<Record<string,string>>({});
   const [orderAmounts,setOrderAmounts]=useState<Record<string,string>>({});
   const [paymentOrderId,setPaymentOrderId]=useState('');
@@ -303,7 +304,7 @@ export function AdminConsole() {
         supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
         supabase.from('business_orders').select('id,order_reference,item_description,status,agreed_amount,currency,customer_id,conversation_id,payment_url,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,method,provider_reference,status,created_at').order('created_at',{ascending:false}).limit(200),
-        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_region,delivery_postal_code,delivery_country,items,subtotal,discount_total,currency,status,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_region,delivery_postal_code,delivery_country,delivery_carrier,tracking_number,tracking_url,items,subtotal,discount_total,currency,status,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('store_payment_submissions').select('id,order_id,payment_method,proof_storage_path,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_tasks').select('id,title,description,status,priority,due_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),
@@ -331,7 +332,7 @@ export function AdminConsole() {
         id:row.id,reference:row.order_reference,customerName:row.customer_name,email:row.customer_email,phone:row.customer_phone,
         address:row.delivery_address,city:row.delivery_city,region:row.delivery_region||null,postalCode:row.delivery_postal_code||null,country:row.delivery_country,
         items:Array.isArray(row.items)?row.items:[],subtotal:Number(row.subtotal||0),discountTotal:Number(row.discount_total||0),
-        currency:row.currency||'USD',status:row.status||'awaiting_payment',createdAt:new Date(row.created_at).getTime()
+        currency:row.currency||'USD',status:row.status||'awaiting_payment',createdAt:new Date(row.created_at).getTime(),carrier:row.delivery_carrier||null,trackingNumber:row.tracking_number||null,trackingUrl:row.tracking_url||null
       })));
       const signedShopProofs=await Promise.all((storeProofRows.data||[]).map(async row=>{
         const {data:signed,error:signedError}=await supabase.storage.from('shop-payment-proofs').createSignedUrl(row.proof_storage_path,900);
@@ -494,6 +495,28 @@ export function AdminConsole() {
     } finally {
       setUpdatingShopOrder(null);
     }
+  };
+
+  const saveShopTracking = async (orderId:string) => {
+    const order=shopOrders.find(item=>item.id===orderId);
+    if(!order)return;
+    const draft=trackingDrafts[orderId]||{carrier:order.carrier||'',number:order.trackingNumber||'',url:order.trackingUrl||''};
+    const carrier=draft.carrier.trim(), number=draft.number.trim(), url=draft.url.trim();
+    if(url && !/^https:\/\//i.test(url)){setError('Tracking links must start with https://');return;}
+    if((carrier||number||url) && (!carrier||!number)){setError('Enter both the delivery carrier and tracking number.');return;}
+    setUpdatingShopOrder(orderId);
+    try{
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const now=new Date().toISOString();
+      const {error:updateError}=await supabase.from('store_orders').update({
+        delivery_carrier:carrier||null,tracking_number:number||null,tracking_url:url||null,updated_at:now
+      }).eq('id',orderId);
+      if(updateError)throw updateError;
+      setShopOrders(rows=>rows.map(item=>item.id===orderId?{...item,carrier:carrier||null,trackingNumber:number||null,trackingUrl:url||null}:item));
+      setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not save delivery tracking details.');}
+    finally{setUpdatingShopOrder(null);}
   };
 
   const updateOrderStatus = async (orderId:string,status:string) => {
@@ -837,6 +860,13 @@ export function AdminConsole() {
                     <option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
                   </select>
                 </label>
+                <div className="tm-shop-tracking-editor">
+                  <label>Carrier<input value={(trackingDrafts[order.id]?.carrier??order.carrier??'')} onChange={event=>setTrackingDrafts(current=>({...current,[order.id]:{carrier:event.target.value,number:current[order.id]?.number??order.trackingNumber??'',url:current[order.id]?.url??order.trackingUrl??''}}))} placeholder="DHL, FedEx, UPS…"/></label>
+                  <label>Tracking number<input value={(trackingDrafts[order.id]?.number??order.trackingNumber??'')} onChange={event=>setTrackingDrafts(current=>({...current,[order.id]:{carrier:current[order.id]?.carrier??order.carrier??'',number:event.target.value,url:current[order.id]?.url??order.trackingUrl??''}}))} placeholder="Enter tracking number"/></label>
+                  <label>Tracking link<input value={(trackingDrafts[order.id]?.url??order.trackingUrl??'')} onChange={event=>setTrackingDrafts(current=>({...current,[order.id]:{carrier:current[order.id]?.carrier??order.carrier??'',number:current[order.id]?.number??order.trackingNumber??'',url:event.target.value}}))} placeholder="https://carrier.example/track/…"/></label>
+                  <button type="button" className="btn btn-outline" disabled={updatingShopOrder===order.id} onClick={()=>void saveShopTracking(order.id)}>Save tracking details</button>
+                  {(order.trackingNumber||order.carrier)&&<small>Customer tracking: {order.carrier||'Carrier not set'} · {order.trackingNumber||'Number not set'}</small>}
+                </div>
               </article>)}</div> : <p className="admin-empty-note">No shop orders have been saved yet.</p>}
             </section>
             <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE ORDERS & PRO FORMA</div><h2>{orders.length} recorded orders</h2><p>Set the final amount, paste a hosted checkout URL from your approved payment provider, then approve and send it to the customer. Verify incoming funds before marking payment complete.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>{orders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Vehicle</th><th>Final amount (USD)</th><th>Order status</th><th>Checkout link</th><th>Received</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td><input aria-label={'Final amount for '+order.reference} type="number" min="0.01" step="0.01" value={orderAmounts[order.id]??String(order.amount)} onChange={event=>setOrderAmounts(current=>({...current,[order.id]:event.target.value}))}/></td><td><select value={order.status} onChange={event=>void updateOrderStatus(order.id,event.target.value)}>{['draft','awaiting_payment','processing','completed','cancelled','refunded'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td><input aria-label={'Hosted checkout link for '+order.reference} type="url" placeholder="https://…" value={paymentLinks[order.id]??''} onChange={event=>setPaymentLinks(current=>({...current,[order.id]:event.target.value}))}/><button className="btn btn-dark" onClick={()=>void sendPaymentLink(order.id)}>Approve & send link</button></td><td>{new Date(order.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No vehicle orders have been recorded yet.</p>}</section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECONCILIATION</div><h2>Record an incoming payment</h2><p>Use this for payments received through an independently approved method. New records stay pending until management verifies the transaction.</p></div></div><div className="admin-task-create"><label>Order<select value={paymentOrderId} onChange={event=>setPaymentOrderId(event.target.value)}><option value="">Select an order</option>{orders.filter(order=>!['cancelled','refunded'].includes(order.status)).map(order=><option key={order.id} value={order.id}>{order.reference} · {order.item}</option>)}</select></label><div className="admin-task-fields"><label>Amount (USD)<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={event=>setPaymentAmount(event.target.value)} placeholder="e.g. 39990"/></label><label>Payment method<select value={paymentMethod} onChange={event=>setPaymentMethod(event.target.value)}><option value="bank_transfer">Bank transfer</option><option value="card">Card / online gateway</option><option value="wire_transfer">International wire</option><option value="other">Other approved method</option></select></label><label>Transaction / provider reference<input value={paymentProviderReference} onChange={event=>setPaymentProviderReference(event.target.value)} placeholder="Bank or gateway reference"/></label><button className="btn btn-dark" disabled={savingPayment||!paymentOrderId||!paymentAmount.trim()||!paymentProviderReference.trim()} onClick={()=>void recordPayment()}>{savingPayment?'Saving…':'Record pending payment'}</button></div></div></section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECORDS</div><h2>{payments.length} recorded payments</h2><p>Verify only after matching the transaction against the bank or payment provider.</p></div></div>{payments.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Payment reference</th><th>Order</th><th>Amount</th><th>Method / provider reference</th><th>Verification</th></tr></thead><tbody>{payments.map(payment=><tr key={payment.id}><td>{payment.reference}</td><td>{orders.find(order=>order.id===payment.orderId)?.reference||'Order'}</td><td>{new Intl.NumberFormat('en-US',{style:'currency',currency:payment.currency||'USD'}).format(payment.amount)}</td><td>{payment.method.replaceAll('_',' ')}<small>{payment.providerReference||'No provider reference'}</small></td><td><select value={payment.status} onChange={event=>void updatePaymentStatus(payment.id,event.target.value)}>{['pending','verified','rejected','refunded'].map(status=><option key={status} value={status}>{status}</option>)}</select></td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No payments have been recorded. Payments must be recorded and independently verified.</p>}</section></>}
