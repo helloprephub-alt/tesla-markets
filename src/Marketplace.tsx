@@ -304,6 +304,10 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       setCheckoutMessage('Your cart is empty.');
       return false;
     }
+    if (cartLines.length > 49) {
+      setCheckoutMessage('Your order can contain up to 49 different product lines. Remove an item before continuing.');
+      return false;
+    }
     setCheckoutMessage('');
     return true;
   };
@@ -451,12 +455,19 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const addToCart = (product: StoreProduct, quantity = 1, size?: string) => {
     if (productPrice(product) === null) return;
     const keySize = size || '';
+    const existingLine = cart.find(line => line.id === product.id && (line.selectedSize || '') === keySize);
+    if (!existingLine && cart.length >= 49) {
+      setCheckoutMessage('Your cart has reached the 49-item checkout limit. Complete or remove an item before adding another product.');
+      setCartOpen(true);
+      return;
+    }
     setCart(current => {
       const found = current.find(line => line.id === product.id && (line.selectedSize || '') === keySize);
       return found
-        ? current.map(line => line.id === product.id && (line.selectedSize || '') === keySize ? { ...line, quantity: line.quantity + quantity } : line)
-        : [...current, { id: product.id, quantity, selectedSize: keySize || undefined }];
+        ? current.map(line => line.id === product.id && (line.selectedSize || '') === keySize ? { ...line, quantity: Math.min(99, line.quantity + quantity) } : line)
+        : [...current, { id: product.id, quantity: Math.min(99, quantity), selectedSize: keySize || undefined }];
     });
+    setCheckoutMessage('');
     setSelected(null);
     setCartOpen(true);
   };
