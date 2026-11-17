@@ -15,9 +15,23 @@ type CheckoutIntent = {
   checkoutDetails?: { fullName: string; email: string; phone: string; address: string; city: string; postalCode: string; country: string };
 };
 const CHECKOUT_INTENT_KEY = 'tesla-markets-checkout-intent';
+const GUEST_CART_KEY = 'tesla-markets-saved-cart';
+function readSavedCart(): CartLine[] {
+  try { const value = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || '[]'); return Array.isArray(value) ? value.filter((line:any)=>typeof line?.id==='string'&&Number.isFinite(line?.quantity)&&line.quantity>0) : []; }
+  catch { return []; }
+}
+function mergeCartLines(first: CartLine[], second: CartLine[]): CartLine[] {
+  const merged = new Map<string, CartLine>();
+  for (const line of [...first,...second]) {
+    const key = line.id+'::'+(line.selectedSize||'');
+    const current = merged.get(key);
+    merged.set(key,{...line,quantity:Math.min(99,(current?.quantity||0)+line.quantity)});
+  }
+  return [...merged.values()].slice(0,100);
+}
 function readCheckoutIntent(): CheckoutIntent | null {
   try {
-    const raw = sessionStorage.getItem(CHECKOUT_INTENT_KEY);
+    const raw = localStorage.getItem(CHECKOUT_INTENT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CheckoutIntent;
     return Array.isArray(parsed.cart) ? parsed : null;
@@ -150,7 +164,8 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [selectedGalleryImage, setSelectedGalleryImage] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [detailQuantity, setDetailQuantity] = useState(1);
-  const [cart, setCart] = useState<CartLine[]>(() => readCheckoutIntent()?.cart || []);
+  const [cart, setCart] = useState<CartLine[]>(() => mergeCartLines(readSavedCart(), readCheckoutIntent()?.cart || []));
+  const [cartHydrated, setCartHydrated] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [saved, setSaved] = useState<string[]>([]);
@@ -173,21 +188,55 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [checkoutMessage, setCheckoutMessage] = useState('');
 
   useEffect(() => {
-    const savedIntent = readCheckoutIntent();
-    if (savedIntent) {
-      setCheckoutOpen(true);
-      setCartOpen(false);
-      setCheckoutStage('details');
-      sessionStorage.removeItem(CHECKOUT_INTENT_KEY);
-    }
-    void supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.email) setCheckoutDetails(current => ({ ...current, email: current.email || data.user!.email! }));
+    let active = true;
+    const restoreCustomerCart = async (userId?: string) => {
+      if (!userId) {
+        if (active) { setCart(readSavedCart()); setCartHydrated(true); }
+        return;
+      }
+      const [{data:userData},{data:remoteCart,error}] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('customer_store_carts').select('items').eq('user_id',userId).maybeSingle()
+      ]);
+      if (!active) return;
+      if (userData.user?.email) setCheckoutDetails(current => ({ ...current, email: current.email || userData.user!.email! }));
+      if (error) console.warn('Could not restore the saved customer cart:',error.message);
+      const localCart=readSavedCart();
+      const restored=Array.isArray(remoteCart?.items)?remoteCart.items as CartLine[]:[];
+      const merged=mergeCartLines(restored,localCart);
+      setCart(merged);
+      setCartHydrated(true);
+      if(merged.length && (localCart.length || !restored.length)) {
+        void supabase.from('customer_store_carts').upsert({user_id:userId,items:merged,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+      }
+    };
+    void supabase.auth.getSession().then(({data})=>restoreCustomerCart(data.session?.user.id));
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{
+      setCartHydrated(false);
+      void restoreCustomerCart(session?.user.id);
     });
+    const savedIntent=readCheckoutIntent();
+    if(savedIntent){setCheckoutDetails(savedIntent.checkoutDetails||current=>current);setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');}
+    return()=>{active=false;subscription.unsubscribe();};
   }, []);
 
+  useEffect(() => {
+    if(!cartHydrated)return;
+    try { localStorage.setItem(GUEST_CART_KEY,JSON.stringify(cart)); }
+    catch { setCheckoutMessage('Your browser storage is full. Please remove some saved site data before adding more items.'); }
+    let cancelled=false;
+    void supabase.auth.getSession().then(({data})=>{
+      if(cancelled||!data.session?.user)return;
+      void supabase.from('customer_store_carts').upsert({
+        user_id:data.session.user.id,items:cart,updated_at:new Date().toISOString()
+      },{onConflict:'user_id'}).then(({error})=>{if(error)console.warn('Could not sync your saved cart:',error.message);});
+    });
+    return()=>{cancelled=true;};
+  },[cart,cartHydrated]);
+
   const persistCheckoutIntent = () => {
-    try { sessionStorage.setItem(CHECKOUT_INTENT_KEY, JSON.stringify({ cart, checkoutDetails })); }
-    catch { setCheckoutMessage('This browser could not save your checkout. Please allow session storage and try again.'); }
+    try { localStorage.setItem(CHECKOUT_INTENT_KEY, JSON.stringify({ cart, checkoutDetails })); }
+    catch { setCheckoutMessage('This browser could not save your checkout. Please allow browser storage and try again.'); }
   };
 
   const beginCheckout = async () => {
