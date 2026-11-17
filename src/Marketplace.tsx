@@ -343,7 +343,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
         customer_phone: checkoutDetails.phone.trim(),
         delivery_address: checkoutDetails.address.trim(),
         delivery_city: checkoutDetails.city.trim(),
-        delivery_region: checkoutDetails.region.trim() || null,
+        delivery_region: checkoutDetails.region?.trim() || null,
         delivery_postal_code: checkoutDetails.postalCode.trim() || null,
         delivery_country: checkoutDetails.country.trim(),
         items,
