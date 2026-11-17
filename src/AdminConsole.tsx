@@ -68,6 +68,8 @@ export function AdminConsole() {
   const [shopOrders,setShopOrders]=useState<ShopOrderReview[]>([]);
   const [shopProofs,setShopProofs]=useState<ShopProofReview[]>([]);
   const [reviewingShopProof,setReviewingShopProof]=useState<string|null>(null);
+  const [shopProofRejectionReasons,setShopProofRejectionReasons]=useState<Record<string,string>>({});
+  const [updatingShopOrder,setUpdatingShopOrder]=useState<string|null>(null);
   const [paymentLinks,setPaymentLinks]=useState<Record<string,string>>({});
   const [orderAmounts,setOrderAmounts]=useState<Record<string,string>>({});
   const [paymentOrderId,setPaymentOrderId]=useState('');
@@ -429,27 +431,21 @@ export function AdminConsole() {
     }
   };
 
-  const reviewShopPaymentProof = async (proofId:string, decision:'approve'|'reject') => {
+  const reviewShopPaymentProof = async (proofId:string, decision:'approve'|'reject', reason = '') => {
     const proof=shopProofs.find(item=>item.id===proofId);
     const order=proof?shopOrders.find(item=>item.id===proof.orderId):null;
     if(!proof||!order){setError('The shop payment proof or order could not be found.');return;}
+    if(decision==='reject'&&!reason.trim()){setError('Enter a rejection reason for the customer.');return;}
     setReviewingShopProof(proofId);
     try {
       const {user:current,isAdmin}=await isCurrentUserAdmin();
       if(!current||!isAdmin) throw new Error('Administrator session expired.');
       const now=new Date().toISOString();
-      const rejectionReason = decision === 'reject'
-        ? window.prompt('Enter the reason for rejecting this submission. The customer will be able to see this note:', '')
-        : null;
-      if (decision === 'reject' && !rejectionReason?.trim()) {
-        setReviewingShopProof(null);
-        return;
-      }
       const proofStatus=decision==='approve'?'approved_pending_settlement':'rejected';
       const orderStatus=decision==='approve'?'proof_approved_pending_settlement':'payment_proof_rejected';
       const note=decision==='approve'
-        ? 'Your submission has been reviewed and accepted by management. Order fulfilment will be updated separately.'
-        : rejectionReason!.trim();
+        ? 'Your submission has been reviewed and accepted by management. Your order is awaiting its next fulfilment update.'
+        : reason.trim();
       const {error:proofError}=await supabase.from('store_payment_submissions').update({
         status:proofStatus,review_note:note,reviewed_by:current.id,reviewed_at:now
       }).eq('id',proofId);
@@ -460,13 +456,34 @@ export function AdminConsole() {
       if(orderError) throw orderError;
       setShopProofs(currentProofs=>currentProofs.map(item=>item.id===proofId?{...item,status:proofStatus,reviewNote:note,reviewedAt:now}:item));
       setShopOrders(currentOrders=>currentOrders.map(item=>item.id===order.id?{...item,status:orderStatus}:item));
+      setShopProofRejectionReasons(currentReasons=>({...currentReasons,[proofId]:''}));
       setError('');
     } catch(e) {
-      setError(e instanceof Error?e.message:'Could not review this payment proof.');
+      setError(e instanceof Error?e.message:'Could not review this payment submission.');
     } finally {
       setReviewingShopProof(null);
     }
   };
+
+  const updateShopOrderProgress = async (orderId:string,status:string) => {
+    const allowed=['proof_approved_pending_settlement','processing','shipped','delivered','completed','cancelled'];
+    if(!allowed.includes(status))return;
+    setUpdatingShopOrder(orderId);
+    try {
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const now=new Date().toISOString();
+      const {error:updateError}=await supabase.from('store_orders').update({status,updated_at:now}).eq('id',orderId);
+      if(updateError)throw updateError;
+      setShopOrders(currentOrders=>currentOrders.map(order=>order.id===orderId?{...order,status,createdAt:order.createdAt}:order));
+      setError('');
+    } catch(e) {
+      setError(e instanceof Error?e.message:'Could not update this shop order.');
+    } finally {
+      setUpdatingShopOrder(null);
+    }
+  };
+
   const updateOrderStatus = async (orderId:string,status:string) => {
     const allowed=['draft','awaiting_payment','processing','completed','cancelled','refunded'];
     if(!allowed.includes(status))return;
@@ -780,9 +797,12 @@ export function AdminConsole() {
                     <div className="tm-shop-review-method">Payment method: <b>{proof.method.replaceAll('_',' ')}</b></div>
                     {proof.signedUrl ? <a className="tm-shop-review-proof" href={proof.signedUrl} target="_blank" rel="noreferrer"><img src={proof.signedUrl} alt={'Payment proof for '+(order?.reference||'shop order')}/><span>Open full image</span></a> : <p className="admin-empty-note">Proof image unavailable. Refresh to request a new secure link.</p>}
                     {proof.reviewNote && <small className="tm-shop-review-note">{proof.reviewNote}</small>}
-                    {proof.status==='pending' && <div className="tm-shop-review-actions">
-                      <button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'approve')}>Approve proof</button>
-                      <button className="btn btn-outline" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'reject')}>Reject</button>
+                    {proof.status==='pending' && <div className="tm-shop-review-actions tm-shop-review-actions-expanded">
+                      <button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'approve')}>Accept submission</button>
+                      <label className="tm-shop-rejection-field">Reason for rejection
+                        <textarea rows={3} value={shopProofRejectionReasons[proof.id]||''} onChange={event=>setShopProofRejectionReasons(current=>({...current,[proof.id]:event.target.value}))} placeholder="Write the reason the customer should see…"/>
+                      </label>
+                      <button className="btn btn-outline" disabled={reviewingShopProof===proof.id||!(shopProofRejectionReasons[proof.id]||'').trim()} onClick={()=>void reviewShopPaymentProof(proof.id,'reject',shopProofRejectionReasons[proof.id]||'')}>Reject with reason</button>
                     </div>}
                     <small className="tm-shop-review-date">Submitted {new Date(proof.createdAt).toLocaleString()}{proof.reviewedAt?' · Reviewed '+new Date(proof.reviewedAt).toLocaleString():''}</small>
                   </article>;
@@ -791,7 +811,17 @@ export function AdminConsole() {
             </section>
             <section className="admin-console-panel">
               <div className="admin-console-panel-head"><div><div className="eyebrow dark">SHOP ORDERS</div><h2>{shopOrders.length} customer orders</h2><p>Orders saved for later, awaiting proof and reviewed orders are listed here.</p></div></div>
-              {shopOrders.length ? <div className="tm-shop-orders-list">{shopOrders.map(order=><article key={order.id}><div><b>{order.reference}</b><small>{order.customerName} · {order.email}</small><small>{order.items.map(item=>item.name+' × '+item.quantity).join(' · ')}</small></div><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(order.subtotal)}</b><span className={'tm-shop-review-status '+order.status}>{order.status.replaceAll('_',' ')}</span></article>)}</div> : <p className="admin-empty-note">No shop orders have been saved yet.</p>}
+              {shopOrders.length ? <div className="tm-shop-orders-list">{shopOrders.map(order=><article key={order.id}>
+                <div><b>{order.reference}</b><small>{order.customerName} · {order.email}</small><small>{order.items.map(item=>item.name+' × '+item.quantity).join(' · ')}</small></div>
+                <b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(order.subtotal)}</b>
+                <span className={'tm-shop-review-status '+order.status}>{order.status.replaceAll('_',' ')}</span>
+                <label className="tm-shop-order-progress-control">Order progress
+                  <select value={order.status} disabled={updatingShopOrder===order.id} onChange={event=>void updateShopOrderProgress(order.id,event.target.value)}>
+                    <option value="proof_approved_pending_settlement">Accepted · awaiting fulfilment</option>
+                    <option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
+              </article>)}</div> : <p className="admin-empty-note">No shop orders have been saved yet.</p>}
             </section>
             <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE ORDERS & PRO FORMA</div><h2>{orders.length} recorded orders</h2><p>Set the final amount, paste a hosted checkout URL from your approved payment provider, then approve and send it to the customer. Verify incoming funds before marking payment complete.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>{orders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Vehicle</th><th>Final amount (USD)</th><th>Order status</th><th>Checkout link</th><th>Received</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td><input aria-label={'Final amount for '+order.reference} type="number" min="0.01" step="0.01" value={orderAmounts[order.id]??String(order.amount)} onChange={event=>setOrderAmounts(current=>({...current,[order.id]:event.target.value}))}/></td><td><select value={order.status} onChange={event=>void updateOrderStatus(order.id,event.target.value)}>{['draft','awaiting_payment','processing','completed','cancelled','refunded'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td><input aria-label={'Hosted checkout link for '+order.reference} type="url" placeholder="https://…" value={paymentLinks[order.id]??''} onChange={event=>setPaymentLinks(current=>({...current,[order.id]:event.target.value}))}/><button className="btn btn-dark" onClick={()=>void sendPaymentLink(order.id)}>Approve & send link</button></td><td>{new Date(order.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No vehicle orders have been recorded yet.</p>}</section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECONCILIATION</div><h2>Record an incoming payment</h2><p>Use this for payments received through an independently approved method. New records stay pending until management verifies the transaction.</p></div></div><div className="admin-task-create"><label>Order<select value={paymentOrderId} onChange={event=>setPaymentOrderId(event.target.value)}><option value="">Select an order</option>{orders.filter(order=>!['cancelled','refunded'].includes(order.status)).map(order=><option key={order.id} value={order.id}>{order.reference} · {order.item}</option>)}</select></label><div className="admin-task-fields"><label>Amount (USD)<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={event=>setPaymentAmount(event.target.value)} placeholder="e.g. 39990"/></label><label>Payment method<select value={paymentMethod} onChange={event=>setPaymentMethod(event.target.value)}><option value="bank_transfer">Bank transfer</option><option value="card">Card / online gateway</option><option value="wire_transfer">International wire</option><option value="other">Other approved method</option></select></label><label>Transaction / provider reference<input value={paymentProviderReference} onChange={event=>setPaymentProviderReference(event.target.value)} placeholder="Bank or gateway reference"/></label><button className="btn btn-dark" disabled={savingPayment||!paymentOrderId||!paymentAmount.trim()||!paymentProviderReference.trim()} onClick={()=>void recordPayment()}>{savingPayment?'Saving…':'Record pending payment'}</button></div></div></section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECORDS</div><h2>{payments.length} recorded payments</h2><p>Verify only after matching the transaction against the bank or payment provider.</p></div></div>{payments.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Payment reference</th><th>Order</th><th>Amount</th><th>Method / provider reference</th><th>Verification</th></tr></thead><tbody>{payments.map(payment=><tr key={payment.id}><td>{payment.reference}</td><td>{orders.find(order=>order.id===payment.orderId)?.reference||'Order'}</td><td>{new Intl.NumberFormat('en-US',{style:'currency',currency:payment.currency||'USD'}).format(payment.amount)}</td><td>{payment.method.replaceAll('_',' ')}<small>{payment.providerReference||'No provider reference'}</small></td><td><select value={payment.status} onChange={event=>void updatePaymentStatus(payment.id,event.target.value)}>{['pending','verified','rejected','refunded'].map(status=><option key={status} value={status}>{status}</option>)}</select></td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No payments have been recorded. Payments must be recorded and independently verified.</p>}</section></>}
           {section === 'tasks' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">WORK MANAGEMENT</div><h2>Tasks & follow-ups</h2><p>Create real, saved follow-up tasks for the management team.</p></div></div><div className="admin-task-create"><label>Task title<input value={taskTitle} onChange={e=>setTaskTitle(e.target.value)} placeholder="e.g. Follow up with customer"/></label><label>Description<textarea rows={2} value={taskDescription} onChange={e=>setTaskDescription(e.target.value)} placeholder="What needs to be done?"/></label><div className="admin-task-fields"><label>Priority<select value={taskPriority} onChange={e=>setTaskPriority(e.target.value)}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Due date<input type="datetime-local" value={taskDue} onChange={e=>setTaskDue(e.target.value)}/></label><button className="btn btn-dark" disabled={!taskTitle.trim()} onClick={()=>void createTask()}><Plus size={15}/> Create task</button></div></div><div className="admin-task-list">{tasks.map(task=><article key={task.id}><div><b>{task.title}</b><p>{task.description||'No description provided.'}</p><small>{task.priority.toUpperCase()} priority · {task.due_at?'Due '+new Date(task.due_at).toLocaleString():'No due date'} · Created {new Date(task.created_at).toLocaleDateString()}</small></div><label>Status<select value={task.status} onChange={e=>void updateTaskStatus(task.id,e.target.value)}><option value="open">Open</option><option value="in_progress">In progress</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label></article>)}{tasks.length===0&&<p className="admin-empty-note">No tasks yet. Create your first follow-up above.</p>}</div></section>}
