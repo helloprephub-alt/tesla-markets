@@ -919,12 +919,11 @@ function App() {
                     }
                   });
                   if (error) throw error;
-                  if (data.session) {
-                    if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
-                    else go('dashboard');
-                  } else {
-                    setAuthMessage('Your account request was received. Check your email to confirm your address, then sign in. Your saved checkout will remain in this browser.');
+                  if (!data.session) {
+                    throw new Error('Account setup is not ready yet. Please try again shortly.');
                   }
+                  if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
+                  else go('dashboard');
                 } else {
                   const { error } = await supabase.auth.signInWithPassword({
                     email: form.email.trim().toLowerCase(), password: form.password
@@ -1037,7 +1036,7 @@ function App() {
             </button>
           </div>}
           <div className="auth-disclaimer">
-            <LockKeyhole size={14} /> Secure account access is provided by Supabase Authentication.
+            <LockKeyhole size={14} /> Your account is protected with secure sign-in.
           </div>
         </div>
       </div>
@@ -1155,7 +1154,7 @@ function App() {
   else if (page === 'about' || page === 'contact' || page === 'faq')
     content = <Info kind={page} />;
   else if (page === 'signup' || page === 'login')
-    content = <Auth signup={page === 'signup'} />;  else content = <Dashboard />;
+    content = Auth({ signup: page === 'signup' });  else content = <Dashboard />;
 
   const dashboardPage = [
     'dashboard',
