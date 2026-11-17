@@ -466,7 +466,7 @@ export function AdminConsole() {
   };
 
   const updateShopOrderProgress = async (orderId:string,status:string) => {
-    const allowed=['proof_approved_pending_settlement','processing','shipped','delivered','completed','cancelled'];
+    const allowed=['saved_for_later','awaiting_payment','proof_submitted','payment_proof_rejected','proof_approved_pending_settlement','processing','shipped','delivered','completed','cancelled'];
     if(!allowed.includes(status))return;
     setUpdatingShopOrder(orderId);
     try {
@@ -817,7 +817,11 @@ export function AdminConsole() {
                 <span className={'tm-shop-review-status '+order.status}>{order.status.replaceAll('_',' ')}</span>
                 <label className="tm-shop-order-progress-control">Order progress
                   <select value={order.status} disabled={updatingShopOrder===order.id} onChange={event=>void updateShopOrderProgress(order.id,event.target.value)}>
-                    <option value="proof_approved_pending_settlement">Accepted · awaiting fulfilment</option>
+                    <option value="saved_for_later">Saved for later</option>
+                    <option value="awaiting_payment">Not submitted yet</option>
+                    <option value="proof_submitted">Submission received · pending review</option>
+                    <option value="payment_proof_rejected">Submission rejected</option>
+                    <option value="proof_approved_pending_settlement">Review accepted · awaiting fulfilment</option>
                     <option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
                   </select>
                 </label>
