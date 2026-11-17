@@ -45,6 +45,7 @@ type Page =
   | 'markets'
   | 'ai'
   | 'shop'
+  | 'vehicles'
   | 'about'
   | 'contact'
   | 'faq'
@@ -372,10 +373,10 @@ function App() {
     // Vehicle navigation is hierarchical, not checkout/history based:
     // a vehicle detail always returns to the collection; the collection returns home.
     if (['model-y','model-3','cybertruck','roadster','semi'].includes(page)) {
-      goParent('shop');
+      goParent('vehicles');
       return;
     }
-    if (page === 'shop') {
+    if (page === 'vehicles' || page === 'shop') {
       goParent('home');
       return;
     }
@@ -388,7 +389,7 @@ function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    const fallback: Record<Page, Page> = {home:'home',how:'home',markets:'home',ai:'home',shop:'home',about:'home',contact:'home',faq:'home',login:'home',signup:'home',dashboard:'home',portfolio:'dashboard',history:'dashboard',profile:'dashboard',orders:'home',admin:'home',chat:'home','model-y':'shop','model-3':'shop',cybertruck:'shop',roadster:'shop',semi:'shop'};
+    const fallback: Record<Page, Page> = {home:'home',how:'home',markets:'home',ai:'home',shop:'home',vehicles:'home',about:'home',contact:'home',faq:'home',login:'home',signup:'home',dashboard:'home',portfolio:'dashboard',history:'dashboard',profile:'dashboard',orders:'home',admin:'home',chat:'home','model-y':'vehicles','model-3':'vehicles',cybertruck:'vehicles',roadster:'vehicles',semi:'vehicles'};
     go(fallback[page] || 'home');
   };
   useEffect(() => {
@@ -836,7 +837,7 @@ function App() {
     </>
   );
   const Shop = () => <><div className="shop-order-shortcut"><button type="button" onClick={()=>go('orders')}>My orders & tracking <ArrowUpRight size={14}/></button></div><Marketplace onSelectModel={(id)=>go(id as Page)} onOrders={()=>go('orders')} onRequireAuth={()=>go('login')} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Marketplace',type:'product',context}));go('chat')}} /></>;
-  const VehicleDetail = () => <VehicleExperience language={detectedLanguage as PublicLanguage} modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('shop')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
+  const VehicleDetail = () => <VehicleExperience language={detectedLanguage as PublicLanguage} modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('vehicles')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
   const Info = ({ kind }: { kind: 'about' | 'contact' | 'faq' }) => (
     <>
       <section className="page-hero compact">
@@ -1251,6 +1252,7 @@ function App() {
   else if (page === 'markets') content = <Markets />;
   else if (page === 'ai') content = <AI />;
   else if (page === 'shop') content = <Shop />;
+  else if (page === 'vehicles') content = <VehicleExperience language={detectedLanguage as PublicLanguage} onBack={()=>goParent('home')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
   else if (page === 'orders') content = <CustomerOrders onShop={()=>go('shop')} onLogin={()=>go('login')} />;
   else if (page === 'about' || page === 'contact' || page === 'faq')
     content = <Info kind={page} />;
