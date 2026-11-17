@@ -276,7 +276,7 @@ function App() {
       const hash = location.hash.replace(/^#\/?/, '');
       const path = location.pathname.replace(/^\/+|\/+$/g, '');
       const requested = route || hash || (path === 'admin' ? 'admin' : 'home');
-      const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
+      const allowed: Page[] = ['home','how','markets','ai','shop','vehicles','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       if (allowed.includes(requested as Page)) setPage(requested as Page);
     };
     window.addEventListener('hashchange', syncRoute);
