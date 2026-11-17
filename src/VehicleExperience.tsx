@@ -2,7 +2,12 @@ import { publicText, type PublicLanguage } from './public-i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronLeft, ChevronRight, Maximize2, Palette, SlidersHorizontal, X } from 'lucide-react';
 
-type Variant = { name: string; price: string; inviteOnly?: boolean };
+type Variant = { name: string; price: string; discountPercent?: number; inviteOnly?: boolean };
+const discountedVehiclePrice = (price: string, discountPercent = 0) => {
+  const amount = Number(price.replace(/[^0-9.]/g,''));
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount * (1 - discountPercent / 100)) : null;
+};
+const vehicleMoney = (amount: number) => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(amount);
 type Model = {
   id: string; name: string; subtitle: string; variants: Variant[]; lease?: string;
   priceNote: string; gallery: string[]; range: string; performance: string;
@@ -11,30 +16,30 @@ type Model = {
 
 const models: Model[] = [
   { id: 'model-3', name: 'Model 3', subtitle: 'Electric sedan', variants: [
-    { name: 'Model 3', price: '$36,990' }, { name: 'Model 3 Premium', price: '$42,490' }, { name: 'Model 3 Performance', price: '$54,990' }
+    { name: 'Model 3', price: '$36,990', discountPercent: 28 }, { name: 'Model 3 Premium', price: '$42,490', discountPercent: 35 }, { name: 'Model 3 Performance', price: '$54,990', discountPercent: 42 }
   ], lease: 'From $540 / month', priceNote: 'Starting prices supplied by Tesla Markets management; final quotation and availability are confirmed individually.',
     gallery: Array.from({ length: 5 }, (_, i) => '/resources/model-3-' + (i + 1) + '.jpg'), range: 'Varies by trim and model year', performance: 'Varies by trim', drivetrain: 'Rear-wheel or all-wheel drive, depending on trim',
     features: ['Five-seat electric sedan', 'Glass roof and minimalist cabin', 'Driver assistance options', 'Configuration and delivery subject to confirmation'],
     colors: ['Pearl White', 'Solid Black', 'Stealth Grey', 'Quicksilver', 'Ultra Red', 'Deep Blue'], wheels: ['18-inch Photon', '19-inch Nova'] },
   { id: 'model-y', name: 'Model Y', subtitle: 'Electric SUV', variants: [
-    { name: 'Model Y', price: '$39,990' }, { name: 'Model Y Premium', price: '$45,990' }, { name: 'Model YL Premium', price: '$61,990' }, { name: 'Model Y Performance', price: '$57,990' }
+    { name: 'Model Y', price: '$39,990', discountPercent: 25 }, { name: 'Model Y Premium', price: '$45,990', discountPercent: 32 }, { name: 'Model YL Premium', price: '$61,990', discountPercent: 40 }, { name: 'Model Y Performance', price: '$57,990', discountPercent: 45 }
   ], lease: 'From $799 / month', priceNote: 'Starting prices supplied by Tesla Markets management; final quotation and availability are confirmed individually.',
     gallery: Array.from({ length: 5 }, (_, i) => '/resources/model-y-' + (i + 1) + '.jpg'), range: 'Varies by trim and model year', performance: 'Varies by trim', drivetrain: 'Rear-wheel or all-wheel drive, depending on trim',
     features: ['Versatile electric SUV layout', 'Flexible passenger and cargo space', 'Driver assistance options', 'Configuration and delivery subject to confirmation'],
     colors: ['Pearl White', 'Solid Black', 'Stealth Grey', 'Quicksilver', 'Ultra Red', 'Deep Blue'], wheels: ['19-inch Gemini', '20-inch Induction'] },
   { id: 'cybertruck', name: 'Cybertruck', subtitle: 'All-electric utility vehicle', variants: [
-    { name: 'Cybertruck', price: '$82,490' }, { name: 'Cybertruck Premium', price: '$92,490' }, { name: 'Cyberbeast', price: '$102,490' }
+    { name: 'Cybertruck', price: '$82,490', discountPercent: 30 }, { name: 'Cybertruck Premium', price: '$92,490', discountPercent: 38 }, { name: 'Cyberbeast', price: '$102,490', discountPercent: 45 }
   ], lease: 'From $1,450 / month', priceNote: 'Starting prices supplied by Tesla Markets management; trim, market availability and final quotation require confirmation.',
     gallery: Array.from({ length: 9 }, (_, i) => '/resources/cybertruck-' + (i + 1) + '.jpg'), range: 'Varies by configuration', performance: 'Varies by configuration', drivetrain: 'Electric all-wheel drive on applicable versions',
     features: ['Stainless-steel exoskeleton design', 'Utility-focused storage and load area', 'Adaptive air suspension on selected versions', 'Final specification must be confirmed'],
     colors: ['Stainless Steel', 'Matte Black preference', 'Arctic White preference'], wheels: ['20-inch Core', 'Cyber Wheel'] },
   { id: 'roadster', name: 'Roadster', subtitle: 'Next-generation electric sports car', variants: [
-    { name: 'Roadster Performance', price: '$45,000' }, { name: 'Roadster Thrust', price: '$245,000' }, { name: 'Roadster Limited', price: 'Price to be specified' }, { name: 'Roadster Rocket', price: 'Invite only', inviteOnly: true }
+    { name: 'Roadster Performance', price: '$45,000', discountPercent: 25 }, { name: 'Roadster Thrust', price: '$245,000', discountPercent: 40 }, { name: 'Roadster Limited', price: 'Price to be specified' }, { name: 'Roadster Rocket', price: 'Invite only', inviteOnly: true }
   ], priceNote: 'Roadster variant labels and prices supplied by Tesla Markets management. Confirm specification and availability with management.',
     gallery: Array.from({ length: 6 }, (_, i) => '/resources/roadster-' + (i + 1) + '.jpg'), range: 'Final production specification to be confirmed', performance: 'Variant-dependent', drivetrain: 'Final production specification to be confirmed',
     features: ['Next-generation electric sports car collection', 'Variant-specific enquiries handled by management', 'Specifications and delivery timing require confirmation'],
     colors: ['Pearl White preference', 'Solid Black preference', 'Ultra Red preference', 'Deep Blue preference'], wheels: ['Performance wheel preference', 'Aero wheel preference'] },
-  { id: 'semi', name: 'Tesla Semi', subtitle: 'All-electric heavy-duty truck', variants: [{ name: 'Tesla Semi', price: '$260,000' }],
+  { id: 'semi', name: 'Tesla Semi', subtitle: 'All-electric heavy-duty truck', variants: [{ name: 'Tesla Semi', price: '$260,000', discountPercent: 35 }],
     priceNote: 'Catalogue price supplied by Tesla Markets management; final quotation and availability must be confirmed.',
     gallery: Array.from({ length: 10 }, (_, i) => '/resources/semi-' + (i + 1) + '.jpg'), range: 'Depends on configuration and operating conditions', performance: 'Heavy-duty electric truck; final specification to be confirmed', drivetrain: 'Electric powertrain',
     features: ['Commercial heavy-duty vehicle', 'Designed for freight and fleet operations', 'Fleet suitability and delivery require confirmation', 'Contact management for a formal quotation'],
@@ -56,7 +61,7 @@ export function VehicleExperience({ modelId, onBack, onEnquire, onSelectModel, l
   const variant = selected?.variants.find(item => item.name === variantName) || selected?.variants[0];
   const enquire = () => onEnquire([
     selected?.name || 'Vehicle enquiry', 'Selected version: ' + (variant?.name || 'Standard'),
-    'Price: ' + (variant?.price || 'Request a quote'), 'Lease: ' + (selected?.lease || 'Not listed'),
+    'Catalogue price: ' + (variant?.price || 'Request a quote'), 'Discount: ' + (variant?.discountPercent ? variant.discountPercent+'%' : 'Not listed'), 'Offer price: ' + (variant?.discountPercent && variant?.price ? vehicleMoney(discountedVehiclePrice(variant.price,variant.discountPercent) || 0) : (variant?.price || 'Request a quote')), 'Lease: ' + (selected?.lease || 'Not listed'),
     'Colour preference: ' + color, 'Wheel preference: ' + (wheel || 'To be confirmed'), 'Payment preference: ' + payment,
   ].join(' · '));
 
@@ -95,8 +100,9 @@ export function VehicleExperience({ modelId, onBack, onEnquire, onSelectModel, l
       </div>
       <div className="config-options">
         <div className="eyebrow dark">{tr(selected.subtitle)}</div><h1>{selected.name}</h1>
-        <div className="config-block"><div className="config-label">{tr('Choose your version')}</div><div className="config-choice-list">{selected.variants.map(item => <button key={item.name} className={(variant?.name === item.name ? 'chosen ' : '') + (item.inviteOnly ? 'invite-choice' : '')} onClick={() => setVariantName(item.name)}><span>{item.name}</span><b>{item.price}</b></button>)}</div></div>
-        <div className="config-price">{variant?.price === 'Invite only' ? 'Invite only' : variant?.price}</div>
+        <div className="config-block"><div className="config-label">{tr('Choose your version')}</div><div className="config-choice-list">{selected.variants.map(item => {const offer=discountedVehiclePrice(item.price,item.discountPercent);return <button key={item.name} className={(variant?.name === item.name ? 'chosen ' : '') + (item.inviteOnly ? 'invite-choice' : '')} onClick={() => setVariantName(item.name)}><span>{item.name}{item.discountPercent&&<small className="vehicle-variant-discount">{item.discountPercent}% OFF</small>}</span><b>{offer!==null?<><del>{item.price}</del><strong>{vehicleMoney(offer)}</strong></>:item.price}</b></button>;})}</div></div>
+        <div className="config-price">{variant?.price === 'Invite only' ? 'Invite only' : discountedVehiclePrice(variant?.price||'',variant?.discountPercent)!==null ? vehicleMoney(discountedVehiclePrice(variant?.price||'',variant?.discountPercent)!) : variant?.price}</div>
+        {variant?.discountPercent&&<div className="vehicle-offer-summary"><span>{variant.discountPercent}% promotional discount</span><del>{variant.price}</del><b>{vehicleMoney(discountedVehiclePrice(variant.price,variant.discountPercent)!)}</b></div>}
         <small className="config-price-note">{tr(selected.priceNote)}</small>
         {selected.lease && <div className="config-lease-price">{tr('Lease pricing:')} <b>{tr(selected.lease)}</b></div>}
         <div className="config-block"><div className="config-label"><span><Palette size={16} /> Colour preference</span><b>{color}</b></div><div className="color-options">{selected.colors.map((choice, index) => <button key={tr(choice)} className={color === choice ? 'chosen' : ''} onClick={() => setColor(choice)} aria-label={tr(choice)}><i className={'swatch swatch-' + (index % 6)} /></button>)}</div><small>{tr('Preferences are requests only; confirm available finishes with management.')}</small></div>
