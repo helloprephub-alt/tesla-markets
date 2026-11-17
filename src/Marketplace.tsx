@@ -7,7 +7,7 @@ import {
 import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
 import { supabase } from './lib/supabase';
 
-type Props = { onSelectModel: (id: string) => void; onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
+type Props = { onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
 type CartLine = { id: string; quantity: number; selectedSize?: string };
 type CheckoutIntent = {
@@ -52,13 +52,7 @@ const departments: { name: Department; sub: string; icon: typeof ShoppingBag }[]
   { name: 'Batteries & Inverters', sub: 'Home and commercial storage', icon: BatteryCharging },
 ];
 
-const vehicles = [
-  { id: 'model-3', name: 'Model 3', image: '/resources/model-3-1.jpg', desc: 'Electric sedan' },
-  { id: 'model-y', name: 'Model Y', image: '/resources/model-y-1.jpg', desc: 'Electric SUV' },
-  { id: 'cybertruck', name: 'Cybertruck', image: '/resources/cybertruck-1.jpg', desc: 'Electric pickup' },
-  { id: 'roadster', name: 'Roadster', image: '/resources/roadster-1.jpg', desc: 'Performance vehicle' },
-  { id: 'semi', name: 'Tesla Semi', image: '/resources/semi-1.jpg', desc: 'Electric truck' },
-];
+
 
 function productPrice(product: StoreProduct) {
   return getDiscountedPrice(product);
