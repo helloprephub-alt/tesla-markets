@@ -18,6 +18,14 @@ type CheckoutIntent = {
 const CHECKOUT_INTENT_KEY = 'tesla-markets-checkout-intent';
 const GUEST_CART_KEY = 'tesla-markets-saved-cart';
 const CART_SYNC_MODE_KEY = 'tesla-markets-cart-sync-mode';
+const DELIVERY_ADDRESS_KEY = 'tesla-markets-saved-delivery-address';
+const MINIMUM_DISCOUNT_ORDER = 150;
+function readSavedDeliveryAddress() {
+  try {
+    const value = JSON.parse(localStorage.getItem(DELIVERY_ADDRESS_KEY) || 'null');
+    return value && typeof value === 'object' ? value : {};
+  } catch { return {}; }
+}
 function readSavedCart(): CartLine[] {
   try { const value = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || '[]'); return Array.isArray(value) ? value.filter((line:any)=>typeof line?.id==='string'&&Number.isFinite(line?.quantity)&&line.quantity>0) : []; }
   catch { return []; }
@@ -188,8 +196,10 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [showAllDepartments, setShowAllDepartments] = useState(false);
   const [checkoutStage, setCheckoutStage] = useState<'details' | 'payment' | 'done'>('details');
-  const [checkoutDetails, setCheckoutDetails] = useState(() => readCheckoutIntent()?.checkoutDetails || ({
-    fullName: '', email: '', phone: '', address: '', city: '', region: '', postalCode: '', country: ''
+  const [checkoutDetails, setCheckoutDetails] = useState(() => ({
+    fullName: '', email: '', phone: '', address: '', city: '', region: '', postalCode: '', country: '',
+    ...readSavedDeliveryAddress(),
+    ...(readCheckoutIntent()?.checkoutDetails || {})
   }));
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [checkoutReference, setCheckoutReference] = useState('');
@@ -206,7 +216,11 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     let active = true;
     const restoreCustomerCart = async (userId?: string) => {
       if (!userId) {
-        if (active) { setCart(readSavedCart()); setCartHydrated(true); }
+        if (active) {
+          setCart(readSavedCart());
+          setCheckoutDetails(current => ({ ...current, ...readSavedDeliveryAddress() }));
+          setCartHydrated(true);
+        }
         return;
       }
       const [{data:userData},{data:remoteCart,error}] = await Promise.all([
@@ -220,17 +234,19 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
         .select('full_name,phone,address,city,region,postal_code,country')
         .eq('user_id',userId)
         .maybeSingle();
+      const localAddress = readSavedDeliveryAddress();
       if(savedAddress) setCheckoutDetails(current=>({
         ...current,
-        fullName:savedAddress.full_name||current.fullName,
-        phone:savedAddress.phone||current.phone,
-        address:savedAddress.address||current.address,
-        city:savedAddress.city||current.city,
-        region:savedAddress.region||current.region,
-        postalCode:savedAddress.postal_code||current.postalCode,
-        country:savedAddress.country||current.country,
+        fullName:savedAddress.full_name||localAddress.fullName||current.fullName,
+        phone:savedAddress.phone||localAddress.phone||current.phone,
+        address:savedAddress.address||localAddress.address||current.address,
+        city:savedAddress.city||localAddress.city||current.city,
+        region:savedAddress.region||localAddress.region||current.region,
+        postalCode:savedAddress.postal_code||localAddress.postalCode||current.postalCode,
+        country:savedAddress.country||localAddress.country||current.country,
         email:userData.user?.email||current.email
       }));
+      else if(Object.keys(localAddress).length) setCheckoutDetails(current=>({...current,...localAddress,email:userData.user?.email||current.email}));
       if(addressError) console.warn('Could not restore the saved delivery address:',addressError.message);
       if (error) console.warn('Could not restore the saved customer cart:',error.message);
       const localCart=readSavedCart();
@@ -263,6 +279,13 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
 
   useEffect(() => {
     const d=checkoutDetails;
+    const addressSnapshot = {
+      fullName:d.fullName.trim(), phone:d.phone.trim(), address:d.address.trim(),
+      city:d.city.trim(), region:d.region?.trim()||'', postalCode:d.postalCode.trim()||'',
+      country:d.country.trim()
+    };
+    try { localStorage.setItem(DELIVERY_ADDRESS_KEY, JSON.stringify(addressSnapshot)); }
+    catch (error) { console.warn('Could not save the delivery address in this browser:', error); }
     if(!d.fullName.trim()||!d.phone.trim()||!d.address.trim()||!d.city.trim()||!d.country.trim()) return;
     let cancelled=false;
     const timer=window.setTimeout(async()=>{
@@ -308,6 +331,13 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
 
   const beginCheckout = async () => {
     setCheckoutMessage('');
+    if (subtotal < MINIMUM_DISCOUNT_ORDER) {
+      const remaining = MINIMUM_DISCOUNT_ORDER - subtotal;
+      const message = 'The promotional discount is available on orders of $150 or more. Add ' + money(remaining) + ' more to your cart to qualify. Your current product total is ' + money(subtotal) + '.';
+      setCartNotice(message);
+      window.alert(message);
+      return;
+    }
     const { data, error } = await supabase.auth.getSession();
     if (error) { setCheckoutMessage(error.message); return; }
     if (!data.session?.user) { persistCheckoutIntent(); onRequireAuth(); return; }
