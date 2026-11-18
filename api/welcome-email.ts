@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { renderTeslaEmail } from './_lib/tesla-email-templates';
+import { renderTeslaEmail } from './_lib/tesla-email-templates.js';
 
 type Request = IncomingMessage & { body?: unknown };
 
