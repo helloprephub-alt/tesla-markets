@@ -5,6 +5,7 @@ import {
   ShoppingBag, SlidersHorizontal, Sun, Truck, X
 } from 'lucide-react';
 import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
+import { productAssetUrl } from './product-assets.generated';
 import { supabase } from './lib/supabase';
 
 type Props = { onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
@@ -83,30 +84,29 @@ function discountValue(product: StoreProduct) {
 }
 
 function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; variant?: 'card' | 'large' | 'thumb' }) {
+  const imageSrc = productAssetUrl(product.image);
   const [imageFailed, setImageFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   useEffect(() => {
     setImageFailed(false);
     setImageLoaded(false);
-  }, [product.image]);
+  }, [imageSrc]);
   const variantClass = variant === 'large' ? ' tm-store-photo-frame-large' : variant === 'thumb' ? ' tm-store-photo-frame-thumb' : '';
   const unavailableClass = variant === 'large' ? ' tm-store-image-unavailable-large' : variant === 'thumb' ? ' tm-store-image-unavailable-thumb' : '';
   if (!product.image || imageFailed) {
     return <div className={'tm-store-image-unavailable' + unavailableClass} role="img" aria-label={'Product photo unavailable for ' + product.name}>
       <PackageCheck size={22} aria-hidden="true" />
-      <span>PRODUCT PHOTO UNAVAILABLE</span>
-      <small>{product.name}</small>
+      <span>PHOTO TEMPORARILY UNAVAILABLE</span>
     </div>;
   }
   return <div className={'tm-store-photo-frame' + variantClass + (imageLoaded ? ' is-loaded' : '')}>
     {!imageLoaded && <div className="tm-store-photo-loading" aria-hidden="true"><span>Loading product photo</span></div>}
     <img
       className={'tm-store-product-photo' + (variant === 'large' ? ' tm-store-product-photo-large' : '')}
-      src={product.image}
+      src={imageSrc}
       alt={product.name}
       loading={variant === 'card' ? 'lazy' : 'eager'}
       decoding="async"
-      referrerPolicy="no-referrer"
       onLoad={() => setImageLoaded(true)}
       onError={() => setImageFailed(true)}
     />
@@ -489,10 +489,6 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   return (
     <main className="tm-marketplace-v2">
       <header className="tm-store-header">
-        <button className="tm-store-brand" onClick={() => switchDepartment('All products')} aria-label="Tesla Markets shop home">
-          <img className="tm-store-brand-mark" src="/icons/public-icon.svg" alt="" />
-          <span><b>TESLA MARKETS</b><small>THE ELECTRIC LIFESTYLE COLLECTION</small></span>
-        </button>
         <label className="tm-store-search">
           <Search size={17}/>
           <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search products, collections, accessories..." />
@@ -512,51 +508,40 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
         ))}
       </nav>
       <section className="tm-store-promo-strip" aria-label="Seasonal marketplace promotion">
-        <span className="tm-store-promo-kicker">THE HOLIDAY EDIT</span>
-        <b>Selected products. Exceptional seasonal offers.</b>
-        <small>25–50% OFF SELECTED ITEMS</small>
+        <span className="tm-store-promo-kicker">SPECIAL OFFERS</span>
+        <b>Selected products are on offer.</b>
+        <small>25–50% OFF</small>
         <button onClick={() => { switchDepartment('All products'); document.getElementById('tm-store-catalogue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
-          Explore offers <ArrowUpRight size={14}/>
+          Shop offers <ArrowUpRight size={14}/>
         </button>
       </section>
 
       {department === 'All products' && !query && (
         <>
-          <section className="tm-store-hero tm-store-cinematic-hero" aria-label="Tesla Markets holiday collection">
-            <div className="tm-store-hero-copy tm-store-hero-copy-premium">
-              <span className="tm-store-eyebrow">TESLA MARKETS · THE HOLIDAY EDIT</span>
-              <h1>Designed for the drive.<br/><em>Made for every day.</em></h1>
-              <p>Explore an elevated edit of Tesla-inspired apparel, everyday accessories, charging essentials and energy products. Thoughtfully selected for life on and off the road.</p>
-              <div className="tm-store-hero-actions">
-                <button onClick={() => { switchDepartment('All products'); document.getElementById('tm-store-catalogue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
-                  Explore the collection <ArrowRight size={16}/>
-                </button>
-                <button className="tm-store-secondary-action" onClick={() => switchDepartment('Vehicle Accessories')}>
-                  Shop vehicle accessories <ArrowUpRight size={15}/>
-                </button>
-              </div>
-              <div className="tm-store-hero-proof">
-                <span><b>01</b> Curated collections</span>
-                <span><b>02</b> Product-specific offers</span>
-                <span><b>03</b> Delivery options at checkout</span>
-              </div>
-            </div>
+          <section className="tm-store-hero tm-store-editorial-hero" aria-label="Tesla Markets shop film and collection">
             <div className="tm-store-hero-film" aria-label="Tesla Markets seasonal film">
-              <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="metadata" poster="/resources/tesla-silver.jpg" aria-label="Tesla Markets holiday film">
+              <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" poster="/resources/holiday-film-poster.jpg" aria-label="Tesla Markets holiday film">
                 <source src="/resources/883457.webm" type="video/webm"/>
               </video>
               <div className="tm-store-hero-film-shade" aria-hidden="true"/>
-              <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY EDIT</b><span>THE ROAD AHEAD · 2026</span></div>
-              <span className="tm-store-video-stamp">A SEASONAL FILM <i>01 / 03</i></span>
+              <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY FILM</b><span>WATCH THE COLLECTION STORY</span></div>
+              <span className="tm-store-video-stamp">SEASONAL FILM</span>
+            </div>
+            <div className="tm-store-feature-copy">
+              <span className="tm-store-eyebrow">THE TESLA MARKETS SHOP</span>
+              <h1>Everything for the Tesla lifestyle.</h1>
+              <p>Find apparel, everyday accessories, charging essentials and more in one easy-to-browse collection.</p>
+              <div className="tm-store-feature-actions">
+                <button onClick={() => { switchDepartment('All products'); document.getElementById('tm-store-catalogue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+                  Shop all products <ArrowRight size={16}/>
+                </button>
+                <button className="tm-store-feature-secondary" onClick={() => switchDepartment('Apparel')}>Shop apparel</button>
+              </div>
+              <small>Choose a department above, or browse all products below.</small>
             </div>
           </section>
 
-          <section className="tm-store-section">
-            <div className="tm-store-section-head"><div><span className="tm-store-eyebrow">SHOP BY DEPARTMENT</span><h2>Explore the marketplace</h2></div><button className="tm-store-link-button" onClick={() => setShowAllDepartments(v => !v)}>{showAllDepartments ? 'Show less' : 'All departments'} <ArrowRight size={15}/></button></div>
-            <div className="tm-store-department-grid">
-              {(showAllDepartments ? departments.slice(1) : departments.slice(1,5)).map(({name,sub,icon:Icon}) => <button key={name} onClick={() => switchDepartment(name)} className="tm-store-department-card"><span><Icon size={21}/></span><b>{name}</b><small>{sub}</small><em>Browse department <ArrowUpRight size={13}/></em></button>)}
-            </div>
-          </section>
+
         </>
       )}
 
@@ -591,7 +576,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
                 <div className="tm-store-detail-image"><ProductVisual product={{ ...selected, image: selectedGalleryImage || selected.image }} variant="large" /></div>
                 {selectedGallery.length > 1 && <div className="tm-store-gallery-thumbnails" aria-label={selected.name + ' product photos'}>
                   {selectedGallery.map((src, index) => <button type="button" key={src} className={selectedGalleryImage === src ? 'active' : ''} onClick={() => setSelectedGalleryImage(src)} aria-label={'Show product photo ' + (index + 1)}>
-                    <img src={src} alt={selected.name + ' view ' + (index + 1)} loading="lazy" decoding="async" />
+                    <img src={productAssetUrl(src)} alt={selected.name + ' view ' + (index + 1)} loading="lazy" decoding="async" />
                   </button>)}
                 </div>}
               </div>

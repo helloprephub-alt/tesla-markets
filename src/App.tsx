@@ -6,6 +6,7 @@ import { AdminConsole } from './AdminConsole';
 import { VehicleExperience } from './VehicleExperience';
 import { Marketplace } from './Marketplace';
 import { getDiscountedPrice, storeProducts } from './marketplace-catalog';
+import { productAssetUrl } from './product-assets.generated';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -264,7 +265,7 @@ function App() {
   useEffect(() => {
     const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (manifest) manifest.href = page === 'admin' ? '/admin-manifest.webmanifest' : '/manifest.webmanifest';
-    document.title = page === 'admin' ? 'Tesla Markets Admin | Private Management' : 'Tesla Markets | Vehicle Enquiries & Market Information';
+    document.title = page === 'admin' ? 'Tesla Markets Admin | Private Management' : page === 'shop' ? 'Tesla Markets | Shop' : 'Tesla Markets';
     const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (theme) theme.content = page === 'admin' ? '#101820' : '#e82127';
   }, [page]);
@@ -641,7 +642,7 @@ function App() {
           {homeShopPreview.map(product => {
             const price = getDiscountedPrice(product);
             return <button className="home-shop-preview-card" key={product.id} onClick={() => go('shop')}>
-              <div className="home-shop-preview-image" style={{backgroundImage: "url('" + product.image + "')", backgroundSize:'contain', backgroundPosition:'center', backgroundRepeat:'no-repeat'}}>
+              <div className="home-shop-preview-image" style={{backgroundImage: "url('" + productAssetUrl(product.image) + "')", backgroundSize:'contain', backgroundPosition:'center', backgroundRepeat:'no-repeat'}}>
                 {product.discountPercent > 0 && <span>{product.discountPercent}% OFF</span>}
               </div>
               <span className="home-shop-preview-name">{product.name}</span>
@@ -837,7 +838,7 @@ function App() {
       </section>
     </>
   );
-  const Shop = () => <><div className="shop-order-shortcut"><button type="button" onClick={()=>go('orders')}>My orders & tracking <ArrowUpRight size={14}/></button></div><section className="shop-vehicle-separation"><div><span>THE VEHICLE COLLECTION</span><p>Looking for a complete vehicle? Explore models and configurations in the separate Vehicles section.</p></div><button type="button" onClick={()=>goParent('vehicles')}>Browse vehicles <ArrowUpRight size={15}/></button></section><Marketplace onOrders={()=>go('orders')} onRequireAuth={()=>go('login')} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Marketplace',type:'product',context}));go('chat')}} /></>;
+  const Shop = () => <><div className="shop-order-shortcut"><button type="button" onClick={()=>go('orders')}>My orders <ArrowUpRight size={13}/></button><button type="button" className="shop-vehicles-link" onClick={()=>goParent('vehicles')}>Explore vehicles <ArrowUpRight size={13}/></button></div><Marketplace onOrders={()=>go('orders')} onRequireAuth={()=>go('login')} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Marketplace',type:'product',context}));go('chat')}} /></>;
   const VehicleCollection = () => <VehicleExperience language={detectedLanguage as PublicLanguage} onBack={()=>goParent('home')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
   const VehicleDetail = () => <VehicleExperience language={detectedLanguage as PublicLanguage} modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('vehicles')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
   const Info = ({ kind }: { kind: 'about' | 'contact' | 'faq' }) => (
@@ -1274,7 +1275,7 @@ function App() {
     <div className="app-shell" lang={detectedLanguage} dir={!isAdminOrWorkspace && detectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
       <LanguageDialog/>
       {!hideSiteChrome && <Header />}
-      {page !== 'home' && !hasOwnBack && <button type="button" className={'global-page-back '+(hideSiteChrome?'standalone':'')} onClick={goBack} aria-label="Go back to previous page"><ChevronLeft size={16}/><span>Back</span></button>}
+      {page !== 'home' && page !== 'shop' && !hasOwnBack && <button type="button" className={'global-page-back '+(hideSiteChrome?'standalone':'')} onClick={goBack} aria-label="Go back to previous page"><ChevronLeft size={16}/><span>Back</span></button>}
       {content}
       {!['chat','admin','signup','login'].includes(page) && <button type="button" className="site-chat-launcher" onClick={()=>go('chat')} aria-label="Open your Tesla Markets conversation" title="Chat with Tesla Markets Management"><MessageCircle size={19}/>{chatUnread>0&&<span className="site-chat-unread">{chatUnread>9?'9+':chatUnread}</span>}</button>}
       {!hideSiteChrome && <Footer />
