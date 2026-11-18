@@ -676,6 +676,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
               <div className="tm-store-cart-summary">
                 {subtotal<150 && <div className="tm-store-promo-threshold" role="status"><b>Promotional minimum not reached</b><span>Add {money(150-subtotal)} in eligible products to reach the $150 minimum and unlock promotional checkout.</span></div>}
                 {subtotal>=150 && <div className="tm-store-promo-threshold is-qualified" role="status"><b>Promotional minimum reached</b><span>Your order qualifies for promotional checkout.</span></div>}
+                {checkoutMessage && <p className="tm-store-checkout-message" role="alert">{checkoutMessage}</p>}
                 <div><span>Original subtotal</span><s>{money(originalSubtotal)}</s></div>
                 <div><span>Product savings</span><b className="saving">−{money(totalSavings)}</b></div>
                 <div className="total"><span>Estimated product total</span><b>{money(subtotal)}</b></div>
