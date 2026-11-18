@@ -517,7 +517,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const changeQty = (id: string, delta: number, size?: string) => {
     setCart(current => current.map(line =>
       line.id === id && (line.selectedSize || '') === (size || '')
-        ? { ...line, quantity: Math.max(1, line.quantity + delta) } : line
+        ? { ...line, quantity: Math.min(99, Math.max(1, line.quantity + delta)) } : line
     ));
   };
 
@@ -562,7 +562,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       <section className="tm-store-promo-strip" aria-label="Seasonal marketplace promotion">
         <span className="tm-store-promo-kicker">SPECIAL OFFERS</span>
         <b>Selected products are on offer.</b>
-        <small>25–50% OFF</small>
+        <small>25–70% OFF</small>
         <button onClick={() => { switchDepartment('All products'); document.getElementById('tm-store-catalogue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
           Shop offers <ArrowUpRight size={14}/>
         </button>
