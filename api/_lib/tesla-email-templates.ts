@@ -100,15 +100,63 @@ export function renderTeslaEmail(input: EmailTemplateInput) {
     input.status ? ['Status', input.status] : null,
     input.amount ? ['Amount', input.amount] : null
   ].filter(Boolean) as string[][];
-  const details = rows.length ? `<div style="margin:26px 0;padding:18px 20px;background:#f7f7f7;border:1px solid #e8e8e8;border-radius:12px">${rows.map(([label,value]) => `<div style="display:flex;justify-content:space-between;gap:16px;padding:7px 0;font-size:13px"><span style="color:#777">${escapeHtml(label)}</span><strong style="color:#171717;text-align:right">${escapeHtml(value)}</strong></div>`).join('')}${detail ? `<p style="margin:12px 0 0;padding-top:12px;border-top:1px solid #ddd;font-size:13px;line-height:1.6;color:#555">${detail}</p>` : ''}</div>` : (detail ? `<div style="margin:24px 0;padding:18px;background:#f7f7f7;border:1px solid #e8e8e8;border-radius:12px;font-size:13px;line-height:1.6;color:#555">${detail}</div>` : '');
-  const logoUrl = process.env.TESLA_MARKETS_LOGO_URL;
-  const brand = logoUrl
-    ? `<img src="${escapeHtml(logoUrl)}" alt="Tesla Markets" width="54" height="54" style="display:block;border:0;border-radius:10px">`
-    : `<div style="width:48px;height:48px;line-height:48px;text-align:center;background:#e82127;color:#fff;border-radius:9px;font-size:23px;font-weight:700">T</div>`;
-  const action = input.actionUrl && (input.actionLabel || template.action)
-    ? `<a href="${escapeHtml(input.actionUrl)}" style="display:inline-block;margin-top:24px;padding:15px 24px;background:#e82127;color:#fff;text-decoration:none;border-radius:7px;font-size:13px;font-weight:700;letter-spacing:.3px">${escapeHtml(input.actionLabel || template.action || 'Open Tesla Markets')} &nbsp; &#8594;</a>`
+  const details = rows.length ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:26px 0;background:#f7f8fa;border:1px solid #e6e8eb;border-radius:10px;border-collapse:separate">
+      ${rows.map(([label,value]) => `<tr><td style="padding:13px 16px;font-size:13px;line-height:1.4;color:#73777d;border-bottom:1px solid #e6e8eb">${escapeHtml(label)}</td><td align="right" style="padding:13px 16px;font-size:13px;line-height:1.4;font-weight:700;color:#17191c;border-bottom:1px solid #e6e8eb">${escapeHtml(value)}</td></tr>`).join('')}
+      ${detail ? `<tr><td colspan="2" style="padding:15px 16px;font-size:13px;line-height:1.65;color:#4d5258">${detail}</td></tr>` : ''}
+    </table>` : (detail ? `<div style="margin:24px 0;padding:17px 18px;background:#f7f8fa;border:1px solid #e6e8eb;border-radius:10px;font-size:13px;line-height:1.65;color:#4d5258">${detail}</div>` : '');
+  const logoUrl = process.env.TESLA_MARKETS_LOGO_URL || 'https://raw.githubusercontent.com/helloprephub-alt/tesla-markets/live-production-ready-20261118/public/tesla-markets-logo.jpg';
+  const actionUrl = input.actionUrl || 'https://teslamarketsofficial.com';
+  const action = input.actionUrl || input.kind === 'welcome' || input.kind === 'getting_started'
+    ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0 4px"><tr><td bgcolor="#e82127" style="border-radius:5px"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;padding:15px 25px;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.4px;border-radius:5px">${escapeHtml(input.actionLabel || template.action || 'Explore Tesla Markets')} &nbsp; &#8594;</a></td></tr></table>`
     : '';
-  const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"></head><body style="margin:0;padding:24px 10px;background:#101010;font-family:Arial,Helvetica,sans-serif;color:#171717"><span style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</span><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:620px;background:#fff;border-radius:14px;overflow:hidden"><tr><td style="padding:25px 30px;background:#090909;border-bottom:3px solid #e82127"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="vertical-align:middle;padding-right:13px">${brand}</td><td style="vertical-align:middle"><div style="font-size:17px;font-weight:700;letter-spacing:2px;color:#fff">TESLA MARKETS</div><div style="margin-top:5px;font-size:9px;letter-spacing:2px;color:#bdbdbd">INVEST&nbsp;&nbsp;·&nbsp;&nbsp;SHOP&nbsp;&nbsp;·&nbsp;&nbsp;OWN TESLA</div></td></tr></table></td></tr><tr><td style="padding:38px 34px 34px"><div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#e82127">${escapeHtml(template.eyebrow)}</div><h1 style="margin:14px 0 16px;font-size:30px;line-height:1.15;letter-spacing:-.7px;color:#111">${escapeHtml(template.title)}</h1><p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#333">Hello ${name},</p><p style="margin:0;font-size:14px;line-height:1.8;color:#555">${escapeHtml(template.body)}</p>${details}${action}<p style="margin:34px 0 0;font-size:13px;line-height:1.7;color:#555">If you need assistance, reply to this email or contact our support team.</p><p style="margin:20px 0 0;font-size:13px;line-height:1.7;color:#333">Kind regards,<br><strong>Tesla Markets</strong></p></td></tr><tr><td style="padding:22px 30px;background:#090909;border-top:1px solid #292929"><div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#fff">TESLA MARKETS</div><p style="margin:9px 0 0;font-size:11px;line-height:1.6;color:#aaa">Customer communication from support@teslamarketsofficial.com</p><p style="margin:8px 0 0;font-size:10px;color:#777">This message relates to your account, order or enquiry.</p></td></tr></table></td></tr></table></body></html>`;
-  const text = `TESLA MARKETS\n${template.eyebrow}\n\n${template.title}\n\nHello ${input.customerName || 'there'},\n\n${template.body}${rows.length ? '\n\n' + rows.map(([k,v])=>k+': '+v).join('\n') : ''}${input.detail ? '\n\n' + input.detail : ''}\n\nKind regards,\nTesla Markets\nsupport@teslamarketsofficial.com`;
+  const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="utf-8"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head><body bgcolor="#f0f1f3" style="margin:0;padding:28px 12px;background-color:#f0f1f3;font-family:Arial,Helvetica,sans-serif;color:#17191c;-webkit-text-size-adjust:100%">
+  <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;max-height:0;max-width:0;overflow:hidden">${preheader} — Tesla Markets customer update.</span>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f0f1f3"><tr><td align="center">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;width:100%;border-collapse:separate;border-spacing:0;background:#ffffff;border-radius:12px;overflow:hidden">
+      <tr><td bgcolor="#090a0c" style="padding:25px 30px 23px;background-color:#090a0c;border-bottom:3px solid #e82127">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr>
+          <td width="112" valign="middle" style="width:112px;padding-right:18px">
+            <img src="${escapeHtml(logoUrl)}" alt="Tesla" width="94" style="display:block;width:94px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none">
+          </td>
+          <td valign="middle">
+            <div style="font-size:18px;line-height:1.25;font-weight:700;letter-spacing:2.4px;color:#ffffff">TESLA MARKETS</div>
+            <div style="margin-top:7px;font-size:9px;line-height:1.5;letter-spacing:2.1px;color:#c3c5c8">INVEST&nbsp;&nbsp;·&nbsp;&nbsp;SHOP&nbsp;&nbsp;·&nbsp;&nbsp;OWN TESLA</div>
+          </td>
+        </tr></table>
+      </td></tr>
+      <tr><td style="height:7px;line-height:7px;font-size:0;background:#f5f5f5">&nbsp;</td></tr>
+      <tr><td style="padding:42px 42px 40px;background:#ffffff">
+        <div style="font-size:10px;line-height:1.5;font-weight:700;letter-spacing:2.3px;color:#d71920;text-transform:uppercase">${escapeHtml(template.eyebrow)}</div>
+        <h1 style="margin:15px 0 20px;font-size:32px;line-height:1.16;letter-spacing:-.7px;font-weight:700;color:#111418">${escapeHtml(template.title)}</h1>
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.65;color:#22262b">Hello ${name},</p>
+        <p style="margin:0;font-size:15px;line-height:1.85;color:#555b62">${escapeHtml(template.body)}</p>
+        ${details}
+        ${action}
+        <p style="margin:34px 0 0;font-size:13px;line-height:1.75;color:#626870">If you need assistance, reply to this email or contact our support team.</p>
+        <p style="margin:21px 0 0;font-size:14px;line-height:1.7;color:#282d33">Kind regards,<br><strong style="color:#111418">Tesla Markets</strong></p>
+      </td></tr>
+      <tr><td bgcolor="#090a0c" style="padding:25px 32px;background-color:#090a0c;border-top:1px solid #26292d">
+        <div style="font-size:11px;line-height:1.5;font-weight:700;letter-spacing:2.2px;color:#ffffff">TESLA MARKETS</div>
+        <p style="margin:9px 0 0;font-size:11px;line-height:1.7;color:#b7bbc0">Customer communication from <a href="mailto:support@teslamarketsofficial.com" style="color:#ffffff;text-decoration:none">support@teslamarketsofficial.com</a></p>
+        <p style="margin:9px 0 0;font-size:10px;line-height:1.6;color:#858b92">This message relates to your account, order or enquiry. Never share passwords, payment card details or gift-card codes by email.</p>
+        <p style="margin:14px 0 0;font-size:10px;line-height:1.5;color:#777e86"><a href="https://teslamarketsofficial.com" style="color:#b9bec5;text-decoration:none">teslamarketsofficial.com</a></p>
+      </td></tr>
+    </table>
+    <div style="padding:15px 12px;font-size:10px;line-height:1.5;color:#868b91;text-align:center">TESLA MARKETS &nbsp;·&nbsp; CUSTOMER EXPERIENCE</div>
+  </td></tr></table>
+  </body></html>`;
+  const text = `TESLA MARKETS
+${template.eyebrow}
+
+${template.title}
+
+Hello ${input.customerName || 'there'},
+
+${template.body}${rows.length ? '\n\n' + rows.map(([k,v])=>k+': '+v).join('\n') : ''}${input.detail ? '\n\n' + input.detail : ''}
+
+${input.actionUrl || input.kind === 'welcome' || input.kind === 'getting_started' ? 'Explore Tesla Markets: ' + actionUrl + '\n\n' : ''}Kind regards,
+Tesla Markets
+support@teslamarketsofficial.com`;
   return { subject: template.subject, html, text };
 }
