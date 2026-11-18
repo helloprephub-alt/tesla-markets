@@ -3,7 +3,11 @@ import { Buffer } from 'node:buffer';
 type Request = { method?: string; query?: Record<string, string | string[] | undefined> };
 type Response = { setHeader(name: string, value: string): void; status(code: number): Response; send(body: string | Buffer): void };
 
-const hosts = new Set(['digitalassets-shop.tesla.com']);
+const allowedImagePaths: Record<string, string> = {
+  'digitalassets-shop.tesla.com': '/image/upload/',
+  'digitalassets-shop.tesla.cn': '/image/upload/',
+  'www.eco-worthy.com': '/cdn/shop/files/',
+};
 
 export default async function handler(req: Request, res: Response): Promise<void> {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -21,16 +25,18 @@ export default async function handler(req: Request, res: Response): Promise<void
     return;
   }
 
-  if (target.protocol !== 'https:' || !hosts.has(target.hostname) || !target.pathname.startsWith('/image/upload/')) {
+  const allowedPath = allowedImagePaths[target.hostname];
+  if (target.protocol !== 'https:' || !allowedPath || !target.pathname.startsWith(allowedPath)) {
     res.status(403).send('Image source not allowed');
     return;
   }
 
   try {
+    const referer = target.hostname === 'www.eco-worthy.com' ? 'https://www.eco-worthy.com/' : 'https://shop.tesla.com/';
     const upstream = await fetch(target.toString(), {
       headers: {
         Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
-        Referer: 'https://shop.tesla.com/',
+        Referer: referer,
         'User-Agent': 'Mozilla/5.0 TeslaMarketsImageProxy',
       },
     });
@@ -46,8 +52,6 @@ export default async function handler(req: Request, res: Response): Promise<void
       return;
     }
 
-    // Send a Node Buffer so Vercel's Node response layer writes the actual
-    // image bytes instead of serializing a Uint8Array as JSON.
     const imageBytes = Buffer.from(await upstream.arrayBuffer());
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Length', String(imageBytes.byteLength));
