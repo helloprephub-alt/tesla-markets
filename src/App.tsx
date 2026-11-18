@@ -1328,7 +1328,8 @@ function App() {
   else if (page === 'ai') content = <AI />;
   else if (page === 'shop') content = <Shop />;
   else if (page === 'vehicles') content = <VehicleCollection />;
-  else if (page === 'orders') content = <CustomerOrders onShop={()=>go('shop')} onLogin={()=>go('login')} />;\n  else if (page === 'profile') content = <CustomerProfile onOrders={()=>go('orders')} onShop={()=>go('shop')} onSignOut={async()=>{await supabase.auth.signOut();announce('You have been signed out.');goParent('home');}} />;
+  else if (page === 'orders') content = <CustomerOrders onShop={()=>go('shop')} onLogin={()=>go('login')} />;
+  else if (page === 'profile') content = <CustomerProfile onOrders={()=>go('orders')} onShop={()=>go('shop')} onSignOut={async()=>{await supabase.auth.signOut();announce('You have been signed out.');goParent('home');}} />;
   else if (page === 'about' || page === 'contact' || page === 'faq')
     content = <Info kind={page} />;
   else if (page === 'signup' || page === 'login')
