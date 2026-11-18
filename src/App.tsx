@@ -21,6 +21,7 @@ import {
   Clock3,
   CreditCard,
   Globe2,
+  Heart,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
