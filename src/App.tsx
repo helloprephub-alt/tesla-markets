@@ -30,6 +30,8 @@ import {
   Search,
   ShieldCheck,
   ShoppingBag,
+  PackageCheck,
+  Truck,
   Sparkles,
   TrendingUp,
   UserRound,
@@ -68,7 +70,8 @@ const navItems: { label: string; page: Page }[] = [
   { label: 'Home', page: 'home' },
   { label: 'Vehicles', page: 'vehicles' },
   { label: 'Shop', page: 'shop' },
-  { label: 'My Orders', page: 'orders' },\n  { label: 'My Account', page: 'profile' },
+  { label: 'My Orders', page: 'orders' },
+  { label: 'My Account', page: 'profile' },
   { label: 'Investments', page: 'markets' },
   { label: 'About', page: 'about' },
   { label: 'FAQs', page: 'faq' },
@@ -1335,7 +1338,6 @@ function App() {
     'dashboard',
     'portfolio',
     'history',
-    'profile',
   ].includes(page);
   const hideSiteChrome = dashboardPage || page === 'admin' || page === 'signup' || page === 'login' || page === 'chat';
   const hasOwnBack = page === 'chat' || ['vehicles','model-y','model-3','cybertruck','roadster','semi'].includes(page);
