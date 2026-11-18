@@ -534,21 +534,10 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
 
       {department === 'All products' && !query && (
         <>
-          <section className="tm-store-hero tm-store-christmas-video" aria-label="Tesla Markets Christmas collection">
-            <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-hidden="true" onError={event => { event.currentTarget.style.display = "none"; }}>
+          <section className="tm-store-hero tm-store-christmas-video" aria-label="Tesla Markets Christmas collection video">
+            <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-label="Tesla Markets Christmas collection">
               <source src="/resources/883457.webm" type="video/webm"/>
             </video>
-            <div className="tm-store-christmas-video-overlay" aria-hidden="true"/>
-            <div className="tm-store-hero-copy tm-store-hero-copy-on-video">
-              <span className="tm-store-eyebrow">TESLA MARKETS · CHRISTMAS COLLECTION</span>
-              <h1>Holiday moments.<br/><em>Made to move.</em></h1>
-              <p>Discover the Christmas collection, from Tesla apparel and everyday accessories to vehicle-inspired gifts, with product-specific offers across selected items.</p>
-              <div className="tm-store-hero-actions">
-                <button onClick={() => switchDepartment('All products')}>Shop all Christmas offers <ArrowRight size={16}/></button>
-                <span>Different discounts on selected products</span>
-              </div>
-            </div>
-            <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY EDIT</b><span>CHRISTMAS COLLECTION · SELECTED OFFERS</span></div>
           </section>
 
           <section className="tm-store-section tm-store-vehicle-section">
