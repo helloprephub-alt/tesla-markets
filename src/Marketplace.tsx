@@ -215,6 +215,23 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       ]);
       if (!active) return;
       if (userData.user?.email) setCheckoutDetails(current => ({ ...current, email: current.email || userData.user!.email! }));
+      const {data:savedAddress,error:addressError}=await supabase
+        .from('customer_delivery_addresses')
+        .select('full_name,phone,address,city,region,postal_code,country')
+        .eq('user_id',userId)
+        .maybeSingle();
+      if(savedAddress) setCheckoutDetails(current=>({
+        ...current,
+        fullName:savedAddress.full_name||current.fullName,
+        phone:savedAddress.phone||current.phone,
+        address:savedAddress.address||current.address,
+        city:savedAddress.city||current.city,
+        region:savedAddress.region||current.region,
+        postalCode:savedAddress.postal_code||current.postalCode,
+        country:savedAddress.country||current.country,
+        email:userData.user?.email||current.email
+      }));
+      if(addressError) console.warn('Could not restore the saved delivery address:',addressError.message);
       if (error) console.warn('Could not restore the saved customer cart:',error.message);
       const localCart=readSavedCart();
       const restored=Array.isArray(remoteCart?.items)?remoteCart.items as CartLine[]:[];
@@ -242,6 +259,30 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     if(savedIntent){if(savedIntent.checkoutDetails)setCheckoutDetails(savedIntent.checkoutDetails);setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');localStorage.removeItem(CHECKOUT_INTENT_KEY);}
     return()=>{active=false;subscription.unsubscribe();};
   }, []);
+
+
+  useEffect(() => {
+    const d=checkoutDetails;
+    if(!d.fullName.trim()||!d.phone.trim()||!d.address.trim()||!d.city.trim()||!d.country.trim()) return;
+    let cancelled=false;
+    const timer=window.setTimeout(async()=>{
+      const {data:{user},error:authError}=await supabase.auth.getUser();
+      if(cancelled||authError||!user) return;
+      const {error}=await supabase.from('customer_delivery_addresses').upsert({
+        user_id:user.id,
+        full_name:d.fullName.trim(),
+        phone:d.phone.trim(),
+        address:d.address.trim(),
+        city:d.city.trim(),
+        region:d.region?.trim()||null,
+        postal_code:d.postalCode.trim()||null,
+        country:d.country.trim(),
+        updated_at:new Date().toISOString()
+      },{onConflict:'user_id'});
+      if(error&&!cancelled) console.warn('Could not autosave the delivery address:',error.message);
+    },700);
+    return()=>{cancelled=true;window.clearTimeout(timer);};
+  },[checkoutDetails.fullName,checkoutDetails.phone,checkoutDetails.address,checkoutDetails.city,checkoutDetails.region,checkoutDetails.postalCode,checkoutDetails.country]);
 
   useEffect(() => {
     if(!cartHydrated)return;
