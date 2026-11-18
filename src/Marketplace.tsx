@@ -239,6 +239,29 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   }, []);
 
   useEffect(() => {
+    const d=checkoutDetails;
+    if(!d.fullName.trim()||!d.phone.trim()||!d.address.trim()||!d.city.trim()||!d.country.trim()) return;
+    let cancelled=false;
+    const timer=window.setTimeout(async()=>{
+      const {data:{user},error:authError}=await supabase.auth.getUser();
+      if(cancelled||authError||!user) return;
+      const {error}=await supabase.from('customer_delivery_addresses').upsert({
+        user_id:user.id,
+        full_name:d.fullName.trim(),
+        phone:d.phone.trim(),
+        address:d.address.trim(),
+        city:d.city.trim(),
+        region:d.region?.trim()||null,
+        postal_code:d.postalCode.trim()||null,
+        country:d.country.trim(),
+        updated_at:new Date().toISOString()
+      },{onConflict:'user_id'});
+      if(error&&!cancelled) console.warn('Could not autosave the delivery address:',error.message);
+    },700);
+    return()=>{cancelled=true;window.clearTimeout(timer);};
+  },[checkoutDetails.fullName,checkoutDetails.phone,checkoutDetails.address,checkoutDetails.city,checkoutDetails.region,checkoutDetails.postalCode,checkoutDetails.country]);
+
+  useEffect(() => {
     if(!cartHydrated)return;
     try { localStorage.setItem(GUEST_CART_KEY,JSON.stringify(cart)); }
     catch { setCheckoutMessage('Your browser storage is full. Please remove some saved site data before adding more items.'); }
