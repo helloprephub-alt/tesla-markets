@@ -1,0 +1,73 @@
+/* Premium Shop refinement: consistent homepage wordmark, cinematic hero fallback and restrained motion. */
+.tm-marketplace-v2{background:#f4f5f4;overflow:hidden}
+.tm-store-header{height:76px;gap:clamp(12px,2.6vw,34px);padding-inline:clamp(14px,4.8vw,76px);box-shadow:0 5px 24px rgba(14,20,22,.045)}
+.tm-store-brand{min-width:clamp(150px,19vw,245px);min-height:48px;transition:opacity .25s ease,transform .25s ease}
+.tm-store-brand:hover{opacity:.82;transform:translateY(-1px)}
+.tm-store-brand-logo{display:block;width:clamp(150px,18vw,218px);height:48px;object-fit:contain;object-position:left center}
+.tm-store-departments{box-shadow:0 5px 18px rgba(14,20,22,.035)}
+.tm-store-christmas-banner{min-height:104px;padding-block:18px;animation:tmShopBannerIn .7s cubic-bezier(.2,.7,.25,1) both}
+.tm-store-christmas-banner>button{transition:transform .25s ease,box-shadow .25s ease,background .25s ease}
+.tm-store-christmas-banner>button:hover{transform:translateY(-2px);box-shadow:0 9px 24px rgba(0,0,0,.18)}
+.tm-store-hero.tm-store-christmas-video{
+  position:relative;isolation:isolate;display:flex;align-items:flex-end;justify-content:flex-start;
+  width:100%;max-width:none;min-height:clamp(470px,62vw,700px);height:min(76svh,760px);
+  margin:0;padding:clamp(30px,6vw,88px) clamp(20px,7vw,110px);
+  overflow:hidden;background:
+    radial-gradient(ellipse at 76% 38%,rgba(125,37,45,.5),transparent 43%),
+    linear-gradient(115deg,#101719 0%,#18252b 48%,#341a20 100%);
+}
+.tm-store-christmas-video:before{content:"";position:absolute;inset:0;z-index:-2;background:linear-gradient(110deg,rgba(7,12,14,.83),rgba(7,12,14,.23) 72%,rgba(7,12,14,.48))}
+.tm-store-christmas-video-media{position:absolute;inset:0;z-index:-3;width:100%;height:100%;object-fit:cover;object-position:center 52%;opacity:.88;transform:scale(1.025);animation:tmShopVideoDrift 22s ease-in-out infinite alternate}
+.tm-store-christmas-video-overlay{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(8,13,15,.82) 0%,rgba(8,13,15,.55) 42%,rgba(8,13,15,.12) 100%),linear-gradient(0deg,rgba(7,11,13,.58),transparent 42%)}
+.tm-store-hero-copy-on-video{position:relative;z-index:2;max-width:670px;padding:0;background:transparent;color:#fff;animation:tmShopHeroReveal .9s .08s cubic-bezier(.2,.7,.25,1) both}
+.tm-store-hero-copy-on-video .tm-store-eyebrow{color:#e6c98e;font-size:9px;letter-spacing:.22em}
+.tm-store-hero-copy-on-video h1{max-width:680px;margin:20px 0 18px;font-size:clamp(46px,7.1vw,88px);line-height:.94;letter-spacing:-.075em;text-wrap:balance}
+.tm-store-hero-copy-on-video h1 em{color:#ead7b0;font-style:italic}
+.tm-store-hero-copy-on-video p{max-width:510px;margin:0 0 28px;color:rgba(255,255,255,.82);font-size:clamp(12px,1.2vw,15px);line-height:1.85}
+.tm-store-hero-copy-on-video .tm-store-hero-actions{gap:18px}
+.tm-store-hero-copy-on-video .tm-store-hero-actions button{min-height:50px;padding:0 21px;background:#b51e2c;font-size:10px;letter-spacing:.04em;transition:transform .25s ease,background .25s ease,box-shadow .25s ease}
+.tm-store-hero-copy-on-video .tm-store-hero-actions button:hover{transform:translateY(-3px);background:#d02a38;box-shadow:0 12px 28px rgba(0,0,0,.22)}
+.tm-store-hero-copy-on-video .tm-store-hero-actions span{color:rgba(255,255,255,.72);font-size:9px}
+.tm-store-christmas-video .tm-store-hero-caption{left:auto;right:clamp(20px,7vw,110px);bottom:30px;align-items:flex-end;text-align:right;color:rgba(255,255,255,.8);animation:tmShopHeroReveal 1s .22s both}
+.tm-store-christmas-video .tm-store-hero-caption b{font-size:9px;letter-spacing:.2em}
+.tm-store-christmas-video .tm-store-hero-caption span{font-size:8px;letter-spacing:.16em}
+.tm-store-section{padding-top:48px}
+.tm-store-section-head{margin-bottom:22px}
+.tm-store-vehicle-card,.tm-store-department-card,.tm-store-card{border-radius:5px;transition:transform .28s cubic-bezier(.2,.7,.25,1),box-shadow .28s ease,border-color .28s ease}
+.tm-store-vehicle-card:hover,.tm-store-department-card:hover,.tm-store-card:hover{transform:translateY(-4px);box-shadow:0 16px 34px rgba(16,25,29,.09);border-color:#cbd1d0}
+.tm-store-image-zoom{transition:opacity .25s ease,transform .25s ease}
+.tm-store-catalogue{padding-bottom:20px}
+@keyframes tmShopBannerIn{from{opacity:0;transform:translateY(-9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tmShopHeroReveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tmShopVideoDrift{from{transform:scale(1.025)}to{transform:scale(1.09)}}
+@media(max-width:760px){
+ .tm-store-header{height:64px;gap:8px;padding-inline:12px}
+ .tm-store-brand{min-width:0;flex:0 0 auto}
+ .tm-store-brand-logo{width:clamp(118px,38vw,158px);height:42px}
+ .tm-store-search{max-width:none;min-width:0}
+ .tm-store-header-actions{gap:7px}
+ .tm-store-departments{top:64px}
+ .tm-store-hero.tm-store-christmas-video{height:auto;min-height:clamp(470px,68svh,610px);padding:38px 22px 88px;margin:0}
+ .tm-store-christmas-video-media{object-position:58% center}
+ .tm-store-christmas-video-overlay{background:linear-gradient(90deg,rgba(7,12,14,.82),rgba(7,12,14,.36)),linear-gradient(0deg,rgba(7,11,13,.64),transparent 65%)}
+ .tm-store-hero-copy-on-video{max-width:100%}
+ .tm-store-hero-copy-on-video h1{font-size:clamp(43px,11vw,59px);margin:17px 0 15px}
+ .tm-store-hero-copy-on-video p{max-width:430px;font-size:12px;line-height:1.75;margin-bottom:22px}
+ .tm-store-hero-copy-on-video .tm-store-hero-actions{align-items:flex-start;gap:11px}
+ .tm-store-hero-copy-on-video .tm-store-hero-actions button{min-height:46px;padding-inline:15px}
+ .tm-store-christmas-video .tm-store-hero-caption{left:22px;right:22px;bottom:19px;align-items:flex-start;text-align:left}
+ .tm-store-section{padding-top:32px}
+}
+@media(max-width:430px){
+ .tm-store-header{gap:6px}
+ .tm-store-brand-logo{width:116px;height:38px}
+ .tm-store-search{height:34px;padding-inline:7px}
+ .tm-store-search input{font-size:8px}
+ .tm-store-header-actions{gap:4px}
+ .tm-store-hero.tm-store-christmas-video{min-height:490px;padding-inline:19px}
+ .tm-store-hero-copy-on-video h1{font-size:clamp(40px,10.8vw,49px)}
+}
+@media(prefers-reduced-motion:reduce){
+ .tm-store-christmas-banner,.tm-store-hero-copy-on-video,.tm-store-hero-caption,.tm-store-christmas-video-media{animation:none!important}
+ .tm-store-brand,.tm-store-christmas-banner>button,.tm-store-hero-copy-on-video .tm-store-hero-actions button,.tm-store-vehicle-card,.tm-store-department-card,.tm-store-card{transition:none!important}
+}
