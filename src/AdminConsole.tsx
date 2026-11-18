@@ -145,7 +145,7 @@ export function AdminConsole() {
       setIsInstalled(true);
       setInstalledAppMode(true);
       setInstallPrompt(null);
-      setShowInstallCard(false);
+      setShowInstallCard(true);
       localStorage.setItem('tesla-admin-installed', 'true');
       localStorage.removeItem('tesla-admin-install-dismissed');
       setNotificationStatus('Tesla Markets Management is installed on this device.');
@@ -885,13 +885,13 @@ export function AdminConsole() {
           <footer className="admin-console-footer">Signed in as {user.email} · Private management session · <a href="#home">Open public website</a></footer>
         </main>
       </div>
-      {showInstallCard && !isInstalled && !installedAppMode && <div className="tm-install-overlay" role="presentation">
+      {showInstallCard && <div className="tm-install-overlay" role="presentation">
         <section className="tm-install-dialog" role="dialog" aria-modal="true" aria-labelledby="tm-install-title">
           <img src="/icons/admin-app-icon.svg" alt="" className="tm-install-icon"/>
           <div className="tm-install-eyebrow">TESLA MARKETS · PRIVATE MANAGEMENT</div>
-          <h2 id="tm-install-title">Install your management app</h2>
-          <p>Keep your customer inbox, vehicle enquiries, AI management and dashboard together in a dedicated app on this device.</p>
-          {installPrompt ? <button type="button" className="tm-install-primary" onClick={()=>void installAdminApp()}>Install app</button> : <><p className="tm-install-help">If Android does not show an install button, open your browser menu ⋮ and choose <b>Install app</b> or <b>Add to Home screen</b>.</p><button type="button" className="tm-install-primary" onClick={()=>{setNotificationStatus('Open Chrome menu ⋮ and choose Install app or Add to Home screen.');setShowInstallCard(false);localStorage.setItem('tesla-admin-install-dismissed','true');}}>Show me later</button></>}
+          <h2 id="tm-install-title">{isInstalled || installedAppMode ? 'Enable app notifications' : 'Install your management app'}</h2>
+          <p>{isInstalled || installedAppMode ? 'Allow notifications to receive new customer messages, vehicle enquiries, orders and important management alerts, even when the app is closed.' : 'Keep your customer inbox, vehicle enquiries, AI management and dashboard together in a dedicated app on this device.'}</p>
+          {(isInstalled || installedAppMode) ? <button type="button" className="tm-install-primary" disabled={pushBusy || pushSubscribed} onClick={()=>void enablePhoneNotifications()}>{pushBusy ? 'Enabling…' : pushSubscribed ? 'Notifications enabled' : 'Enable notifications'}</button> : installPrompt ? <button type="button" className="tm-install-primary" onClick={()=>void installAdminApp()}>Install app</button> : <><p className="tm-install-help">If Android does not show an install button, open your browser menu ⋮ and choose <b>Install app</b> or <b>Add to Home screen</b>.</p><button type="button" className="tm-install-primary" onClick={()=>{setNotificationStatus('Open Chrome menu ⋮ and choose Install app or Add to Home screen.');setShowInstallCard(false);localStorage.setItem('tesla-admin-install-dismissed','true');}}>Show me later</button></>}
           <button type="button" className="tm-install-later" onClick={()=>{localStorage.setItem('tesla-admin-install-dismissed','true');setInstallPrompt(null);setShowInstallCard(false);}}>Not now</button>
         </section>
       </div>}

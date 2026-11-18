@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs><clipPath id="round"><circle cx="256" cy="256" r="256"/></clipPath></defs>
-  <circle cx="256" cy="256" r="256" fill="#c91d27"/>
-  <image href="/icons/admin-logo.jpg" x="0" y="0" width="512" height="512" preserveAspectRatio="xMidYMid meet" clip-path="url(#round)"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="72" fill="#e82127"/><image href="/tesla-markets-brand.webp" width="512" height="512" preserveAspectRatio="xMidYMid meet"/></svg>
