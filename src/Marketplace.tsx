@@ -19,7 +19,13 @@ const CHECKOUT_INTENT_KEY = 'tesla-markets-checkout-intent';
 const GUEST_CART_KEY = 'tesla-markets-saved-cart';
 const CART_SYNC_MODE_KEY = 'tesla-markets-cart-sync-mode';
 const DELIVERY_ADDRESS_KEY = 'tesla-markets-saved-delivery-address';
+const SAVED_PRODUCTS_KEY = 'tesla-markets-saved-products';
+const RECENT_PRODUCTS_KEY = 'tesla-markets-recent-products';
 const MINIMUM_DISCOUNT_ORDER = 150;
+function readStringList(key: string): string[] {
+  try { const value = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []; }
+  catch { return []; }
+}
 function readSavedDeliveryAddress() {
   try {
     const value = JSON.parse(localStorage.getItem(DELIVERY_ADDRESS_KEY) || 'null');
@@ -190,7 +196,8 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [cartHydrated, setCartHydrated] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [saved, setSaved] = useState<string[]>([]);
+  const [saved, setSaved] = useState<string[]>(() => readStringList(SAVED_PRODUCTS_KEY));
+  const [priceFilter, setPriceFilter] = useState('All prices');
   const [savedOnly, setSavedOnly] = useState(false);
   const [vehicleModelFilter, setVehicleModelFilter] = useState('All models');
   const [categoryFilter, setCategoryFilter] = useState('All categories');
@@ -534,6 +541,19 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     }
   };
 
+  useEffect(() => {
+    try { localStorage.setItem(SAVED_PRODUCTS_KEY, JSON.stringify(saved)); }
+    catch (error) { console.warn('Could not persist saved products:', error); }
+  }, [saved]);
+
+  useEffect(() => {
+    if (!selected) return;
+    try {
+      const current = readStringList(RECENT_PRODUCTS_KEY).filter(id => id !== selected.id);
+      localStorage.setItem(RECENT_PRODUCTS_KEY, JSON.stringify([selected.id, ...current].slice(0, 12)));
+    } catch (error) { console.warn('Could not persist recently viewed products:', error); }
+  }, [selected?.id]);
+
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const categoryOptions = useMemo(() => {
     return [...new Set(storeProducts
@@ -548,6 +568,11 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       (department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter)) &&
       (categoryFilter === 'All categories' || product.category === categoryFilter) &&
       (!savedOnly || saved.includes(product.id)) &&
+      (priceFilter === 'All prices' ||
+        (priceFilter === 'Under $50' && (productPrice(product) ?? Infinity) < 50) ||
+        (priceFilter === '$50–$100' && (productPrice(product) ?? 0) >= 50 && (productPrice(product) ?? 0) <= 100) ||
+        (priceFilter === '$100–$250' && (productPrice(product) ?? 0) > 100 && (productPrice(product) ?? 0) <= 250) ||
+        (priceFilter === '$250+' && (productPrice(product) ?? 0) > 250)) &&
       (product.name + ' ' + product.category + ' ' + product.description).toLowerCase().includes(query.toLowerCase())
     );
     if (sort === 'Name A–Z') items = [...items].sort((a,b) => a.name.localeCompare(b.name));
@@ -555,7 +580,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     if (sort === 'Price: high to low') items = [...items].sort((a,b) => (productPrice(b) ?? -1) - (productPrice(a) ?? -1));
     if (sort === 'Biggest discount') items = [...items].sort((a,b) => b.discountPercent - a.discountPercent);
     return items;
-  }, [department, query, sort, savedOnly, saved, vehicleModelFilter, categoryFilter]);
+  }, [department, query, sort, savedOnly, saved, vehicleModelFilter, categoryFilter, priceFilter]);
 
   const cartLines = cart.map(line => {
     const product = storeProducts.find(item => item.id === line.id);
@@ -607,6 +632,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     setSavedOnly(false);
     setVehicleModelFilter('All models');
     setCategoryFilter('All categories');
+    setPriceFilter('All prices');
     setQuery('');
     setSort('Featured');
     setShowAllDepartments(false);
@@ -674,6 +700,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
           <div className="tm-store-catalogue-controls">
             {department === 'Vehicle Accessories' && <label className="tm-store-filter-select"><span>VEHICLE MODEL</span><select value={vehicleModelFilter} onChange={event => {setVehicleModelFilter(event.target.value);setCategoryFilter('All categories');}}><option>All models</option><option>Model 3</option><option>Model Y</option><option>Model S</option><option>Model X</option><option>Cybertruck</option></select></label>}
             {department !== 'All products' && <label className="tm-store-filter-select"><span>PRODUCT TYPE</span><select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option>All categories</option>{categoryOptions.map(category => <option key={category}>{category}</option>)}</select></label>}
+            <label className="tm-store-filter-select"><span>PRICE RANGE</span><select value={priceFilter} onChange={event => setPriceFilter(event.target.value)}><option>All prices</option><option>Under $50</option><option>$50–$100</option><option>$100–$250</option><option>$250+</option></select></label>
             <label className="tm-store-sort"><SlidersHorizontal size={15}/><select value={sort} onChange={event => setSort(event.target.value)}><option>Featured</option><option>Name A–Z</option><option>Price: low to high</option><option>Price: high to low</option><option>Biggest discount</option></select></label>
           </div>
         </div>
