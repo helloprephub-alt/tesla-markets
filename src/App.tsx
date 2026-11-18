@@ -1110,6 +1110,21 @@ function App() {
                   if (!data.session) {
                     throw new Error('Account setup is not ready yet. Please try again shortly.');
                   }
+                  // Send the welcome message through the server-side Brevo integration.
+                  // Email delivery failure must not prevent a customer from accessing their new account.
+                  try {
+                    const welcomeResponse = await fetch('/api/welcome-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
+                      body: JSON.stringify({})
+                    });
+                    if (!welcomeResponse.ok) {
+                      const welcomeResult = await welcomeResponse.json().catch(() => ({}));
+                      console.warn('Tesla Markets welcome email was not sent:', welcomeResult.error || welcomeResponse.status);
+                    }
+                  } catch (welcomeError) {
+                    console.warn('Tesla Markets welcome email request failed:', welcomeError);
+                  }
                   if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
                   else go('dashboard');
                 } else {
