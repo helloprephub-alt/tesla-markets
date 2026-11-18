@@ -3970,3 +3970,45 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
     width:36px;min-width:36px;height:36px;
   }
 }
+
+/* Premium customer account area */
+.tm-account-page{background:#f5f6f5;color:#171b1d;min-height:72vh;padding:54px 24px 84px}
+.tm-account-wrap{max-width:1120px;margin:0 auto}
+.tm-account-heading{margin-bottom:28px}
+.tm-account-heading h1{font-size:clamp(36px,5vw,58px);letter-spacing:-.055em;margin:10px 0}
+.tm-account-heading p{color:#70797b;margin:0;font-size:15px}
+.tm-account-welcome{display:flex;align-items:center;gap:17px;background:#151b1d;color:#fff;padding:24px 27px;border-radius:18px;margin-bottom:18px;box-shadow:0 15px 40px #10191a12}
+.tm-account-avatar{width:55px;height:55px;border-radius:50%;display:grid;place-items:center;background:#b51e2b;color:#fff;font-size:23px;font-weight:800}
+.tm-account-welcome>div:nth-child(2){min-width:0;flex:1}
+.tm-account-welcome span:not(.tm-account-status){font-size:9px;letter-spacing:.16em;color:#c5c9c9;font-weight:800}
+.tm-account-welcome h2{font-size:22px;margin:4px 0}
+.tm-account-welcome p{color:#c7cdcd;margin:0;overflow-wrap:anywhere}
+.tm-account-status{font-size:11px;color:#d8e9df;display:flex;align-items:center;gap:7px}
+.tm-account-status i{width:7px;height:7px;border-radius:50%;background:#54c78b}
+.tm-account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.tm-account-panel{background:#fff;border:1px solid #e4e8e6;border-radius:16px;padding:23px;min-width:0;box-shadow:0 7px 24px #15202008}
+.tm-account-panel-head{display:flex;justify-content:space-between;align-items:center;color:#9a1c29;margin-bottom:20px}
+.tm-account-panel-head span{font-size:9px;font-weight:850;letter-spacing:.14em;color:#9a1c29}
+.tm-account-panel-head h3{font-size:19px;color:#1b2224;margin:5px 0 0;letter-spacing:-.02em}
+.tm-account-panel-head>svg{color:#9ba4a3}
+.tm-account-panel dl{margin:0}
+.tm-account-panel dl>div{padding:12px 0;border-bottom:1px solid #edf0ef}
+.tm-account-panel dt{font-size:11px;color:#788180;margin-bottom:5px}
+.tm-account-panel dd{font-size:14px;font-weight:750;margin:0;overflow-wrap:anywhere}
+.tm-account-note,.tm-account-empty{font-size:12px;line-height:1.7;color:#788180;margin:16px 0 0}
+.tm-account-verified{color:#16784c}.tm-account-unverified{color:#9a6517}
+.tm-account-address{display:grid;gap:7px;font-size:13px;line-height:1.5;color:#586261}
+.tm-account-address b{font-size:14px;color:#202829}
+.tm-account-link{display:inline-flex;align-items:center;gap:7px;margin-top:18px;border:0;background:transparent;padding:0;color:#a51e2a;font-size:12px;font-weight:850;cursor:pointer}
+.tm-account-recent{display:grid}
+.tm-account-recent>div{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:11px 0;border-bottom:1px solid #edf0ef;align-items:center}
+.tm-account-recent>div>div{display:grid;gap:4px}
+.tm-account-recent b{font-size:12px}.tm-account-recent small{font-size:10px;color:#828b89}
+.tm-account-recent>div>span{font-size:12px;font-weight:800}
+.tm-account-recent em{grid-column:1/-1;font-style:normal;text-transform:capitalize;font-size:10px;color:#697371}
+.tm-account-disabled{margin-top:15px;border:1px solid #e2e5e4;border-radius:9px;background:#f5f6f5;color:#929a98;padding:11px 13px;font-size:11px;font-weight:800;cursor:not-allowed}
+.tm-account-footer{display:flex;justify-content:space-between;align-items:center;margin-top:18px}
+.tm-account-signout,.tm-account-shop{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:43px;padding:0 16px;border-radius:999px;font-size:12px;font-weight:800;cursor:pointer}
+.tm-account-signout{border:1px solid #dce1df;background:#fff;color:#4b5553}
+.tm-account-shop{border:1px solid #a71c29;background:#a71c29;color:#fff}
+@media(max-width:680px){.tm-account-page{padding:35px 14px 64px}.tm-account-grid{grid-template-columns:1fr;gap:11px}.tm-account-panel{padding:19px}.tm-account-welcome{padding:18px;gap:12px;flex-wrap:wrap}.tm-account-welcome h2{font-size:18px}.tm-account-status{width:100%;padding-left:67px}.tm-account-footer{gap:9px}.tm-account-signout,.tm-account-shop{flex:1;padding:0 10px;font-size:11px}}
