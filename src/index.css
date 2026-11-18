@@ -4058,3 +4058,10 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
  .tm-store-complete-mark{animation:none}
  .customer-order-card,.tm-store-complete-actions button{transition:none}
 }
+
+.admin-shop-image-check{display:flex;flex-direction:column;align-items:center;gap:3px;flex:0 0 58px}
+.admin-shop-image-check img{width:48px;height:48px;object-fit:contain;background:#f1f3f2;border:1px solid #e8ecea}
+.admin-shop-image-check small{font-size:7px;font-weight:800;white-space:nowrap;color:#87918f}
+.admin-shop-image-check small.loaded{color:#24784c}
+.admin-shop-image-check small.failed{color:#b12632}
+.admin-shop-product{align-items:center}
