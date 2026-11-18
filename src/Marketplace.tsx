@@ -646,7 +646,8 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       <header className="tm-store-header">
         <label className="tm-store-search">
           <Search size={17}/>
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search products, collections, accessories..." />
+          <input list="tm-store-product-suggestions" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search products, collections, accessories..." aria-label="Search the shop catalogue"/>
+          <datalist id="tm-store-product-suggestions">{storeProducts.map(product=><option key={product.id} value={product.name}/>)}</datalist>
           {query && <button onClick={() => setQuery('')} aria-label="Clear search"><X size={14}/></button>}
         </label>
         <div className="tm-store-header-actions">
