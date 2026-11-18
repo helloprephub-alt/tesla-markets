@@ -17,6 +17,7 @@ type CheckoutIntent = {
 };
 const CHECKOUT_INTENT_KEY = 'tesla-markets-checkout-intent';
 const GUEST_CART_KEY = 'tesla-markets-saved-cart';
+const CART_SYNC_MODE_KEY = 'tesla-markets-cart-sync-mode';
 function readSavedCart(): CartLine[] {
   try { const value = JSON.parse(localStorage.getItem(GUEST_CART_KEY) || '[]'); return Array.isArray(value) ? value.filter((line:any)=>typeof line?.id==='string'&&Number.isFinite(line?.quantity)&&line.quantity>0) : []; }
   catch { return []; }
@@ -187,6 +188,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [paymentProofError, setPaymentProofError] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState('');
+  const [cartNotice, setCartNotice] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -204,11 +206,19 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       if (error) console.warn('Could not restore the saved customer cart:',error.message);
       const localCart=readSavedCart();
       const restored=Array.isArray(remoteCart?.items)?remoteCart.items as CartLine[]:[];
-      const merged=mergeCartLines(restored,localCart);
+      // A just-completed order makes the browser cart authoritative until the
+      // cleared/rebuilt basket is confirmed in Supabase. This prevents an old
+      // remote cart from reappearing after a brief network or RLS failure.
+      const localIsAuthoritative=localStorage.getItem(CART_SYNC_MODE_KEY)==='authoritative';
+      const merged=localIsAuthoritative ? localCart : mergeCartLines(restored,localCart);
       setCart(merged);
       setCartHydrated(true);
-      if(merged.length && (localCart.length || !restored.length)) {
-        void supabase.from('customer_store_carts').upsert({user_id:userId,items:merged,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+      if(localIsAuthoritative || (merged.length && (localCart.length || !restored.length))) {
+        const {error:syncError}=await supabase.from('customer_store_carts').upsert(
+          {user_id:userId,items:merged,updated_at:new Date().toISOString()},
+          {onConflict:'user_id'}
+        );
+        if(!syncError && localIsAuthoritative) localStorage.removeItem(CART_SYNC_MODE_KEY);
       }
     };
     void supabase.auth.getSession().then(({data})=>restoreCustomerCart(data.session?.user.id));
@@ -230,7 +240,10 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       if(cancelled||!data.session?.user)return;
       void supabase.from('customer_store_carts').upsert({
         user_id:data.session.user.id,items:cart,updated_at:new Date().toISOString()
-      },{onConflict:'user_id'}).then(({error})=>{if(error)console.warn('Could not sync your saved cart:',error.message);});
+      },{onConflict:'user_id'}).then(({error})=>{
+        if(error) console.warn('Could not sync your saved cart:',error.message);
+        else if(localStorage.getItem(CART_SYNC_MODE_KEY)==='authoritative') localStorage.removeItem(CART_SYNC_MODE_KEY);
+      });
     });
     return()=>{cancelled=true;};
   },[cart,cartHydrated]);
@@ -303,6 +316,10 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     }
     if (!cartLines.length || subtotal <= 0) {
       setCheckoutMessage('Your cart is empty.');
+      return false;
+    }
+    if (cartLines.length > 49) {
+      setCheckoutMessage('An order can contain up to 49 different product lines. Remove an item before continuing.');
       return false;
     }
     setCheckoutMessage('');
@@ -405,8 +422,11 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       // A submitted payment proof creates an order; the shopping cart is no
       // longer an active basket. Clear both guest and signed-in cart storage
       // immediately, not only when the customer clicks a completion button.
+      try {
+        localStorage.setItem(GUEST_CART_KEY, '[]');
+        localStorage.setItem(CART_SYNC_MODE_KEY, 'authoritative');
+      } catch {}
       setCart([]);
-      try { localStorage.setItem(GUEST_CART_KEY, '[]'); } catch {}
       const { error: clearCartError } = await supabase.from('customer_store_carts').upsert({
         user_id: authData.user.id,
         items: [],
@@ -465,11 +485,18 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const addToCart = (product: StoreProduct, quantity = 1, size?: string) => {
     if (productPrice(product) === null) return;
     const keySize = size || '';
+    const alreadyInCart = cart.some(line => line.id === product.id && (line.selectedSize || '') === keySize);
+    if (!alreadyInCart && cart.length >= 49) {
+      setCartNotice('Your order can contain up to 49 different products. Remove an item or complete this order first.');
+      setCartOpen(true);
+      return;
+    }
+    setCartNotice('');
     setCart(current => {
       const found = current.find(line => line.id === product.id && (line.selectedSize || '') === keySize);
       return found
-        ? current.map(line => line.id === product.id && (line.selectedSize || '') === keySize ? { ...line, quantity: line.quantity + quantity } : line)
-        : [...current, { id: product.id, quantity, selectedSize: keySize || undefined }];
+        ? current.map(line => line.id === product.id && (line.selectedSize || '') === keySize ? { ...line, quantity: Math.min(99, line.quantity + quantity) } : line)
+        : [...current, { id: product.id, quantity: Math.min(99, quantity), selectedSize: keySize || undefined }];
     });
     setSelected(null);
     setCartOpen(true);
@@ -623,6 +650,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
         <div className="tm-store-overlay tm-store-cart-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setCartOpen(false); }}>
           <aside className="tm-store-cart-drawer" aria-label="Shopping cart">
             <div className="tm-store-cart-head"><div><span className="tm-store-eyebrow">YOUR SELECTION</span><h2>Shopping cart ({cartCount})</h2></div><button onClick={() => setCartOpen(false)} aria-label="Close cart"><X/></button></div>
+            {cartNotice && <p className="tm-store-checkout-message" role="alert">{cartNotice}</p>}
             {!cartLines.length ? <div className="tm-store-cart-empty"><ShoppingBag size={32}/><b>Your cart is empty</b><p>Choose a product from the collection to start an order.</p><button onClick={() => setCartOpen(false)}>Continue shopping</button></div> : <>
               <div className="tm-store-cart-lines">
                 {cartLines.map(line => <div className="tm-store-cart-line" key={line.id + (line.selectedSize || '')}>
