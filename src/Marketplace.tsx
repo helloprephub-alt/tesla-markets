@@ -186,7 +186,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [selectedGalleryImage, setSelectedGalleryImage] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [detailQuantity, setDetailQuantity] = useState(1);
-  const [cart, setCart] = useState<CartLine[]>(() => mergeCartLines(readSavedCart(), readCheckoutIntent()?.cart || []));
+  const [cart, setCart] = useState<CartLine[]>(() => { const intent = readCheckoutIntent(); return intent?.cart?.length ? intent.cart : readSavedCart(); });
   const [cartHydrated, setCartHydrated] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -255,7 +255,10 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       // cleared/rebuilt basket is confirmed in Supabase. This prevents an old
       // remote cart from reappearing after a brief network or RLS failure.
       const localIsAuthoritative=localStorage.getItem(CART_SYNC_MODE_KEY)==='authoritative';
-      const merged=localIsAuthoritative ? localCart : mergeCartLines(restored,localCart);
+      // Browser and database carts are synchronized snapshots, not separate orders.
+      // Never add their quantities together: prefer the browser's current basket
+      // when it exists, otherwise restore the database snapshot.
+      const merged=localIsAuthoritative || localCart.length ? localCart : restored;
       setCart(merged);
       setCartHydrated(true);
       if(localIsAuthoritative || (merged.length && (localCart.length || !restored.length))) {
