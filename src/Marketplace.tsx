@@ -401,6 +401,19 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       }
       const { error: insertError } = await supabase.from('store_payment_submissions').insert(submissions);
       if (insertError) throw insertError;
+
+      // A submitted payment proof creates an order; the shopping cart is no
+      // longer an active basket. Clear both guest and signed-in cart storage
+      // immediately, not only when the customer clicks a completion button.
+      setCart([]);
+      try { localStorage.setItem(GUEST_CART_KEY, '[]'); } catch {}
+      const { error: clearCartError } = await supabase.from('customer_store_carts').upsert({
+        user_id: authData.user.id,
+        items: [],
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+      if (clearCartError) console.warn('Payment proof was submitted, but the saved cart could not be cleared:', clearCartError.message);
+
       setCheckoutStage('done');
       setCheckoutMessage('Your images have been submitted. Review may take up to 30 minutes. You can track the decision in My Orders.');
       setPaymentProofFiles([]);
