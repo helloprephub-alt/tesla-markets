@@ -29,7 +29,7 @@ export default async function handler(req: Request, res: ServerResponse) {
     res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(body));
   };
   if (req.method !== 'POST') return send(405, { error: 'Method not allowed' });
-  const workerSecret = process.env.TESLA_EMAIL_WORKER_SECRET;
+  const workerSecret = process.env.TESLA_EMAIL_WORKER_SECRET || process.env.CRON_SECRET;
   const supplied = req.headers.authorization?.replace(/^Bearer\\s+/i, '') || '';
   if (!workerSecret || supplied !== workerSecret) return send(401, { error: 'Unauthorized' });
 
