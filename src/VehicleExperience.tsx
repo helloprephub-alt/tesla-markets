@@ -36,7 +36,7 @@ const models: Model[] = [
   { id: 'roadster', name: 'Roadster', subtitle: 'Next-generation electric sports car', variants: [
     { name: 'Roadster Performance', price: '$45,000', discountPercent: 25 }, { name: 'Roadster Thrust', price: '$245,000', discountPercent: 40 }, { name: 'Roadster Limited', price: 'Price to be specified' }, { name: 'Roadster Rocket', price: 'Invite only', inviteOnly: true }
   ], priceNote: 'Roadster variant labels and prices supplied by Tesla Markets management. Confirm specification and availability with management.',
-    gallery: Array.from({ length: 6 }, (_, i) => '/resources/roadster-' + (i + 1) + '.jpg'), range: 'Final production specification to be confirmed', performance: 'Variant-dependent', drivetrain: 'Final production specification to be confirmed',
+    gallery: Array.from({ length: 5 }, (_, i) => '/resources/roadster-' + (i + 2) + '.jpg'), range: 'Final production specification to be confirmed', performance: 'Variant-dependent', drivetrain: 'Final production specification to be confirmed',
     features: ['Next-generation electric sports car collection', 'Variant-specific enquiries handled by management', 'Specifications and delivery timing require confirmation'],
     colors: ['Pearl White preference', 'Solid Black preference', 'Ultra Red preference', 'Deep Blue preference'], wheels: ['Performance wheel preference', 'Aero wheel preference'] },
   { id: 'semi', name: 'Tesla Semi', subtitle: 'All-electric heavy-duty truck', variants: [{ name: 'Tesla Semi', price: '$260,000', discountPercent: 35 }],
