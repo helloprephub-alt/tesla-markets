@@ -483,8 +483,8 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     <main className="tm-marketplace-v2">
       <header className="tm-store-header">
         <button className="tm-store-brand" onClick={() => switchDepartment('All products')} aria-label="Tesla Markets shop home">
-          <span className="tm-store-brand-mark">T</span>
-          <span><b>TESLA MARKETS</b><small>CHRISTMAS SPECIAL OFFERS</small></span>
+          <img className="tm-store-brand-mark" src="/icons/public-icon.svg" alt="" />
+          <span><b>TESLA MARKETS</b><small>THE ELECTRIC LIFESTYLE COLLECTION</small></span>
         </button>
         <label className="tm-store-search">
           <Search size={17}/>
@@ -504,34 +504,44 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
           </button>
         ))}
       </nav>
-      <section className="tm-store-christmas-banner">
-        <div className="tm-store-holiday-emblem" aria-hidden="true">✦</div>
-        <div className="tm-store-christmas-copy">
-          <span>TESLA MARKETS · CHRISTMAS PROMOTION</span>
-          <b>Holiday season. Special prices.</b>
-          <small>DIFFERENT DISCOUNTS · UP TO 70% OFF SELECTED ITEMS</small>
-        </div>
-        <button onClick={() => switchDepartment('All products')}>Shop Christmas offers <ArrowUpRight size={15}/></button>
-        <span className="tm-store-snowflake one">✦</span><span className="tm-store-snowflake two">✧</span><span className="tm-store-snowflake three">❄</span>
+      <section className="tm-store-promo-strip" aria-label="Seasonal marketplace promotion">
+        <span className="tm-store-promo-kicker">THE HOLIDAY EDIT</span>
+        <b>Selected products. Exceptional seasonal offers.</b>
+        <small>25–50% OFF SELECTED ITEMS</small>
+        <button onClick={() => { switchDepartment('All products'); document.getElementById('tm-store-catalogue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+          Explore offers <ArrowUpRight size={14}/>
+        </button>
       </section>
 
       {department === 'All products' && !query && (
         <>
-          <section className="tm-store-hero tm-store-christmas-video" aria-label="Tesla Markets Christmas collection">
-            <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-hidden="true">
-              <source src="/resources/883457.webm" type="video/webm"/>
-            </video>
-            <div className="tm-store-christmas-video-overlay" aria-hidden="true"/>
-            <div className="tm-store-hero-copy tm-store-hero-copy-on-video">
-              <span className="tm-store-eyebrow">TESLA MARKETS · CHRISTMAS COLLECTION</span>
-              <h1>Holiday moments.<br/><em>Made to move.</em></h1>
-              <p>Discover the Christmas collection, from Tesla apparel and everyday accessories to vehicle-inspired gifts, with product-specific offers across selected items.</p>
+          <section className="tm-store-hero tm-store-cinematic-hero" aria-label="Tesla Markets holiday collection">
+            <div className="tm-store-hero-copy tm-store-hero-copy-premium">
+              <span className="tm-store-eyebrow">TESLA MARKETS · THE HOLIDAY EDIT</span>
+              <h1>Designed for the drive.<br/><em>Made for every day.</em></h1>
+              <p>Explore an elevated edit of Tesla-inspired apparel, everyday accessories, charging essentials and energy products. Thoughtfully selected for life on and off the road.</p>
               <div className="tm-store-hero-actions">
-                <button onClick={() => switchDepartment('All products')}>Shop all Christmas offers <ArrowRight size={16}/></button>
-                <span>Different discounts on selected products</span>
+                <button onClick={() => { switchDepartment('All products'); document.getElementById('tm-store-catalogue')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
+                  Explore the collection <ArrowRight size={16}/>
+                </button>
+                <button className="tm-store-secondary-action" onClick={() => switchDepartment('Vehicle Accessories')}>
+                  Shop vehicle accessories <ArrowUpRight size={15}/>
+                </button>
+              </div>
+              <div className="tm-store-hero-proof">
+                <span><b>01</b> Curated collections</span>
+                <span><b>02</b> Product-specific offers</span>
+                <span><b>03</b> Delivery options at checkout</span>
               </div>
             </div>
-            <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY EDIT</b><span>CHRISTMAS COLLECTION · SELECTED OFFERS</span></div>
+            <div className="tm-store-hero-film" aria-label="Tesla Markets seasonal film">
+              <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="metadata" poster="/resources/tesla-silver.jpg" aria-label="Tesla Markets holiday film">
+                <source src="/resources/883457.webm" type="video/webm"/>
+              </video>
+              <div className="tm-store-hero-film-shade" aria-hidden="true"/>
+              <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY EDIT</b><span>THE ROAD AHEAD · 2026</span></div>
+              <span className="tm-store-video-stamp">A SEASONAL FILM <i>01 / 03</i></span>
+            </div>
           </section>
 
           <section className="tm-store-section">
@@ -543,7 +553,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
         </>
       )}
 
-      <section className="tm-store-section tm-store-catalogue">
+      <section className="tm-store-section tm-store-catalogue" id="tm-store-catalogue">
         <div className="tm-store-section-head tm-store-catalogue-head">
           <div><span className="tm-store-eyebrow">{department === 'All products' ? 'THE FULL COLLECTION' : department.toUpperCase()}</span><h2>{query ? 'Search results' : department === 'All products' ? 'Shop all products' : department}</h2><small>{visibleProducts.length} listings in this catalogue view</small></div>
           <div className="tm-store-catalogue-controls">
