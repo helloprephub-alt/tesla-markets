@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { isCurrentUserAdmin, supabase, supabaseConfigured } from './lib/supabase';
-import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ChevronDown, LayoutDashboard, Image, Globe, Inbox, Sun, Moon, Search, Bell, Plus, Upload, Pencil, ArrowUpRight, ChevronRight, Monitor, Smartphone, ListTodo, FileClock, Home, Grid2X2 } from 'lucide-react';
+import { Activity, CarFront, ClipboardList, LogOut, MessageCircle, RefreshCw, ShieldCheck, Users, Eye, Settings, CircleUserRound, Menu, X, ShoppingBag, ChevronDown, LayoutDashboard, Image, Globe, Inbox, Sun, Moon, Search, Bell, Plus, Upload, Pencil, ArrowUpRight, ChevronRight, Monitor, Smartphone, ListTodo, FileClock, Home, Grid2X2 } from 'lucide-react';
 import { AdminInbox } from './ChatWorkspace';
 import { AiManagement } from './AiManagement';
 import { getDiscountedPrice, storeProducts } from './marketplace-catalog';
