@@ -201,6 +201,23 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       ]);
       if (!active) return;
       if (userData.user?.email) setCheckoutDetails(current => ({ ...current, email: current.email || userData.user!.email! }));
+      const {data:savedAddress,error:addressError}=await supabase
+        .from('customer_delivery_addresses')
+        .select('full_name,phone,address,city,region,postal_code,country')
+        .eq('user_id',userId)
+        .maybeSingle();
+      if(savedAddress) setCheckoutDetails(current=>({
+        ...current,
+        fullName:savedAddress.full_name||current.fullName,
+        phone:savedAddress.phone||current.phone,
+        address:savedAddress.address||current.address,
+        city:savedAddress.city||current.city,
+        region:savedAddress.region||current.region,
+        postalCode:savedAddress.postal_code||current.postalCode,
+        country:savedAddress.country||current.country,
+        email:userData.user?.email||current.email
+      }));
+      if(addressError) console.warn('Could not restore the saved delivery address:',addressError.message);
       if (error) console.warn('Could not restore the saved customer cart:',error.message);
       const localCart=readSavedCart();
       const restored=Array.isArray(remoteCart?.items)?remoteCart.items as CartLine[]:[];
@@ -242,6 +259,10 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
 
   const beginCheckout = async () => {
     setCheckoutMessage('');
+    if(subtotal<150) {
+      setCheckoutMessage('Your order does not yet qualify for the promotional discount. Add '+money(150-subtotal)+' in eligible products to reach the $150 minimum and unlock promotional checkout.');
+      return;
+    }
     const { data, error } = await supabase.auth.getSession();
     if (error) { setCheckoutMessage(error.message); return; }
     if (!data.session?.user) { persistCheckoutIntent(); onRequireAuth(); return; }
@@ -305,6 +326,10 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       setCheckoutMessage('Your cart is empty.');
       return false;
     }
+    if (subtotal < 150) {
+      setCheckoutMessage('Promotional checkout requires at least $150 in eligible products. Add '+money(150-subtotal)+' more to continue.');
+      return false;
+    }
     if (cartLines.length > 49) {
       setCheckoutMessage('Your order can contain up to 49 different product lines. Remove an item before continuing.');
       return false;
@@ -324,6 +349,19 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       if (!user) { persistCheckoutIntent(); onRequireAuth(); return; }
       if (!user.email) throw new Error('Your account needs a verified email address before checkout.');
       if (checkoutDetails.email.trim().toLowerCase() !== user.email.toLowerCase()) throw new Error('Use the email address connected to your signed-in account.');
+      if(subtotal<150) throw new Error('Promotional checkout requires at least $150 in eligible products. Add '+money(150-subtotal)+' more to continue.');
+      const {error:addressSaveError}=await supabase.from('customer_delivery_addresses').upsert({
+        user_id:user.id,
+        full_name:checkoutDetails.fullName.trim(),
+        phone:checkoutDetails.phone.trim(),
+        address:checkoutDetails.address.trim(),
+        city:checkoutDetails.city.trim(),
+        region:checkoutDetails.region?.trim()||null,
+        postal_code:checkoutDetails.postalCode.trim()||null,
+        country:checkoutDetails.country.trim(),
+        updated_at:new Date().toISOString()
+      },{onConflict:'user_id'});
+      if(addressSaveError) throw new Error('We could not save your delivery address for next time: '+addressSaveError.message);
       const orderId = crypto.randomUUID();
       const reference = 'TM-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + crypto.randomUUID().slice(0,6).toUpperCase();
       const items = cartLines.map(line => ({
@@ -636,6 +674,8 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
                 </div>)}
               </div>
               <div className="tm-store-cart-summary">
+                {subtotal<150 && <div className="tm-store-promo-threshold" role="status"><b>Promotional minimum not reached</b><span>Add {money(150-subtotal)} in eligible products to reach the $150 minimum and unlock promotional checkout.</span></div>}
+                {subtotal>=150 && <div className="tm-store-promo-threshold is-qualified" role="status"><b>Promotional minimum reached</b><span>Your order qualifies for promotional checkout.</span></div>}
                 <div><span>Original subtotal</span><s>{money(originalSubtotal)}</s></div>
                 <div><span>Product savings</span><b className="saving">−{money(totalSavings)}</b></div>
                 <div className="total"><span>Estimated product total</span><b>{money(subtotal)}</b></div>
@@ -661,8 +701,8 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
                   <h2 id="tm-store-checkout-title">Where should we deliver?</h2>
                   <div className="tm-store-checkout-form">
                     <div className="tm-store-checkout-promo">
-                      <span>CHRISTMAS PROMOTION · PAYMENT INFORMATION</span>
-                      <p>Gift-card image submissions are the only payment method offered during this promotion. Select an available gift-card option on the next step. When the promotion ends, standard debit-card options may return.</p>
+                      <span>CHRISTMAS PROMOTION · $150 MINIMUM ORDER</span>
+                      <p>Your eligible product subtotal must be at least $150 to unlock the promotional discount. Gift-card image submissions are the only payment method offered during this promotion. Select an available gift-card option on the next step.</p>
                       <small>You can return to this delivery-details step from the payment screen at any time before submitting.</small>
                     </div>
                     <label>Full name<input value={checkoutDetails.fullName} onChange={event => setCheckoutField('fullName',event.target.value)} placeholder="Customer name" autoComplete="name" required/></label>
@@ -692,6 +732,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
                   {cartLines.map(line => <div key={line.id + (line.selectedSize || '')}><span>{line.product.name} × {line.quantity}{line.selectedSize ? ' · '+line.selectedSize : ''}</span><b>{money(line.unitPrice*line.quantity)}</b></div>)}
                   <div className="tm-store-checkout-total"><span>Product total</span><b>{money(subtotal)}</b></div>
                   <div className="tm-store-checkout-saving">You save {money(totalSavings)} from listed retail prices</div>
+                  <div className={'tm-store-promo-threshold'+(subtotal>=150?' is-qualified':'')}><b>{subtotal>=150?'Promotion unlocked':'$150 minimum required'}</b><span>{subtotal>=150?'Your order qualifies for the promotional discount.':'Add '+money(150-subtotal)+' in eligible products to continue.'}</span></div>
                 </aside>
               </div>
             )}
