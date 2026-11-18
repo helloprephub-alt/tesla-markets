@@ -158,7 +158,14 @@ export function AdminConsole() {
 
   useEffect(() => {
     const installed = window.matchMedia('(display-mode: standalone)').matches || Boolean((navigator as any).standalone) || localStorage.getItem('tesla-admin-installed') === 'true';
-    if (installed || localStorage.getItem('tesla-admin-install-dismissed') === 'true') return;
+    if (installed) {
+      if (typeof Notification !== 'undefined' && Notification.permission !== 'granted' && localStorage.getItem('tesla-admin-notifications-dismissed') !== 'true') {
+        const timer = window.setTimeout(() => setShowInstallCard(true), 850);
+        return () => window.clearTimeout(timer);
+      }
+      return;
+    }
+    if (localStorage.getItem('tesla-admin-install-dismissed') === 'true') return;
     const timer = window.setTimeout(() => setShowInstallCard(true), 1100);
     return () => window.clearTimeout(timer);
   }, []);
@@ -236,8 +243,10 @@ export function AdminConsole() {
       const {error:saveError}=await supabase.from('admin_push_subscriptions').upsert({user_id:currentUser.id,endpoint:subscription.endpoint,p256dh:json.keys?.p256dh,auth:json.keys?.auth,expiration_time:subscription.expirationTime?new Date(subscription.expirationTime).toISOString():null,updated_at:new Date().toISOString()},{onConflict:'endpoint'});
       if(saveError) throw saveError;
       setPushSubscribed(true);
+      setShowInstallCard(false);
+      localStorage.setItem('tesla-admin-notifications-dismissed','true');
       setNotificationStatus('Notifications are enabled for this app. You can turn them off here at any time.');
-      await registration.showNotification('Tesla Markets Management',{body:'Customer message alerts are enabled on this app.',icon:'/icons/admin-logo.jpg',badge:'/icons/admin-logo.jpg',tag:'tesla-admin-notifications-enabled'});
+      await registration.showNotification('Tesla Markets Management',{body:'Customer message alerts are enabled on this app.',icon:'/tesla-markets-brand.webp',badge:'/tesla-markets-brand.webp',tag:'tesla-admin-notifications-enabled'});
     } catch(e) { setPushSubscribed(false); setNotificationStatus(e instanceof Error?e.message:'Could not enable notifications.'); }
     finally { setPushBusy(false); }
   };
@@ -751,7 +760,7 @@ export function AdminConsole() {
       </div>}
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
-        <div className="admin-console-brand"><img className="admin-brand-lockup" src="/icons/admin-logo-lockup.svg" alt="Tesla Markets private management"/></div>
+        <div className="admin-console-brand"><img className="admin-brand-lockup" src="/tesla-markets-brand.webp" alt="Tesla Markets logo"/></div>
         <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={'Theme: '+adminTheme+'. Tap to change.'} title={'Theme: '+adminTheme+' · tap to cycle'}>{adminTheme==='light'?<Sun size={16}/>:adminTheme==='dark'?<Moon size={16}/>:<Monitor size={16}/>}</button><button className="icon-btn admin-view-toggle" onClick={toggleDesktopView} aria-label={desktopView?'Use phone layout':'Use desktop layout'} title={desktopView?'Use phone layout':'Use desktop layout'}>{desktopView?<Smartphone size={16}/>:<Monitor size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
       </header>
       <div className="admin-shell">
@@ -892,7 +901,7 @@ export function AdminConsole() {
           <h2 id="tm-install-title">{isInstalled || installedAppMode ? 'Enable app notifications' : 'Install your management app'}</h2>
           <p>{isInstalled || installedAppMode ? 'Allow notifications to receive new customer messages, vehicle enquiries, orders and important management alerts, even when the app is closed.' : 'Keep your customer inbox, vehicle enquiries, AI management and dashboard together in a dedicated app on this device.'}</p>
           {(isInstalled || installedAppMode) ? <button type="button" className="tm-install-primary" disabled={pushBusy || pushSubscribed} onClick={()=>void enablePhoneNotifications()}>{pushBusy ? 'Enabling…' : pushSubscribed ? 'Notifications enabled' : 'Enable notifications'}</button> : installPrompt ? <button type="button" className="tm-install-primary" onClick={()=>void installAdminApp()}>Install app</button> : <><p className="tm-install-help">If Android does not show an install button, open your browser menu ⋮ and choose <b>Install app</b> or <b>Add to Home screen</b>.</p><button type="button" className="tm-install-primary" onClick={()=>{setNotificationStatus('Open Chrome menu ⋮ and choose Install app or Add to Home screen.');setShowInstallCard(false);localStorage.setItem('tesla-admin-install-dismissed','true');}}>Show me later</button></>}
-          <button type="button" className="tm-install-later" onClick={()=>{localStorage.setItem('tesla-admin-install-dismissed','true');setInstallPrompt(null);setShowInstallCard(false);}}>Not now</button>
+          <button type="button" className="tm-install-later" onClick={()=>{localStorage.setItem('tesla-admin-install-dismissed','true');localStorage.setItem('tesla-admin-notifications-dismissed','true');setInstallPrompt(null);setShowInstallCard(false);}}>Not now</button>
         </section>
       </div>}
     </div>

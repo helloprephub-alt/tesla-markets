@@ -4065,3 +4065,6 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .admin-shop-image-check small.loaded{color:#24784c}
 .admin-shop-image-check small.failed{color:#b12632}
 .admin-shop-product{align-items:center}
+
+/* User-supplied Tesla red/white brand mark in the management sidebar. */
+.admin-brand-lockup{display:block;width:64px;height:64px;max-height:none;object-fit:contain;object-position:left center}
