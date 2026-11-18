@@ -149,7 +149,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
         {product.purchaseEnabled === false && <small className="tm-store-stock-check-note">{product.promoIsPreview ? (appliedDiscount || product.discountPercent) + '% preview offer · confirm supplier stock and final price' : 'Supplier stock check required before purchase'}</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
-          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null || product.purchaseEnabled === false} onClick={onAdd}><ShoppingBag size={14}/><span>Add to cart</span></button>
+          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} title="Add to cart" disabled={sale === null || product.purchaseEnabled === false} onClick={onAdd}><ShoppingBag size={14}/><span>Add to cart</span></button>
           <button className={'tm-store-save ' + (saved ? 'saved' : '')} onClick={onSave} aria-label={saved ? 'Remove from saved items' : 'Save item'}><Heart size={15} fill={saved ? 'currentColor' : 'none'}/></button>
         </div>
       </div>
