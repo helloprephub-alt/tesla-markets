@@ -25,6 +25,14 @@ type Overview = { conversations: number; messages: number; generatedImages: numb
 type AdminTask = {id:string;title:string;description:string;status:string;priority:string;due_at:string|null;created_at:string};
 type AdminNotice = {id:string;title:string;body:string;type:string;is_read:boolean;created_at:string};
 type AuditEntry = {id:number;action:string;entity_type:string;entity_id:string|null;details:any;created_at:string};
+function AdminShopImage({src,name}:{src:string;name:string}) {
+  const [status,setStatus]=useState<'loading'|'loaded'|'failed'>('loading');
+  return <div className="admin-shop-image-check">
+    <img src={src} alt={name} loading="lazy" onLoad={()=>setStatus('loaded')} onError={()=>setStatus('failed')}/>
+    <small className={status}>{status==='loaded'?'Image loaded':status==='failed'?'Image failed':'Checking image…'}</small>
+  </div>;
+}
+
 type Section = 'shop' | 'ai' | 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'orders' | 'tasks' | 'notifications' | 'activity' | 'settings' | 'team' | 'analytics' | 'announcements' | 'profile' | 'security';
 
 const catalogue = [
@@ -796,7 +804,7 @@ export function AdminConsole() {
             <label className="admin-shop-search">Search shop catalogue<input value={shopCatalogueSearch} onChange={event=>setShopCatalogueSearch(event.target.value)} placeholder="Search product, category or department"/></label>
             <div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Product</th><th>Department</th><th>Listed price</th><th>Offer</th><th>Image checks</th><th>Source</th></tr></thead><tbody>
               {storeProducts.filter(product=>(product.name+' '+product.category+' '+product.department).toLowerCase().includes(shopCatalogueSearch.toLowerCase())).map(product=><tr key={product.id}>
-                <td><div className="admin-shop-product"><img src={product.image} alt="" loading="lazy"/><span><b>{product.name}</b><small>{product.category}</small></span></div></td>
+                <td><div className="admin-shop-product"><AdminShopImage src={product.image||""} name={product.name}/><span><b>{product.name}</b><small>{product.category}</small></span></div></td>
                 <td>{product.department}</td>
 
                 <td>{getDiscountedPrice(product)!==null ? "$"+getDiscountedPrice(product) : "Price on request"}{getDiscountedPrice(product)!==null&&<small className="admin-shop-original">List price: {"$"+product.originalPrice}</small>}</td>
