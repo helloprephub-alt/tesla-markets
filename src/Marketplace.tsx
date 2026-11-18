@@ -535,7 +535,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       {department === 'All products' && !query && (
         <>
           <section className="tm-store-hero tm-store-christmas-video" aria-label="Tesla Markets Christmas collection">
-            <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-hidden="true">
+            <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-hidden="true" onError={event => { event.currentTarget.style.display = "none"; }}>
               <source src="/resources/883457.webm" type="video/webm"/>
             </video>
             <div className="tm-store-christmas-video-overlay" aria-hidden="true"/>
