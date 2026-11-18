@@ -320,6 +320,6 @@ export const storeProducts: StoreProduct[] = allStoreProducts.filter(product => 
 export function getDiscountedPrice(product: StoreProduct): number | null {
   if (!product.originalPrice || product.originalPrice <= 0) return null;
   if (!Number.isFinite(product.discountPercent) || product.discountPercent <= 0) return Math.round(product.originalPrice);
-  const safeDiscount = Math.min(50, Math.max(25, product.discountPercent));
+  const safeDiscount = Math.min(70, Math.max(25, product.discountPercent));
   return Math.round(product.originalPrice * (1 - safeDiscount / 100));
 }
