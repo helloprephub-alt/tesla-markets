@@ -88,10 +88,22 @@ function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; v
   const imageSrc = productAssetUrl(product.image);
   const [imageFailed, setImageFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageRetryCount, setImageRetryCount] = useState(0);
+  const retryableImage = imageSrc.includes('/api/tesla-image?');
+  const imageRequestSrc = retryableImage ? imageSrc + '&retry=' + imageRetryCount : imageSrc;
   useEffect(() => {
     setImageFailed(false);
     setImageLoaded(false);
+    setImageRetryCount(0);
   }, [imageSrc]);
+  const handleImageError = () => {
+    if (retryableImage && imageRetryCount < 2) {
+      setImageLoaded(false);
+      setImageRetryCount(attempt => attempt + 1);
+      return;
+    }
+    setImageFailed(true);
+  };
   const variantClass = variant === 'large' ? ' tm-store-photo-frame-large' : variant === 'thumb' ? ' tm-store-photo-frame-thumb' : '';
   const unavailableClass = variant === 'large' ? ' tm-store-image-unavailable-large' : variant === 'thumb' ? ' tm-store-image-unavailable-thumb' : '';
   if (!product.image || imageFailed) {
@@ -104,12 +116,12 @@ function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; v
     {!imageLoaded && <div className="tm-store-photo-loading" aria-hidden="true"><span>Loading product photo</span></div>}
     <img
       className={'tm-store-product-photo' + (variant === 'large' ? ' tm-store-product-photo-large' : '')}
-      src={imageSrc}
+      src={imageRequestSrc}
       alt={product.name}
       loading={variant === 'card' ? 'lazy' : 'eager'}
       decoding="async"
       onLoad={() => setImageLoaded(true)}
-      onError={() => setImageFailed(true)}
+      onError={handleImageError}
     />
   </div>;
 }
