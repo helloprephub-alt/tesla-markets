@@ -71,6 +71,12 @@ function productMatchesModel(product: StoreProduct, model: string) {
   return (terms[model] || [model.toLowerCase()]).some(term => text.includes(term));
 }
 
+function appliedDiscountPercent(product: StoreProduct) {
+  const price = productPrice(product);
+  if (price === null || !product.originalPrice || product.originalPrice <= 0) return 0;
+  return Math.max(0, Math.round((product.originalPrice - price) / product.originalPrice * 100));
+}
+
 function discountValue(product: StoreProduct) {
   const price = productPrice(product);
   return price === null ? 0 : Math.max(0, product.originalPrice - price);
@@ -113,12 +119,13 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   const sale = productPrice(product);
   const hasPrice = sale !== null;
   const hasRange = Boolean(product.priceRange);
-  const hasDiscount = hasPrice && product.discountPercent > 0;
+  const appliedDiscount = hasPrice ? appliedDiscountPercent(product) : 0;
+  const hasDiscount = appliedDiscount > 0;
   return (
     <article className="tm-store-card">
       <button className="tm-store-image" onClick={onOpen} aria-label={'View ' + product.name}>
         <ProductVisual product={product} />
-        {hasDiscount && <span className="tm-store-sale-badge">{product.discountPercent}% OFF</span>}
+        {hasDiscount && <span className="tm-store-sale-badge">{appliedDiscount}% OFF</span>}
         {product.featured && <span className="tm-store-featured">FEATURED</span>}
         <span className="tm-store-image-zoom">View item <ArrowUpRight size={13}/></span>
       </button>
@@ -139,7 +146,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
             : hasRange
               ? <small className="tm-store-saving-muted">Choose exact plug variant to confirm checkout price</small>
               : <small className="tm-store-saving-muted">Price confirmed before order</small>}
-        {product.purchaseEnabled === false && <small className="tm-store-stock-check-note">{product.promoIsPreview ? product.discountPercent + '% preview offer · confirm supplier stock and final price' : 'Supplier stock check required before purchase'}</small>}
+        {product.purchaseEnabled === false && <small className="tm-store-stock-check-note">{product.promoIsPreview ? (appliedDiscount || product.discountPercent) + '% preview offer · confirm supplier stock and final price' : 'Supplier stock check required before purchase'}</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
           <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null || product.purchaseEnabled === false} onClick={onAdd}><ShoppingBag size={16}/></button>
@@ -597,15 +604,15 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
                     <b>{money(selected.priceRange[0])}–{money(selected.priceRange[1])}</b>
                     <span>VARIES BY PLUG TYPE</span>
                   </> : productPrice(selected) !== null ? <>
-                    {selected.discountPercent > 0 && <s>{money(selected.originalPrice)}</s>}
+                    {appliedDiscountPercent(selected) > 0 && <s>{money(selected.originalPrice)}</s>}
                     <b>{money(productPrice(selected)!)}</b>
-                    {selected.discountPercent > 0 && <span>{selected.discountPercent}% OFF</span>}
+                    {appliedDiscountPercent(selected) > 0 && <span>{appliedDiscountPercent(selected)}% OFF</span>}
                   </> : <b>Price on request</b>}
                 </div>
                 <small className="tm-store-stock">{selected.availability}</small>
                 {selected.sizes && <label className="tm-store-size">Choose size<select value={selectedSize} onChange={event => setSelectedSize(event.target.value)}>{selected.sizes.map(size => <option key={size}>{size}</option>)}</select></label>}
                 {selected.purchaseEnabled === false ? (
-                  <button className="tm-store-add-large" onClick={() => onEnquire('Please confirm current supplier stock, delivery options, warranty and the final price for ' + selected.name + '. The 50% displayed offer is a preview promotion pending supplier confirmation.')}>Check supplier availability <ArrowRight size={17}/></button>
+                  <button className="tm-store-add-large" onClick={() => onEnquire('Please confirm current supplier stock, delivery options, warranty and the final price for ' + selected.name + '. The ${appliedDiscountPercent(selected)}% displayed offer is a preview promotion pending supplier confirmation.')}>Check supplier availability <ArrowRight size={17}/></button>
                 ) : <>
                   <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
                   <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
@@ -625,7 +632,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
               <div className="tm-store-cart-lines">
                 {cartLines.map(line => <div className="tm-store-cart-line" key={line.id + (line.selectedSize || '')}>
                   <div className="tm-store-cart-line-image"><ProductVisual product={line.product} variant="thumb" /></div>
-                  <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.product.discountPercent > 0 ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
+                  <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.unitPrice < line.product.originalPrice ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
                   <div className="tm-store-cart-qty"><button onClick={() => changeQty(line.id,-1,line.selectedSize)}>−</button><b>{line.quantity}</b><button onClick={() => changeQty(line.id,1,line.selectedSize)}>+</button></div>
                 </div>)}
               </div>
