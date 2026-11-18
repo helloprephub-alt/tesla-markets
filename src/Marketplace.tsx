@@ -149,7 +149,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
         {product.purchaseEnabled === false && <small className="tm-store-stock-check-note">{product.promoIsPreview ? (appliedDiscount || product.discountPercent) + '% preview offer · confirm supplier stock and final price' : 'Supplier stock check required before purchase'}</small>}
         <div className="tm-store-card-actions">
           <button onClick={onOpen}>Product details</button>
-          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null || product.purchaseEnabled === false} onClick={onAdd}><ShoppingBag size={16}/></button>
+          <button className="tm-store-add-icon" aria-label={'Add ' + product.name + ' to cart'} disabled={sale === null || product.purchaseEnabled === false} onClick={onAdd}><ShoppingBag size={14}/><span>Add to cart</span></button>
           <button className={'tm-store-save ' + (saved ? 'saved' : '')} onClick={onSave} aria-label={saved ? 'Remove from saved items' : 'Save item'}><Heart size={15} fill={saved ? 'currentColor' : 'none'}/></button>
         </div>
       </div>
@@ -520,12 +520,9 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
         <>
           <section className="tm-store-hero tm-store-editorial-hero" aria-label="Tesla Markets shop film and collection">
             <div className="tm-store-hero-film" aria-label="Tesla Markets seasonal film">
-              <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" poster="/resources/holiday-film-poster.jpg" aria-label="Tesla Markets holiday film">
+              <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-label="Tesla Christmas collection film">
                 <source src="/resources/883457.webm" type="video/webm"/>
               </video>
-              <div className="tm-store-hero-film-shade" aria-hidden="true"/>
-              <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY FILM</b><span>WATCH THE COLLECTION STORY</span></div>
-              <span className="tm-store-video-stamp">SEASONAL FILM</span>
             </div>
             <div className="tm-store-feature-copy">
               <span className="tm-store-eyebrow">THE TESLA MARKETS SHOP</span>
