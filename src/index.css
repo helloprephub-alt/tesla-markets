@@ -3446,3 +3446,99 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 .shop-vehicle-separation p{margin:6px 0 0;color:#66737a;font:500 12px/1.6 Manrope}
 .shop-vehicle-separation button{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;padding:12px 15px;border:1px solid #17242c;border-radius:8px;background:#17242c;color:#fff;font:700 11px Manrope;cursor:pointer}
 @media(max-width:640px){.vehicle-view-all-cta{min-width:168px;min-height:56px;padding:10px 37px 10px 12px!important;border-radius:10px!important}.vehicle-view-all-cta span{font-size:12px!important}.vehicle-view-all-cta small{font-size:7px!important}.vehicle-view-all-cta svg{right:11px;width:15px}.shop-vehicle-separation{align-items:flex-start;flex-direction:column;margin:0 4vw 18px;padding:15px}.shop-vehicle-separation button{width:100%;justify-content:center}.vehicle-collection-back{margin-bottom:20px}}
+
+
+/* Storefront compact repair — single brand, real film, image-safe catalogue. */
+.tm-marketplace-v2 .tm-store-header{
+  position:relative;height:auto;min-height:64px;padding:10px clamp(14px,4vw,48px);
+  gap:14px;display:flex;align-items:center;
+}
+.tm-marketplace-v2 .tm-store-search{
+  height:44px;max-width:none;min-width:0;flex:1;border-radius:12px;background:#f5f6f6;
+}
+.tm-marketplace-v2 .tm-store-header-actions{gap:14px;margin-left:0;flex:0 0 auto}
+.tm-marketplace-v2 .tm-store-header-actions button{min-height:40px;font-size:11px;gap:6px}
+.tm-marketplace-v2 .tm-store-departments{
+  position:relative;top:auto;height:48px;padding:0 clamp(12px,4vw,48px);gap:5px;
+}
+.tm-marketplace-v2 .tm-store-departments button{height:34px;padding:0 12px;font-size:10px}
+.tm-marketplace-v2 .tm-store-departments button.active{background:#202728;color:#fff}
+.tm-marketplace-v2 .tm-store-hero.tm-store-christmas-video{
+  width:100%;max-width:1440px;min-height:0;height:clamp(290px,54vw,620px);
+  margin:12px auto 0;padding:0;display:block;border-radius:18px;overflow:hidden;
+  background:#111719;
+}
+.tm-store-christmas-video-media{object-fit:cover;object-position:center}
+.tm-store-christmas-video-overlay{
+  background:linear-gradient(90deg,rgba(0,0,0,.48),rgba(0,0,0,.03) 78%),
+             linear-gradient(0deg,rgba(0,0,0,.56),transparent 55%);
+}
+.tm-store-hero-copy-on-video{max-width:560px;padding:clamp(18px,4vw,48px)}
+.tm-store-hero-copy-on-video h1{font-size:clamp(32px,5vw,58px)}
+.tm-store-hero-copy-on-video p{font-size:clamp(11px,1.1vw,14px)}
+.tm-store-vehicle-film-link{
+  position:absolute;z-index:3;right:18px;bottom:18px;display:inline-flex;
+  align-items:center;gap:6px;min-height:36px;padding:0 13px;border:1px solid #ffffff9c;
+  border-radius:22px;background:#111a;color:#fff;font-size:10px;font-weight:800;
+}
+.tm-marketplace-v2 .tm-store-section{padding-top:34px}
+.tm-marketplace-v2 .tm-store-catalogue{padding-top:38px}
+.tm-marketplace-v2 .tm-store-product-grid{gap:18px}
+.tm-marketplace-v2 .tm-store-card{border-radius:14px;overflow:hidden}
+.tm-marketplace-v2 .tm-store-image{height:clamp(190px,22vw,280px);background:#f0f2f1}
+.tm-marketplace-v2 .tm-store-photo-frame{background:#f0f2f1}
+.tm-marketplace-v2 .tm-store-product-photo{object-fit:contain;padding:14px}
+.tm-marketplace-v2 .tm-store-card-copy{gap:9px;padding:15px}
+.tm-marketplace-v2 .tm-store-card-name{font-size:14px;line-height:1.4}
+.tm-marketplace-v2 .tm-store-card-actions button:first-child{min-height:38px}
+.tm-marketplace-v2 .tm-store-add-icon{width:auto!important;min-width:46px;padding:0 11px!important;display:flex;align-items:center;justify-content:center;gap:5px}
+.tm-marketplace-v2 .tm-store-add-icon:after{content:"Add";font-size:10px;font-weight:800}
+@media(max-width:760px){
+ .tm-marketplace-v2 .tm-store-header{min-height:58px;padding:8px 10px;gap:8px}
+ .tm-marketplace-v2 .tm-store-search{height:40px;padding:0 10px;gap:7px}
+ .tm-marketplace-v2 .tm-store-search input{font-size:11px}
+ .tm-marketplace-v2 .tm-store-search input::placeholder{font-size:10px}
+ .tm-marketplace-v2 .tm-store-header-actions{gap:8px}
+ .tm-marketplace-v2 .tm-store-header-actions button{font-size:9px;gap:4px;padding:0 2px}
+ .tm-marketplace-v2 .tm-store-header-actions button svg{width:16px;height:16px}
+ .tm-marketplace-v2 .tm-store-departments{height:45px;padding:0 9px;gap:4px}
+ .tm-marketplace-v2 .tm-store-departments button{height:32px;padding:0 10px;font-size:9px}
+ .tm-marketplace-v2 .tm-store-hero.tm-store-christmas-video{
+   width:calc(100% - 20px);height:auto;aspect-ratio:4/5;max-height:570px;
+   margin:10px auto 0;border-radius:14px;
+ }
+ .tm-store-christmas-video-media{object-fit:cover;object-position:center}
+ .tm-store-hero-copy-on-video{max-width:100%;padding:16px}
+ .tm-store-hero-copy-on-video .tm-store-eyebrow{font-size:8px}
+ .tm-store-hero-copy-on-video h1{font-size:clamp(29px,8vw,42px);margin:10px 0}
+ .tm-store-hero-copy-on-video p{font-size:10px;line-height:1.55;max-width:95%;margin-bottom:12px}
+ .tm-store-hero-copy-on-video .tm-store-hero-actions button{height:38px;font-size:9px;padding:0 12px}
+ .tm-store-hero-caption{left:14px;bottom:13px}
+ .tm-store-hero-caption b{font-size:8px}
+ .tm-store-hero-caption span{font-size:7px}
+ .tm-store-vehicle-film-link{right:10px;bottom:10px;min-height:31px;font-size:9px;padding:0 10px}
+ .tm-marketplace-v2 .tm-store-section{padding:26px 12px 4px}
+ .tm-marketplace-v2 .tm-store-section-head h2{font-size:22px}
+ .tm-marketplace-v2 .tm-store-department-grid{gap:9px}
+ .tm-marketplace-v2 .tm-store-department-card{min-height:128px;padding:12px}
+ .tm-marketplace-v2 .tm-store-catalogue{padding:30px 12px 0}
+ .tm-marketplace-v2 .tm-store-catalogue-head h2{font-size:24px}
+ .tm-marketplace-v2 .tm-store-catalogue-head small{font-size:10px}
+ .tm-marketplace-v2 .tm-store-product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .tm-marketplace-v2 .tm-store-image{height:clamp(155px,43vw,205px)}
+ .tm-marketplace-v2 .tm-store-product-photo{padding:9px}
+ .tm-marketplace-v2 .tm-store-card-copy{padding:10px;gap:7px}
+ .tm-marketplace-v2 .tm-store-card-category{font-size:8px}
+ .tm-marketplace-v2 .tm-store-card-name{font-size:11px;min-height:40px}
+ .tm-marketplace-v2 .tm-store-price-row b{font-size:15px}
+ .tm-marketplace-v2 .tm-store-card-actions{gap:5px;flex-wrap:nowrap}
+ .tm-marketplace-v2 .tm-store-card-actions button:first-child{height:34px;min-height:34px;font-size:9px;padding:0 7px}
+ .tm-marketplace-v2 .tm-store-card-actions .tm-store-add-icon{height:34px;min-width:36px;padding:0 8px!important}
+ .tm-marketplace-v2 .tm-store-card-actions .tm-store-save{width:34px;height:34px;min-width:34px}
+}
+@media(max-width:390px){
+ .tm-marketplace-v2 .tm-store-header-actions{gap:4px}
+ .tm-marketplace-v2 .tm-store-header-actions button{font-size:8px}
+ .tm-marketplace-v2 .tm-store-header-actions button svg{width:14px;height:14px}
+ .tm-marketplace-v2 .tm-store-card-actions .tm-store-save{display:none}
+}

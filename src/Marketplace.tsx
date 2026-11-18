@@ -7,7 +7,7 @@ import {
 import { getDiscountedPrice, storeProducts, type StoreDepartment, type StoreProduct } from './marketplace-catalog';
 import { supabase } from './lib/supabase';
 
-type Props = { onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
+type Props = { onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void; onBrowseVehicles: () => void };
 type Department = StoreDepartment | 'All products';
 type CartLine = { id: string; quantity: number; selectedSize?: string };
 type CheckoutIntent = {
@@ -85,10 +85,11 @@ function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; v
   }, [product.image]);
   const variantClass = variant === 'large' ? ' tm-store-photo-frame-large' : variant === 'thumb' ? ' tm-store-photo-frame-thumb' : '';
   const unavailableClass = variant === 'large' ? ' tm-store-image-unavailable-large' : variant === 'thumb' ? ' tm-store-image-unavailable-thumb' : '';
+  const imageSrc = product.image ? '/api/tesla-image?url=' + encodeURIComponent(product.image) : '';
   if (!product.image || imageFailed) {
     return <div className={'tm-store-image-unavailable' + unavailableClass} role="img" aria-label={'Product photo unavailable for ' + product.name}>
       <PackageCheck size={22} aria-hidden="true" />
-      <span>PRODUCT PHOTO UNAVAILABLE</span>
+      <span>PHOTO BEING VERIFIED</span>
       <small>{product.name}</small>
     </div>;
   }
@@ -96,11 +97,10 @@ function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; v
     {!imageLoaded && <div className="tm-store-photo-loading" aria-hidden="true"><span>Loading product photo</span></div>}
     <img
       className={'tm-store-product-photo' + (variant === 'large' ? ' tm-store-product-photo-large' : '')}
-      src={product.image}
+      src={imageSrc}
       alt={product.name}
       loading={variant === 'card' ? 'lazy' : 'eager'}
       decoding="async"
-      referrerPolicy="no-referrer"
       onLoad={() => setImageLoaded(true)}
       onError={() => setImageFailed(true)}
     />
@@ -150,7 +150,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   );
 }
 
-export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire }: Props) {
+export function Marketplace({ onOrders, onRequireAuth, onEnquire, onBrowseVehicles }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
@@ -411,6 +411,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const categoryOptions = useMemo(() => {
     return [...new Set(storeProducts
+      .filter(product => Boolean(product.image))
       .filter(product => department === 'All products' || product.department === department)
       .filter(product => department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter))
       .map(product => product.category))].sort((a,b) => a.localeCompare(b));
@@ -418,6 +419,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
 
   const visibleProducts = useMemo(() => {
     let items = storeProducts.filter(product =>
+      Boolean(product.image) &&
       (department === 'All products' || product.department === department) &&
       (department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter)) &&
       (categoryFilter === 'All categories' || product.category === categoryFilter) &&
@@ -481,19 +483,16 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
 
   return (
     <main className="tm-marketplace-v2">
-      <header className="tm-store-header">
-        <button className="tm-store-brand" onClick={() => switchDepartment('All products')} aria-label="Tesla Markets shop home">
-          <span className="tm-store-brand-mark">T</span>
-          <span><b>TESLA MARKETS</b><small>CHRISTMAS SPECIAL OFFERS</small></span>
-        </button>
+      <header className="tm-store-header" aria-label="Shop tools">
         <label className="tm-store-search">
-          <Search size={17}/>
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search products, collections, accessories..." />
-          {query && <button onClick={() => setQuery('')} aria-label="Clear search"><X size={14}/></button>}
+          <Search size={18}/>
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search products..." aria-label="Search products" />
+          {query && <button type="button" onClick={() => setQuery('')} aria-label="Clear search"><X size={15}/></button>}
         </label>
         <div className="tm-store-header-actions">
-          <button className={savedOnly ? 'active' : ''} onClick={() => {setSavedOnly(v => !v);setDepartment('All products');setQuery('');}}><Heart size={17}/><span>Saved {saved.length ? '('+saved.length+')' : ''}</span></button>
-          <button onClick={() => setCartOpen(true)} className="tm-store-cart-button"><ShoppingBag size={18}/><span>Cart</span><b>{cartCount}</b></button>
+          <button onClick={onOrders} className="tm-store-orders-button"><PackageCheck size={17}/><span>Orders</span></button>
+          <button className={savedOnly ? 'active' : ''} onClick={() => {setSavedOnly(v => !v);setDepartment('All products');setQuery('');}}><Heart size={18}/><span>Saved {saved.length ? '('+saved.length+')' : ''}</span></button>
+          <button onClick={() => setCartOpen(true)} className="tm-store-cart-button"><ShoppingBag size={19}/><span>Cart</span><b>{cartCount}</b></button>
         </div>
       </header>
 
@@ -504,22 +503,11 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
           </button>
         ))}
       </nav>
-      <section className="tm-store-christmas-banner">
-        <div className="tm-store-holiday-emblem" aria-hidden="true">✦</div>
-        <div className="tm-store-christmas-copy">
-          <span>TESLA MARKETS · CHRISTMAS PROMOTION</span>
-          <b>Holiday season. Special prices.</b>
-          <small>DIFFERENT DISCOUNTS · UP TO 70% OFF SELECTED ITEMS</small>
-        </div>
-        <button onClick={() => switchDepartment('All products')}>Shop Christmas offers <ArrowUpRight size={15}/></button>
-        <span className="tm-store-snowflake one">✦</span><span className="tm-store-snowflake two">✧</span><span className="tm-store-snowflake three">❄</span>
-      </section>
-
       {department === 'All products' && !query && (
         <>
           <section className="tm-store-hero tm-store-christmas-video" aria-label="Tesla Markets Christmas collection">
-            <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-hidden="true">
-              <source src="/resources/883457.webm" type="video/webm"/>
+            <video className="tm-store-christmas-video-media" autoPlay muted loop playsInline preload="auto" aria-label="Tesla Markets vehicle and lifestyle film">
+              <source src="/resources/tesla-showreel.mp4" type="video/mp4"/>
             </video>
             <div className="tm-store-christmas-video-overlay" aria-hidden="true"/>
             <div className="tm-store-hero-copy tm-store-hero-copy-on-video">
@@ -531,7 +519,8 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
                 <span>Different discounts on selected products</span>
               </div>
             </div>
-            <div className="tm-store-hero-caption"><b>THE TESLA MARKETS HOLIDAY EDIT</b><span>CHRISTMAS COLLECTION · SELECTED OFFERS</span></div>
+            <div className="tm-store-hero-caption"><b>TESLA MARKETS</b><span>THE ELECTRIC LIFESTYLE COLLECTION</span></div>
+            <button className="tm-store-vehicle-film-link" type="button" onClick={onBrowseVehicles}>Explore vehicles <ArrowUpRight size={14}/></button>
           </section>
 
           <section className="tm-store-section">
