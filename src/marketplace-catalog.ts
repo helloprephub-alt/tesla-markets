@@ -20,7 +20,6 @@ export type StoreProduct = {
   purchaseEnabled?: boolean;
 };
 
-const TESLA_ASSETS = 'https://digitalassets-shop.tesla.com/image/upload/f_auto%2Cq_auto/v1/content/dam/tesla';
 const SHOP = 'https://shop.tesla.com';
 
 const allStoreProducts: StoreProduct[] = [
