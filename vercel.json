@@ -4,11 +4,5 @@
       "source": "/((?!api/|resources/|assets/|icons/|favicon).*)",
       "destination": "/index.html"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/process-email-outbox",
-      "schedule": "0 9 * * *"
-    }
   ]
 }
