@@ -16,7 +16,16 @@ const kindMap: Record<string, EmailTemplateKind> = {
   order_delivered: 'order_delivered', order_cancelled: 'order_cancelled',
   vehicle_enquiry: 'vehicle_enquiry', investment_enquiry: 'investment_enquiry',
   support_received: 'support_received', support_reply: 'support_reply',
-  password_changed: 'password_changed', profile_updated: 'profile_updated'
+  password_changed: 'password_changed', profile_updated: 'profile_updated',
+  email_verification: 'email_verification', password_reset: 'password_reset', account_recovery: 'account_recovery', account_closed: 'account_closed',
+  order_updated: 'order_updated', invoice_ready: 'invoice_ready', refund_update: 'refund_update',
+  gift_card_received: 'gift_card_received', gift_card_review: 'gift_card_review', gift_card_approved: 'gift_card_approved', gift_card_rejected: 'gift_card_rejected',
+  vehicle_follow_up: 'vehicle_follow_up', vehicle_quote: 'vehicle_quote', vehicle_reservation: 'vehicle_reservation',
+  investment_follow_up: 'investment_follow_up', investment_information: 'investment_information', investment_status: 'investment_status',
+  chat_received: 'chat_received', ticket_updated: 'ticket_updated', ticket_resolved: 'ticket_resolved', feedback_request: 'feedback_request',
+  getting_started: 'getting_started', post_purchase: 'post_purchase', review_request: 'review_request', reengagement: 'reengagement',
+  product_announcement: 'product_announcement', vehicle_promotion: 'vehicle_promotion', discount_announcement: 'discount_announcement',
+  limited_offer: 'limited_offer', newsletter: 'newsletter', admin_alert: 'admin_alert', daily_summary: 'daily_summary', system_alert: 'system_alert'
 };
 
 function safeString(value: unknown, fallback = ''): string {
