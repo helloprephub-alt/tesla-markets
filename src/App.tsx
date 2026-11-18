@@ -68,7 +68,7 @@ const navItems: { label: string; page: Page }[] = [
   { label: 'Home', page: 'home' },
   { label: 'Vehicles', page: 'vehicles' },
   { label: 'Shop', page: 'shop' },
-  { label: 'My Orders', page: 'orders' },
+  { label: 'My Orders', page: 'orders' },\n  { label: 'My Account', page: 'profile' },
   { label: 'Investments', page: 'markets' },
   { label: 'About', page: 'about' },
   { label: 'FAQs', page: 'faq' },
@@ -246,6 +246,75 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
         <div className="customer-order-footer"><small>Last updated {new Date(order.updated_at||order.created_at).toLocaleString()}</small><button type="button" onClick={onShop}>Open shop <ArrowUpRight size={14}/></button></div>
       </article>;
     })}</div>}
+  </main>;
+}
+
+function CustomerProfile({onOrders,onShop,onSignOut}:{onOrders:()=>void;onShop:()=>void;onSignOut:()=>void}) {
+  const [user,setUser]=useState<any>(null);
+  const [address,setAddress]=useState<any>(null);
+  const [orderCount,setOrderCount]=useState(0);
+  const [recentOrders,setRecentOrders]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    (async()=>{
+      const {data:{user:current},error:userError}=await supabase.auth.getUser();
+      if(!active)return;
+      if(userError||!current){setError('Please sign in to view your customer account.');setLoading(false);return;}
+      setUser(current);
+      const [addressResult,ordersResult]=await Promise.all([
+        supabase.from('customer_delivery_addresses').select('full_name,phone,address,city,region,postal_code,country').eq('user_id',current.id).maybeSingle(),
+        supabase.from('store_orders').select('id,order_reference,subtotal,currency,status,created_at').eq('customer_id',current.id).order('created_at',{ascending:false}).limit(5)
+      ]);
+      if(!active)return;
+      if(addressResult.error)console.warn('Could not load account delivery address:',addressResult.error.message);
+      if(ordersResult.error)console.warn('Could not load account order history:',ordersResult.error.message);
+      setAddress(addressResult.data||null);
+      setRecentOrders(ordersResult.data||[]);
+      setOrderCount((ordersResult.data||[]).length);
+      setLoading(false);
+    })();
+    return()=>{active=false;};
+  },[]);
+  const displayName=[user?.user_metadata?.first_name,user?.user_metadata?.last_name].filter(Boolean).join(' ')||user?.user_metadata?.full_name||user?.user_metadata?.name||'Tesla Markets customer';
+  const joined=user?.created_at?new Date(user.created_at).toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}):'';
+  return <main className="tm-account-page">
+    <div className="tm-account-wrap">
+      <div className="tm-account-heading"><span className="eyebrow dark">TESLA MARKETS · YOUR ACCOUNT</span><h1>My account</h1><p>Your profile, orders and saved delivery details in one place.</p></div>
+      {loading?<div className="tm-account-panel">Loading your account…</div>
+      :error?<div className="tm-account-panel"><h2>Sign in to your account</h2><p>{error}</p></div>
+      :<>
+        <section className="tm-account-welcome">
+          <div className="tm-account-avatar">{String(displayName).trim().charAt(0).toUpperCase()}</div>
+          <div><span>WELCOME BACK</span><h2>{displayName}</h2><p>{user.email}</p></div>
+          <span className="tm-account-status"><i/> Signed in</span>
+        </section>
+        <div className="tm-account-grid">
+          <section className="tm-account-panel tm-account-identity">
+            <div className="tm-account-panel-head"><div><span>ACCOUNT DETAILS</span><h3>Profile information</h3></div><UserRound size={20}/></div>
+            <dl><div><dt>Registered email</dt><dd>{user.email||'Not available'}</dd></div><div><dt>Account created</dt><dd>{joined||'—'}</dd></div><div><dt>Email verification</dt><dd><span className={user.email_confirmed_at?'tm-account-verified':'tm-account-unverified'}>{user.email_confirmed_at?'Verified':'Not verified yet'}</span></dd></div></dl>
+            <p className="tm-account-note">This is the exact email address connected to the account you are currently signed in with. Use it when continuing a saved cart or checking your orders.</p>
+          </section>
+          <section className="tm-account-panel">
+            <div className="tm-account-panel-head"><div><span>DELIVERY</span><h3>Saved delivery address</h3></div><Truck size={20}/></div>
+            {address?<div className="tm-account-address"><b>{address.full_name}</b><span>{address.address}</span><span>{[address.city,address.region,address.postal_code,address.country].filter(Boolean).join(', ')}</span><span>{address.phone}</span></div>:<p className="tm-account-empty">Your delivery address will appear here after you complete it at checkout.</p>}
+            <button className="tm-account-link" onClick={onShop}>Manage at checkout <ArrowUpRight size={14}/></button>
+          </section>
+          <section className="tm-account-panel tm-account-orders">
+            <div className="tm-account-panel-head"><div><span>ORDER HISTORY</span><h3>Your recent orders</h3></div><PackageCheck size={20}/></div>
+            {recentOrders.length?<div className="tm-account-recent">{recentOrders.slice(0,3).map(order=><div key={order.id}><div><b>{order.order_reference||'Order'}</b><small>{new Date(order.created_at).toLocaleDateString()}</small></div><span>{order.currency||'USD'} {Number(order.subtotal||0).toFixed(2)}</span><em>{String(order.status||'pending').replaceAll('_',' ')}</em></div>)}</div>:<p className="tm-account-empty">Your orders will appear here after you place or save an order.</p>}
+            <button className="tm-account-link" onClick={onOrders}>View all orders <ArrowUpRight size={14}/></button>
+          </section>
+          <section className="tm-account-panel">
+            <div className="tm-account-panel-head"><div><span>SECURITY</span><h3>Password & security</h3></div><ShieldCheck size={20}/></div>
+            <p className="tm-account-empty">Password changes and password recovery will be enabled after the Tesla Markets domain and verified email delivery (Resend) are connected.</p>
+            <button className="tm-account-disabled" type="button" disabled>Change password · Coming soon</button>
+          </section>
+        </div>
+        <div className="tm-account-footer"><button className="tm-account-signout" onClick={onSignOut}><LogOut size={15}/> Sign out</button><button className="tm-account-shop" onClick={onShop}>Continue shopping <ArrowRight size={15}/></button></div>
+      </>}
+    </div>
   </main>;
 }
 
@@ -1256,7 +1325,7 @@ function App() {
   else if (page === 'ai') content = <AI />;
   else if (page === 'shop') content = <Shop />;
   else if (page === 'vehicles') content = <VehicleCollection />;
-  else if (page === 'orders') content = <CustomerOrders onShop={()=>go('shop')} onLogin={()=>go('login')} />;
+  else if (page === 'orders') content = <CustomerOrders onShop={()=>go('shop')} onLogin={()=>go('login')} />;\n  else if (page === 'profile') content = <CustomerProfile onOrders={()=>go('orders')} onShop={()=>go('shop')} onSignOut={async()=>{await supabase.auth.signOut();announce('You have been signed out.');goParent('home');}} />;
   else if (page === 'about' || page === 'contact' || page === 'faq')
     content = <Info kind={page} />;
   else if (page === 'signup' || page === 'login')
