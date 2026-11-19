@@ -687,7 +687,7 @@ function App() {
       </div>
       <div className="hero-video-stage" aria-label="Tesla Markets cinematic vehicle showcase">
         <video ref={heroVideoRef} autoPlay muted={videoMuted} loop playsInline preload="auto" poster="/resources/tesla-hero.jpg">
-          <source src="/resources/tesla-showreel.mp4" type="video/mp4"/>
+          <source src="/resources/tesla-showreel.webm" type="video/webm"/>
         </video>
         <button type="button" className="hero-video-sound" onClick={toggleHeroVideoSound} aria-label={videoMuted ? "Unmute video sound" : "Mute video sound"} title={videoMuted ? "Turn sound on" : "Mute sound"}>
           {videoMuted ? <VolumeX size={19} /> : <Volume2 size={19} />}
