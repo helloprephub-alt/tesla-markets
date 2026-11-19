@@ -30,7 +30,7 @@ const models: Model[] = [
   { id: 'cybertruck', name: 'Cybertruck', subtitle: 'All-electric utility vehicle', variants: [
     { name: 'Cybertruck', price: '$82,490', discountPercent: 30 }, { name: 'Cybertruck Premium', price: '$92,490', discountPercent: 38 }, { name: 'Cyberbeast', price: '$102,490', discountPercent: 45 }
   ], lease: 'From $1,450 / month', priceNote: 'Starting prices supplied by Tesla Markets management; trim, market availability and final quotation require confirmation.',
-    gallery: Array.from({ length: 9 }, (_, i) => '/resources/cybertruck-' + (i + 1) + '.jpg'), range: 'Varies by configuration', performance: 'Varies by configuration', drivetrain: 'Electric all-wheel drive on applicable versions',
+    gallery: [1, 2, 3, 4, 5, 6, 7, 9].map((number) => '/resources/cybertruck-' + number + '.jpg'), range: 'Varies by configuration', performance: 'Varies by configuration', drivetrain: 'Electric all-wheel drive on applicable versions',
     features: ['Stainless-steel exoskeleton design', 'Utility-focused storage and load area', 'Adaptive air suspension on selected versions', 'Final specification must be confirmed'],
     colors: ['Stainless Steel', 'Matte Black preference', 'Arctic White preference'], wheels: ['20-inch Core', 'Cyber Wheel'] },
   { id: 'roadster', name: 'Roadster', subtitle: 'Next-generation electric sports car', variants: [
