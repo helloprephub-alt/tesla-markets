@@ -1,3 +1,4 @@
+const TESLA_APP_BUILD = '2026-11-19-resend-logo-1';
 self.addEventListener('install',event=>{self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(self.clients.claim());});
 self.addEventListener('push',event=>{
