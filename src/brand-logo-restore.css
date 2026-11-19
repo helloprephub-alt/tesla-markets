@@ -1,32 +1,32 @@
-/* Tesla header wordmark: tightly cropped original artwork, embedded in SVG to avoid external-image loading issues. */
+/* Tesla wordmark traced from the user's supplied reference; transparent background. */
 .topbar .brand {
   display:flex !important;
   align-items:center !important;
   justify-content:flex-start !important;
   min-width:0 !important;
-  width:190px !important;
-  max-width:190px !important;
-  flex:0 0 190px !important;
+  width:176px !important;
+  max-width:176px !important;
+  flex:0 0 176px !important;
   overflow:visible !important;
 }
 .topbar .brand-logo {
   display:block !important;
   visibility:visible !important;
   opacity:1 !important;
-  width:174px !important;
-  height:40px !important;
-  flex:0 0 174px !important;
+  width:166px !important;
+  height:22px !important;
+  flex:0 0 166px !important;
   max-width:none !important;
   object-fit:contain !important;
   object-position:left center !important;
 }
 @media(max-width:760px) {
   .topbar .brand { width:150px !important; max-width:150px !important; flex-basis:150px !important; }
-  .topbar .brand-logo { width:142px !important; height:34px !important; flex-basis:142px !important; }
+  .topbar .brand-logo { width:140px !important; height:18px !important; flex-basis:140px !important; }
 }
 @media(max-width:380px) {
-  .topbar .brand { width:132px !important; max-width:132px !important; flex-basis:132px !important; }
-  .topbar .brand-logo { width:124px !important; height:30px !important; flex-basis:124px !important; }
+  .topbar .brand { width:134px !important; max-width:134px !important; flex-basis:134px !important; }
+  .topbar .brand-logo { width:124px !important; height:16px !important; flex-basis:124px !important; }
 }
 .admin-console-brand {display:flex;align-items:center;min-width:0;max-width:330px}
 .admin-brand-lockup {display:block !important;width:min(100%,292px) !important;height:auto !important;max-height:64px !important;object-fit:contain !important;object-position:left center !important}
