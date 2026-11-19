@@ -518,7 +518,7 @@ function App() {
       aria-label="Tesla Markets home"
     >
       <img className="brand-logo" src="/tesla-wordmark.svg" alt="Tesla logo" />
-      <span className="brand-word">MARKETS</span>
+      <span className="brand-word">markets</span>
     </button>
   );
   const Header = () => (
