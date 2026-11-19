@@ -16,7 +16,7 @@
   flex:0 0 auto !important;
   color:#a92d35 !important;
   font-family:'Cormorant Garamond', 'Playfair Display', Georgia, serif !important;
-  font-size:18px !important;
+  font-size:15px !important;
   font-weight:600 !important;
   font-style:italic !important;
   line-height:1 !important;
@@ -58,7 +58,7 @@
     flex:0 0 200px !important;
     gap:7px !important;
   }
-  .topbar .brand-word {font-size:16px !important;letter-spacing:.02em !important}
+  .topbar .brand-word {font-size:13px !important;letter-spacing:.02em !important}
   .topbar .brand-logo {width:140px !important;height:18px !important;flex-basis:140px !important}
   .topbar .language-trigger {
     width:34px !important;min-width:34px !important;height:34px !important;min-height:34px !important;
@@ -69,7 +69,7 @@
 }
 @media(max-width:380px) {
   .topbar .brand {width:198px !important;max-width:198px !important;flex-basis:198px !important;gap:6px !important}
-  .topbar .brand-word {font-size:14px !important;letter-spacing:0 !important}
+  .topbar .brand-word {font-size:12px !important;letter-spacing:0 !important}
   .topbar .brand-logo {width:124px !important;height:16px !important;flex-basis:124px !important}
 }
 .admin-console-brand {display:flex;align-items:center;min-width:0;max-width:330px}
