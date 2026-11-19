@@ -1,5 +1,5 @@
 {
-  "id": "/admin.html",
+  "id": "/admin.html?app=tesla-markets-admin",
   "name": "Tesla Markets Management",
   "short_name": "Tesla Admin",
   "description": "Private Tesla Markets management console and customer inbox.",
