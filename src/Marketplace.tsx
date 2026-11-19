@@ -286,7 +286,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
       window.setTimeout(()=>{void restoreCustomerCart(session?.user.id);},0);
     });
     const savedIntent=readCheckoutIntent();
-    if(savedIntent){if(savedIntent.checkoutDetails)setCheckoutDetails(savedIntent.checkoutDetails);setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');localStorage.removeItem(CHECKOUT_INTENT_KEY);}
+    if(savedIntent){if(savedIntent.checkoutDetails)setCheckoutDetails(current=>({...current,...savedIntent.checkoutDetails}));setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');localStorage.removeItem(CHECKOUT_INTENT_KEY);}
     return()=>{active=false;subscription.unsubscribe();};
   }, []);
 
