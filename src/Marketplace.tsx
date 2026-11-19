@@ -11,6 +11,7 @@ import { supabase } from './lib/supabase';
 type Props = { onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
 type CartLine = { id: string; quantity: number; selectedSize?: string };
+type CheckoutDetails = { fullName: string; email: string; phone: string; address: string; city: string; region: string; postalCode: string; country: string };
 type CheckoutIntent = {
   cart: CartLine[];
   checkoutDetails?: { fullName: string; email: string; phone: string; address: string; city: string; region?: string; postalCode: string; country: string };
@@ -187,7 +188,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   );
 }
 
-export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire }: Props) {
+export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
@@ -206,7 +207,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [showAllDepartments, setShowAllDepartments] = useState(false);
   const [checkoutStage, setCheckoutStage] = useState<'details' | 'payment' | 'done'>('details');
-  const [checkoutDetails, setCheckoutDetails] = useState(() => ({
+  const [checkoutDetails, setCheckoutDetails] = useState<CheckoutDetails>(() => ({
     fullName: '', email: '', phone: '', address: '', city: '', region: '', postalCode: '', country: '',
     ...readSavedDeliveryAddress(),
     ...(readCheckoutIntent()?.checkoutDetails || {})
