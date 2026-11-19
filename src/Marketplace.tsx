@@ -353,7 +353,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
     }
     const { data, error } = await supabase.auth.getSession();
     if (error) { setCheckoutMessage(error.message); return; }
-    if (!data.session?.user) { persistCheckoutIntent(); onRequireAuth(); return; }
+    if (!data.session?.user || !data.session.user.email_confirmed_at) { persistCheckoutIntent(); onRequireAuth(); return; }
     if (data.session.user.email) setCheckoutDetails(current => ({ ...current, email: data.session!.user.email! }));
     setCartOpen(false);
     setCheckoutOpen(true);
