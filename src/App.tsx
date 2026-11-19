@@ -393,6 +393,12 @@ function App() {
         setAuthMessage('Choose a new password for your account.');
         setPage('login');
         location.hash = 'login';
+      } else if (event === 'SIGNED_IN' && location.hash === '#oauth-callback') {
+        const next: Page = sessionStorage.getItem('tesla-markets-enquiry-intent') ? 'chat'
+          : sessionStorage.getItem('tesla-markets-checkout-intent') ? 'shop' : 'dashboard';
+        setPage(next);
+        location.hash = next;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     });
     return () => subscription.unsubscribe();
@@ -452,7 +458,6 @@ function App() {
     first: '',
     last: '',
     country: 'Nigeria',
-    currency: 'USD',
     password: '',
   });
 
@@ -738,7 +743,7 @@ function App() {
         <div className="eyebrow dark">{t("intro")}</div>
         <h2>{publicContent.homeHeadline}</h2>
         <p>{publicContent.homeDescription}</p>
-        <div className="home-intro-actions"><button className="btn btn-dark" onClick={()=>go('markets')}>{t("investNow")} <ArrowUpRight size={16}/></button><button className="btn btn-outline" onClick={()=>go('shop')}>{t("shop")} <ArrowUpRight size={16}/></button></div>
+        <div className="home-intro-actions"><button className="btn btn-dark" onClick={()=>{void requireVerifiedAction({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'});}}>{t("investNow")} <ArrowUpRight size={16}/></button><button className="btn btn-outline" onClick={()=>go('shop')}>{t("shop")} <ArrowUpRight size={16}/></button></div>
       </section>
       <section className="home-shop-preview" aria-label="Tesla Markets Christmas shop promotion">
         <div className="home-shop-preview-heading">
@@ -1090,13 +1095,14 @@ function App() {
         <div className="auth-orbit" />
         <div className="auth-orbit two" />
         <div className="auth-copy">
-          <div className="eyebrow">WELCOME TO A NEW PERSPECTIVE</div>
+          <div className="eyebrow">TESLA MARKETS · PRIVATE CLIENT ACCESS</div>
           <h2>
-            Explore ideas
+            A more considered
             <br />
-            that move <em>forward.</em>
+            way to <em>move forward.</em>
           </h2>
-          <p>Your personal space for research, discovery and market context.</p>
+          <p>Secure access to your enquiries, orders and conversations with Tesla Markets Management.</p>
+          <div className="tm-auth-art-foot"><span>SECURE CLIENT PORTAL</span><span>TESLA MARKETS</span></div>
         </div>
       </div>
       <div className="auth-panel">
@@ -1111,6 +1117,8 @@ function App() {
           <p className="muted">
             {passwordRecovery ? 'Set a new password to secure your account.' : signup ? 'Create your secure Tesla Markets customer account.' : 'Sign in to continue to your account and saved checkout.'}
           </p>
+          {!verificationPending && !passwordRecovery && <button type="button" className="tm-google-auth" disabled={authBusy} onClick={async()=>{setAuthBusy(true);setAuthError('');setAuthMessage('');try{const {error}=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+'/#oauth-callback',queryParams:{prompt:'select_account'}}});if(error)throw error;}catch(error){setAuthError(error instanceof Error?error.message:'Google sign-in could not start. Please use email and password.');setAuthBusy(false);}}}><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.74 7.18l7.66 5.94c4.47-4.13 7.12-10.2 7.12-17.59z"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.55 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.86l-7.66-5.94c-2.13 1.43-4.86 2.27-8.25 2.27-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>Continue with Google</span></button>}
+          {!verificationPending && !passwordRecovery && <div className="tm-auth-divider"><span>OR CONTINUE WITH EMAIL</span></div>}
           {verificationPending ? (
             <form onSubmit={async e => {
               e.preventDefault(); if (authBusy) return;
@@ -1131,12 +1139,12 @@ function App() {
             }}>
               <div className="eyebrow dark">EMAIL VERIFICATION</div>
               <h1>Check your inbox.</h1>
-              <p className="muted">We sent a one-time code to <strong>{pendingVerificationEmail}</strong>. You can leave this page to check your email and return without losing your progress.</p>
-              <label>6-digit verification code<input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={verificationCode} onChange={e=>setVerificationCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="000000" /></label>
+              <p className="muted">Enter the six-digit code for <strong>{pendingVerificationEmail}</strong>. You can leave this page to check your email and return without losing your progress. Check Spam and Promotions if it is not in your inbox.</p>
+              <label className="tm-otp-label">6-DIGIT SECURITY CODE<input className="tm-otp-input" required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={verificationCode} onChange={e=>setVerificationCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="• • • • • •" /></label>
               {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
               {authMessage && <p className="auth-feedback success" role="status">{authMessage}</p>}
               <button className="btn btn-red full" disabled={authBusy || verificationCode.length!==6}>{authBusy ? 'Verifying…' : 'Verify email'} <ArrowUpRight size={16}/></button>
-              <button type="button" className="forgot" disabled={authBusy} onClick={async()=>{setAuthBusy(true);setAuthError('');setAuthMessage('');try{const {error}=await supabase.auth.resend({type:'signup',email:pendingVerificationEmail});if(error)throw error;setAuthMessage('A new verification code has been sent.');}catch(error){setAuthError(error instanceof Error?error.message:'Could not resend the code.');}finally{setAuthBusy(false);}}}>Resend verification code</button>
+              <button type="button" className="forgot" disabled={authBusy} onClick={async()=>{setAuthBusy(true);setAuthError('');setAuthMessage('');try{const {error}=await supabase.auth.resend({type:'signup',email:pendingVerificationEmail});if(error)throw error;setAuthMessage('A resend request was accepted. Check Inbox, Spam and Promotions; if nothing arrives, contact support.');}catch(error){setAuthError(error instanceof Error?error.message:'Could not resend the code.');}finally{setAuthBusy(false);}}}>Resend verification code</button>
               <button type="button" className="forgot" onClick={()=>{setVerificationPending(false);setVerificationCode('');try{sessionStorage.removeItem('tesla-markets-pending-verification');}catch{}setAuthError('');setAuthMessage('');}}>Use a different email address</button>
             </form>
           ) : (
@@ -1157,7 +1165,7 @@ function App() {
                   const { data, error } = await supabase.auth.signUp({
                     email: form.email.trim().toLowerCase(), password: form.password,
                     options: {
-                      data: { name: [form.first, form.last].filter(Boolean).join(' ').trim(), country: form.country, currency: form.currency },
+                      data: { name: [form.first, form.last].filter(Boolean).join(' ').trim(), country: form.country },
                       emailRedirectTo: window.location.origin + '/#shop'
                     }
                   });
@@ -1166,7 +1174,7 @@ function App() {
                     const email = form.email.trim().toLowerCase();
                     setPendingVerificationEmail(email); setVerificationPending(true);
                     try { sessionStorage.setItem('tesla-markets-pending-verification', email); } catch {}
-                    setAuthMessage('Your verification code is on its way. Check your email and return here to finish.');
+                    setAuthMessage('If email delivery is available, a verification code should arrive shortly. Check Spam and Promotions too. If it does not arrive, use Resend verification code.');
                     return;
                   }
                   // Welcome emails are queued by the database only after email verification.
@@ -1229,20 +1237,6 @@ function App() {
                     <option>United Kingdom</option>
                     <option>Canada</option>
                     <option>Germany</option>
-                  </select>
-                </label>
-                <label>
-                  Preferred currency
-                  <select
-                    value={form.currency}
-                    onChange={e =>
-                      setForm({ ...form, currency: e.target.value })
-                    }
-                  >
-                    <option>USD</option>
-                    <option>NGN</option>
-                    <option>GBP</option>
-                    <option>EUR</option>
                   </select>
                 </label>
               </div>
