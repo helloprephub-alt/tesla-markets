@@ -556,6 +556,26 @@ export function AdminConsole() {
     finally{setUpdatingShopOrder(null);}
   };
 
+  const updateVehicleCatalogRecord = async (vehicleId:string,patch:{verification_status?:string;is_published?:boolean;availability?:string}) => {
+    const currentVehicle=vehicleCatalog.find(item=>item.id===vehicleId);
+    if(!currentVehicle)return;
+    const nextStatus=patch.verification_status??currentVehicle.verification_status;
+    if(patch.is_published===true&&nextStatus!=='verified'){setError('A vehicle cannot be published until its price, source and specification are verified.');return;}
+    const safePatch:{verification_status?:string;is_published?:boolean;availability?:string;last_verified_at?:string}={...patch};
+    if(patch.verification_status==='verified')safePatch.last_verified_at=new Date().toISOString();
+    if(patch.verification_status&&patch.verification_status!=='verified')safePatch.is_published=false;
+    setUpdatingVehicleCatalog(vehicleId);
+    try{
+      const {user:currentUser,isAdmin}=await isCurrentUserAdmin();
+      if(!currentUser||!isAdmin)throw new Error('Administrator session expired.');
+      const {error:updateError}=await supabase.from('vehicle_catalog').update(safePatch).eq('id',vehicleId);
+      if(updateError)throw updateError;
+      setVehicleCatalog(items=>items.map(item=>item.id===vehicleId?{...item,...safePatch}:item));
+      setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not update vehicle inventory.');}
+    finally{setUpdatingVehicleCatalog(null);}
+  };
+
   const updateVehicleEnquiryStatus = async (enquiryId:string,status:string) => {
     const allowed=['new','contacted','in_progress','closed'];
     if(!allowed.includes(status))return;
