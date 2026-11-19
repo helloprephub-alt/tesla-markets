@@ -761,6 +761,7 @@ export function AdminConsole() {
     { id: 'tasks' as const, label: 'Tasks & Follow-ups', icon: ListTodo, group:'WORKSPACE' },
     { id: 'shop' as const, label: 'Shop Catalogue', icon: ShoppingBag, group:'BUSINESS OPERATIONS' },
     { id: 'catalogue' as const, label: 'Vehicle Inventory', icon: CarFront, group:'BUSINESS OPERATIONS' },
+    { id: 'vehicleEnquiries' as const, label: 'Vehicle Enquiries', icon: CarFront, group:'BUSINESS OPERATIONS' },
     { id: 'investment' as const, label: 'Investment Enquiries', icon: Inbox, group:'BUSINESS OPERATIONS' },
     { id: 'orders' as const, label: 'Orders & Requests', icon: ClipboardList, group:'BUSINESS OPERATIONS' },
     { id: 'team' as const, label: 'Team Management', icon: Users, group:'BUSINESS OPERATIONS' },
