@@ -269,13 +269,13 @@ export function AdminConsole() {
   };
 
   const installAdminApp = async () => {
-    if (!installPrompt) { setNotificationStatus('In Chrome, open menu ⋮ and choose Install app or Add to Home screen.'); return; }
+    if (!installPrompt) { setNotificationStatus('To install the standalone Tesla Admin app, open Chrome menu ⋮ and choose Install app. Do not choose Add to Home screen.'); return; }
     try {
       await installPrompt.prompt();
       const choice = await installPrompt.userChoice;
-      setNotificationStatus(choice?.outcome === 'accepted' ? 'Installation accepted. Follow the Android prompt to finish.' : 'Installation cancelled. You can install later from Chrome menu ⋮.');
+      setNotificationStatus(choice?.outcome === 'accepted' ? 'Installation accepted. Follow the Android prompt to finish.' : 'Installation cancelled. You can install later from Chrome menu ⋮ → Install app.');
       setInstallPrompt(null);
-    } catch { setNotificationStatus('Open Chrome menu ⋮ and choose Install app or Add to Home screen.'); }
+    } catch { setNotificationStatus('Open Chrome menu ⋮ and choose Install app. Do not choose Add to Home screen.'); }
   };
 
   useEffect(() => {
@@ -900,7 +900,7 @@ export function AdminConsole() {
           <div className="tm-install-eyebrow">TESLA MARKETS · PRIVATE MANAGEMENT</div>
           <h2 id="tm-install-title">{isInstalled || installedAppMode ? 'Enable app notifications' : 'Install your management app'}</h2>
           <p>{isInstalled || installedAppMode ? 'Allow notifications to receive new customer messages, vehicle enquiries, orders and important management alerts, even when the app is closed.' : 'Keep your customer inbox, vehicle enquiries, AI management and dashboard together in a dedicated app on this device.'}</p>
-          {(isInstalled || installedAppMode) ? <button type="button" className="tm-install-primary" disabled={pushBusy || pushSubscribed} onClick={()=>void enablePhoneNotifications()}>{pushBusy ? 'Enabling…' : pushSubscribed ? 'Notifications enabled' : 'Enable notifications'}</button> : installPrompt ? <button type="button" className="tm-install-primary" onClick={()=>void installAdminApp()}>Install app</button> : <><p className="tm-install-help">If Android does not show an install button, open your browser menu ⋮ and choose <b>Install app</b> or <b>Add to Home screen</b>.</p><button type="button" className="tm-install-primary" onClick={()=>{setNotificationStatus('Open Chrome menu ⋮ and choose Install app or Add to Home screen.');setShowInstallCard(false);localStorage.setItem('tesla-admin-install-dismissed','true');}}>Show me later</button></>}
+          {(isInstalled || installedAppMode) ? <button type="button" className="tm-install-primary" disabled={pushBusy || pushSubscribed} onClick={()=>void enablePhoneNotifications()}>{pushBusy ? 'Enabling…' : pushSubscribed ? 'Notifications enabled' : 'Enable notifications'}</button> : installPrompt ? <button type="button" className="tm-install-primary" onClick={()=>void installAdminApp()}>Install app</button> : <><p className="tm-install-help">For a proper standalone app icon, open Chrome menu ⋮ and choose <b>Install app</b>. Do not choose <b>Add to Home screen</b>, because that creates a browser shortcut with a Chrome badge.</p><button type="button" className="tm-install-primary" onClick={()=>{setNotificationStatus('Open Chrome menu ⋮ and choose Install app or Add to Home screen.');setShowInstallCard(false);localStorage.setItem('tesla-admin-install-dismissed','true');}}>Show me later</button></>}
           <button type="button" className="tm-install-later" onClick={()=>{localStorage.setItem('tesla-admin-install-dismissed','true');localStorage.setItem('tesla-admin-notifications-dismissed','true');setInstallPrompt(null);setShowInstallCard(false);}}>Not now</button>
         </section>
       </div>}
