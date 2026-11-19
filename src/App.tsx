@@ -517,6 +517,7 @@ function App() {
       onClick={() => go('home')}
       aria-label="Tesla Markets home"
     >
+      <span className="brand-word">MARKETS</span>
       <img className="brand-logo" src="/tesla-wordmark.svg" alt="Tesla logo" />
     </button>
   );
