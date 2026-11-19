@@ -596,7 +596,7 @@ function App() {
           <b>Investments</b>
           <button onClick={() => go('markets')}>Tesla (TSLA)</button>
           <button onClick={() => go('markets')}>SpaceX information</button>
-          <button onClick={() => { sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Footer investment enquiry',type:'investment',context:'Tesla investment enquiry'})); go('chat'); }}>Investment enquiries</button>
+          <button onClick={() => { void requireVerifiedAction({source:'Footer investment enquiry',type:'investment',context:'Tesla investment enquiry'}); }}>Investment enquiries</button>
         </div>
         <div>
           <b>Company</b>
