@@ -29,6 +29,7 @@ type AuditEntry = {id:number;action:string;entity_type:string;entity_id:string|n
 type CustomerProfileRecord = {id:string;display_name:string;email:string;phone:string;crm_stage:string;created_at:string;is_admin:boolean};
 type VehicleEnquiryRecord = {id:string;customer_id:string;vehicle_model:string;configuration:any;customer_note:string;status:string;created_at:string;customerName:string;customerEmail:string;customerPhone:string};
 type InvestmentEnquiryRecord = {id:string;customer_id:string;opportunity:string;category:string;customer_question:string;status:string;created_at:string;customerName:string;customerEmail:string};
+type VehicleCatalogRecord = {id:string;name:string;model:string;slug:string;price_usd:string;availability:string;is_published:boolean;verification_status:string;source_type:string|null;source_url:string|null;last_verified_at:string|null;images:string[]};
 function AdminShopImage({src,name}:{src:string;name:string}) {
   const [status,setStatus]=useState<'loading'|'loaded'|'failed'>('loading');
   return <div className="admin-shop-image-check">
@@ -78,6 +79,8 @@ export function AdminConsole() {
   const [customerProfiles,setCustomerProfiles]=useState<CustomerProfileRecord[]>([]);
   const [vehicleEnquiries,setVehicleEnquiries]=useState<VehicleEnquiryRecord[]>([]);
   const [investmentEnquiries,setInvestmentEnquiries]=useState<InvestmentEnquiryRecord[]>([]);
+  const [vehicleCatalog,setVehicleCatalog]=useState<VehicleCatalogRecord[]>([]);
+  const [updatingVehicleCatalog,setUpdatingVehicleCatalog]=useState<string|null>(null);
   const [updatingEnquiry,setUpdatingEnquiry]=useState<string|null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [orders,setOrders]=useState<OperationalOrder[]>([]);
