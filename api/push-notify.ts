@@ -48,7 +48,7 @@ export default async function handler(request: IncomingRequest, response: Server
   const body = (payload.record.body || 'A customer sent a new message.').replace(/\s+/g, ' ').slice(0, 180);
   const adminUrl = '/admin.html?page=admin&app=tesla-markets-admin';
   const fallbackUrl = payload.record.conversation_id
-    ? adminUrl + '#admin?conversation=' + encodeURIComponent(payload.record.conversation_id)
+    ? adminUrl + '&conversation=' + encodeURIComponent(payload.record.conversation_id)
     : adminUrl;
   const requestedUrl = typeof payload.record.url === 'string' ? payload.record.url : '';
   const notificationUrl = requestedUrl.startsWith('/') && !requestedUrl.startsWith('//') ? requestedUrl : fallbackUrl;
