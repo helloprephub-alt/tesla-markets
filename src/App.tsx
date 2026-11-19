@@ -340,6 +340,7 @@ function App() {
       const route = new URLSearchParams(location.search).get('page');
       const hash = location.hash.replace(/^#\/?/, '');
       const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : '');
+      const savedPage = (() => { try { return localStorage.getItem('tesla-markets-last-page') || ''; } catch { return ''; } })();
       const allowed: Page[] = ['home','how','markets','ai','shop','vehicles','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       return allowed.includes(requested as Page) ? requested as Page : 'home';
     }
@@ -348,6 +349,18 @@ function App() {
   // Keep direct admin links working when Opera or another browser reuses an
   // already-open public-site tab and changes only the URL fragment.
   useEffect(() => {
+  useEffect(() => { try { localStorage.setItem('tesla-markets-last-page', page); } catch {} }, [page]);
+
+  useEffect(() => {
+    const key = 'tesla-markets-scroll:' + page;
+    let restoring = true;
+    const saved = (() => { try { return Number(localStorage.getItem(key) || 0); } catch { return 0; } })();
+    const save = () => { try { localStorage.setItem(key, String(window.scrollY)); } catch {} };
+    const onScroll = () => { if (!restoring) save(); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    const frame = window.requestAnimationFrame(() => { window.scrollTo(0, saved); restoring = false; });
+    return () => { save(); window.cancelAnimationFrame(frame); window.removeEventListener('scroll', onScroll); };
+  }, [page]);
     const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (manifest) manifest.href = page === 'admin' ? '/admin-manifest.webmanifest' : '/manifest.webmanifest';
     document.title = page === 'admin' ? 'Tesla Markets Admin | Private Management' : page === 'shop' ? 'Tesla Markets | Shop' : 'Tesla Markets';
@@ -407,6 +420,9 @@ function App() {
   const [authMessage, setAuthMessage] = useState('');
   const [authError, setAuthError] = useState('');
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const [verificationPending, setVerificationPending] = useState(() => { try { return Boolean(sessionStorage.getItem('tesla-markets-pending-verification')); } catch { return false; } });
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState(() => { try { return sessionStorage.getItem('tesla-markets-pending-verification') || ''; } catch { return ''; } });
+  const [verificationCode, setVerificationCode] = useState('');
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
   const [tab, setTab] = useState('Overview');
@@ -1085,6 +1101,31 @@ function App() {
           <p className="muted">
             {passwordRecovery ? 'Set a new password to secure your account.' : signup ? 'Create your secure Tesla Markets customer account.' : 'Sign in to continue to your account and saved checkout.'}
           </p>
+          {verificationPending ? (
+            <form onSubmit={async e => {
+              e.preventDefault(); if (authBusy) return;
+              setAuthBusy(true); setAuthError(''); setAuthMessage('');
+              try {
+                const result = await supabase.auth.verifyOtp({ email: pendingVerificationEmail, token: verificationCode.trim(), type: 'signup' });
+                if (result.error) throw result.error;
+                try { sessionStorage.removeItem('tesla-markets-pending-verification'); } catch {}
+                setVerificationPending(false); setVerificationCode('');
+                setAuthMessage('Your email is verified. Welcome to Tesla Markets.');
+                if (result.data.session) go(sessionStorage.getItem('tesla-markets-checkout-intent') ? 'shop' : 'dashboard');
+              } catch (error) { setAuthError(error instanceof Error ? error.message : 'That code could not be verified. Please try again.'); }
+              finally { setAuthBusy(false); }
+            }}>
+              <div className="eyebrow dark">EMAIL VERIFICATION</div>
+              <h1>Check your inbox.</h1>
+              <p className="muted">We sent a one-time code to <strong>{pendingVerificationEmail}</strong>. You can leave this page to check your email and return without losing your progress.</p>
+              <label>6-digit verification code<input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={verificationCode} onChange={e=>setVerificationCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="000000" /></label>
+              {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
+              {authMessage && <p className="auth-feedback success" role="status">{authMessage}</p>}
+              <button className="btn btn-red full" disabled={authBusy || verificationCode.length!==6}>{authBusy ? 'Verifying…' : 'Verify email'} <ArrowUpRight size={16}/></button>
+              <button type="button" className="forgot" disabled={authBusy} onClick={async()=>{setAuthBusy(true);setAuthError('');setAuthMessage('');try{const {error}=await supabase.auth.resend({type:'signup',email:pendingVerificationEmail});if(error)throw error;setAuthMessage('A new verification code has been sent.');}catch(error){setAuthError(error instanceof Error?error.message:'Could not resend the code.');}finally{setAuthBusy(false);}}}>Resend verification code</button>
+              <button type="button" className="forgot" onClick={()=>{setVerificationPending(false);setVerificationCode('');try{sessionStorage.removeItem('tesla-markets-pending-verification');}catch{}setAuthError('');setAuthMessage('');}}>Use a different email address</button>
+            </form>
+          ) : (
           <form
             onSubmit={async e => {
               e.preventDefault();
@@ -1108,7 +1149,11 @@ function App() {
                   });
                   if (error) throw error;
                   if (!data.session) {
-                    throw new Error('Account setup is not ready yet. Please try again shortly.');
+                    const email = form.email.trim().toLowerCase();
+                    setPendingVerificationEmail(email); setVerificationPending(true);
+                    try { sessionStorage.setItem('tesla-markets-pending-verification', email); } catch {}
+                    setAuthMessage('Your verification code is on its way. Check your email and return here to finish.');
+                    return;
                   }
                   // Send the welcome message through the server-side Brevo integration.
                   // Email delivery failure must not prevent a customer from accessing their new account.
@@ -1232,12 +1277,14 @@ function App() {
               {authBusy ? 'Please wait…' : passwordRecovery ? 'Update password' : signup ? 'Create account' : 'Sign in'} <ArrowUpRight size={16} />
             </button>
           </form>
-          {!passwordRecovery && <div className="auth-switch">
+          )}
+          {!verificationPending && !passwordRecovery && <div className="auth-switch">
             {signup ? 'Already have an account?' : 'New to the platform?'}{' '}
             <button onClick={() => { setAuthError(''); setAuthMessage(''); go(signup ? 'login' : 'signup'); }}>
               {signup ? 'Log in' : 'Create account'}
             </button>
           </div>}
+          {verificationPending && <div className="auth-disclaimer"><LockKeyhole size={14}/> Your verification progress is saved on this device.</div>}
           <div className="auth-disclaimer">
             <LockKeyhole size={14} /> Your account is protected with secure sign-in.
           </div>
