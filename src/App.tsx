@@ -447,8 +447,8 @@ function App() {
   const [authMessage, setAuthMessage] = useState('');
   const [authError, setAuthError] = useState('');
   const [passwordRecovery, setPasswordRecovery] = useState(false);
-  const [verificationPending, setVerificationPending] = useState(() => { try { return Boolean(sessionStorage.getItem('tesla-markets-pending-verification')); } catch { return false; } });
-  const [pendingVerificationEmail, setPendingVerificationEmail] = useState(() => { try { return sessionStorage.getItem('tesla-markets-pending-verification') || ''; } catch { return ''; } });
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
@@ -1182,6 +1182,11 @@ function App() {
                   setPasswordRecovery(false);
                   setAuthMessage('Your password has been updated. Sign in with your new password.');
                 } else if (signup) {
+                  const redirectPage = sessionStorage.getItem('tesla-markets-enquiry-intent')
+                    ? 'chat'
+                    : sessionStorage.getItem('tesla-markets-checkout-intent')
+                      ? 'shop'
+                      : 'dashboard';
                   const { data, error } = await supabase.functions.invoke('tesla-customer-signup', {
                     body: {
                       email: form.email.trim().toLowerCase(),
@@ -1189,6 +1194,7 @@ function App() {
                       firstName: form.first.trim(),
                       lastName: form.last.trim(),
                       country: form.country,
+                      redirectPage,
                     },
                   });
                   if (error) throw error;
