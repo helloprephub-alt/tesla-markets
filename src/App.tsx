@@ -736,7 +736,7 @@ function App() {
   );
   const homeShopPreview = ['winter-holiday-sweater','winter-holiday-mug','tesla-core-backpack','model-y-mud-flaps']
     .map(id => storeProducts.find(product => product.id === id))
-    .filter((product): product is NonNullable<typeof product> => Boolean(product));
+    .filter((product): product is NonNullable<typeof product> => Boolean(product && product.image));
   const Home = () => (
     <>
       <Hero />
