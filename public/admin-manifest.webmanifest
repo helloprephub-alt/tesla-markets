@@ -1,5 +1,5 @@
 {
-  "id": "/admin.html?app=tesla-markets-admin",
+  "id": "/admin.html",
   "name": "Tesla Markets Management",
   "short_name": "Tesla Admin",
   "description": "Private Tesla Markets management console and customer inbox.",
@@ -19,12 +19,18 @@
       "src": "/icons/tesla-app-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/tesla-app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "display_override": [
-    "standalone",
-    "minimal-ui"
+    "standalone"
   ],
-  "orientation": "portrait"
+  "orientation": "any",
+  "prefer_related_applications": false
 }
