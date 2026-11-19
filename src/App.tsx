@@ -777,7 +777,7 @@ function App() {
           <button onClick={()=>go('semi')}><img src="/resources/semi-1.jpg" alt="Tesla Semi vehicle preview" loading="lazy"/><span>Tesla Semi <small>35% OFF</small><ArrowUpRight size={14}/></span></button>
         </div>
       </section>
-              <section className="home-investment-strip"><div><div className="eyebrow">{t('investmentEnquiries')}</div><h2>{t('Explore Tesla')}<br/><em>{t('investment information.')}</em></h2><p>{t('Contact Tesla Markets Management directly with your investment questions.')}</p></div><button className="btn btn-light" onClick={() => { sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'})); go('chat'); }}>{t("investNow")} <ArrowUpRight size={16}/></button></section>
+              <section className="home-investment-strip"><div><div className="eyebrow">{t('investmentEnquiries')}</div><h2>{t('Explore Tesla')}<br/><em>{t('investment information.')}</em></h2><p>{t('Contact Tesla Markets Management directly with your investment questions.')}</p></div><button className="btn btn-light" onClick={() => { void requireVerifiedAction({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'}); }}>{t("investNow")} <ArrowUpRight size={16}/></button></section>
     </>
   );
   const How = () => (
