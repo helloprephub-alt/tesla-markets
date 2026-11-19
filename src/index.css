@@ -4068,3 +4068,33 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
 
 /* User-supplied Tesla red/white brand mark in the management sidebar. */
 .admin-brand-lockup{display:block;width:64px;height:64px;max-height:none;object-fit:contain;object-position:left center}
+
+
+/* Explicit mobile header logo visibility and sizing: use the full supplied app-mark asset. */
+.topbar .brand {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  max-width: calc(100% - 88px) !important;
+  overflow: visible !important;
+}
+.topbar .brand-logo {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 50px !important;
+  height: 50px !important;
+  flex: 0 0 50px !important;
+  max-width: none !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+@media (max-width: 380px) {
+  .topbar .brand-logo {
+    width: 46px !important;
+    height: 46px !important;
+    flex-basis: 46px !important;
+  }
+}
