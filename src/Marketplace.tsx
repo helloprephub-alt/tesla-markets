@@ -14,7 +14,7 @@ type CartLine = { id: string; quantity: number; selectedSize?: string };
 type CheckoutDetails = { fullName: string; email: string; phone: string; address: string; city: string; region: string; postalCode: string; country: string };
 type CheckoutIntent = {
   cart: CartLine[];
-  checkoutDetails?: { fullName: string; email: string; phone: string; address: string; city: string; region?: string; postalCode: string; country: string };
+  checkoutDetails?: Partial<CheckoutDetails>;
 };
 const CHECKOUT_INTENT_KEY = 'tesla-markets-checkout-intent';
 const GUEST_CART_KEY = 'tesla-markets-saved-cart';
