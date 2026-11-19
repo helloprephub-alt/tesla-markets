@@ -341,7 +341,6 @@ function App() {
       const hash = location.hash.replace(/^#\/?/, '');
       const savedPage = (() => { try { return localStorage.getItem('tesla-markets-last-page') || ''; } catch { return ''; } })();
       const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : savedPage);
-      const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : '');
       const allowed: Page[] = ['home','how','markets','ai','shop','vehicles','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       return allowed.includes(requested as Page) ? requested as Page : 'home';
     }
