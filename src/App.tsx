@@ -463,6 +463,15 @@ function App() {
     setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+  const requireVerifiedAction = async (intent: { source: string; type: string; context: string; vehicleModel?: string }) => {
+    try { sessionStorage.setItem('tesla-markets-enquiry-intent', JSON.stringify(intent)); } catch {}
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user || !data.user.email_confirmed_at) {
+      go('signup');
+      return;
+    }
+    go('chat');
+  };
   const goParent = (next: Page) => {
     // Parent navigation (vehicle detail -> collection -> home) must not
     // retain stale checkout or gallery entries in the in-app back stack.
@@ -940,9 +949,9 @@ function App() {
       </section>
     </>
   );
-  const Shop = () => <><div className="shop-order-shortcut"><button type="button" onClick={()=>go('orders')}>My orders <ArrowUpRight size={13}/></button><button type="button" className="shop-vehicles-link" onClick={()=>goParent('vehicles')}>Explore vehicles <ArrowUpRight size={13}/></button></div><Marketplace onOrders={()=>go('orders')} onRequireAuth={()=>go('login')} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Marketplace',type:'product',context}));go('chat')}} /></>;
-  const VehicleCollection = () => <VehicleExperience language={detectedLanguage as PublicLanguage} onBack={()=>goParent('home')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
-  const VehicleDetail = () => <VehicleExperience language={detectedLanguage as PublicLanguage} modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('vehicles')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context}));go('chat')}} />;
+  const Shop = () => <><div className="shop-order-shortcut"><button type="button" onClick={()=>go('orders')}>My orders <ArrowUpRight size={13}/></button><button type="button" className="shop-vehicles-link" onClick={()=>goParent('vehicles')}>Explore vehicles <ArrowUpRight size={13}/></button></div><Marketplace onOrders={()=>go('orders')} onRequireAuth={()=>go('signup')} onEnquire={(context)=>{void requireVerifiedAction({source:'Marketplace',type:'product',context});}} /></>;
+  const VehicleCollection = () => <VehicleExperience language={detectedLanguage as PublicLanguage} onBack={()=>goParent('home')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{void requireVerifiedAction({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context});}} />;
+  const VehicleDetail = () => <VehicleExperience language={detectedLanguage as PublicLanguage} modelId={page==='model-y'?'model-y':page==='model-3'?'model-3':page==='cybertruck'?'cybertruck':page==='semi'?'semi':'roadster'} onBack={()=>goParent('vehicles')} onSelectModel={(id)=>go(id as Page)} onEnquire={(context)=>{void requireVerifiedAction({source:'Vehicle page',type:'vehicle',vehicleModel:context.match(/Model 3|Model Y|Cybertruck|Roadster|Semi/i)?.[0]||'Tesla vehicle',context});}} />;
   const Info = ({ kind }: { kind: 'about' | 'contact' | 'faq' }) => (
     <>
       <section className="page-hero compact">
@@ -1112,7 +1121,11 @@ function App() {
                 try { sessionStorage.removeItem('tesla-markets-pending-verification'); } catch {}
                 setVerificationPending(false); setVerificationCode('');
                 setAuthMessage('Your email is verified. Welcome to Tesla Markets.');
-                if (result.data.session) go(sessionStorage.getItem('tesla-markets-checkout-intent') ? 'shop' : 'dashboard');
+                if (result.data.session) {
+                  if (sessionStorage.getItem('tesla-markets-enquiry-intent')) go('chat');
+                  else if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
+                  else go('dashboard');
+                }
               } catch (error) { setAuthError(error instanceof Error ? error.message : 'That code could not be verified. Please try again.'); }
               finally { setAuthBusy(false); }
             }}>
