@@ -551,6 +551,36 @@ export function AdminConsole() {
     finally{setUpdatingShopOrder(null);}
   };
 
+  const updateVehicleEnquiryStatus = async (enquiryId:string,status:string) => {
+    const allowed=['new','contacted','in_progress','closed'];
+    if(!allowed.includes(status))return;
+    setUpdatingEnquiry('vehicle:'+enquiryId);
+    try{
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const {error:updateError}=await supabase.from('vehicle_enquiries').update({status,updated_at:new Date().toISOString()}).eq('id',enquiryId);
+      if(updateError)throw updateError;
+      setVehicleEnquiries(items=>items.map(item=>item.id===enquiryId?{...item,status}:item));
+      setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not update the vehicle enquiry.');}
+    finally{setUpdatingEnquiry(null);}
+  };
+
+  const updateInvestmentEnquiryStatus = async (enquiryId:string,status:string) => {
+    const allowed=['new','under_review','awaiting_response','follow_up_required','referred_for_verification','closed'];
+    if(!allowed.includes(status))return;
+    setUpdatingEnquiry('investment:'+enquiryId);
+    try{
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const {error:updateError}=await supabase.from('investment_enquiries').update({status,updated_at:new Date().toISOString()}).eq('id',enquiryId);
+      if(updateError)throw updateError;
+      setInvestmentEnquiries(items=>items.map(item=>item.id===enquiryId?{...item,status}:item));
+      setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not update the investment enquiry.');}
+    finally{setUpdatingEnquiry(null);}
+  };
+
   const updateOrderStatus = async (orderId:string,status:string) => {
     const allowed=['draft','awaiting_payment','processing','completed','cancelled','refunded'];
     if(!allowed.includes(status))return;
