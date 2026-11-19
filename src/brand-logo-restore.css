@@ -75,3 +75,13 @@
 .admin-console-brand {display:flex;align-items:center;min-width:0;max-width:330px}
 .admin-brand-lockup {display:block !important;width:min(100%,292px) !important;height:auto !important;max-height:64px !important;object-fit:contain !important;object-position:left center !important}
 @media(max-width:760px){.admin-console-brand{min-width:0;max-width:220px}.admin-brand-lockup{width:210px !important;max-height:48px !important}}
+
+/* Align the Markets suffix to the Tesla wordmark's baseline without resizing either. */
+.topbar .brand { align-items:center !important; }
+.topbar .brand-word {
+  align-self:center !important;
+  transform:translateY(5px) !important;
+}
+@media(max-width:760px) {
+  .topbar .brand-word { transform:translateY(4px) !important; }
+}
