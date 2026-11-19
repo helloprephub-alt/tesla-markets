@@ -1,0 +1,51 @@
+/* Restore the original user-supplied Tesla Markets logo lockup.
+   Keep square app icons for PWA, favicon and notification contexts only. */
+.topbar .brand-logo {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 132px !important;
+  height: 56px !important;
+  flex: 0 0 132px !important;
+  max-width: none !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+}
+@media (max-width: 760px) {
+  .topbar .brand-logo {
+    width: 104px !important;
+    height: 44px !important;
+    flex-basis: 104px !important;
+  }
+}
+@media (max-width: 380px) {
+  .topbar .brand-logo {
+    width: 92px !important;
+    height: 40px !important;
+    flex-basis: 92px !important;
+  }
+}
+.admin-console-brand {
+  display: flex;
+  align-items: center;
+  min-width: 220px;
+  max-width: 330px;
+}
+.admin-brand-lockup {
+  display: block !important;
+  width: min(100%, 292px) !important;
+  height: auto !important;
+  max-height: 64px !important;
+  object-fit: contain !important;
+  object-position: left center !important;
+}
+@media (max-width: 760px) {
+  .admin-console-brand {
+    min-width: 0;
+    max-width: 220px;
+  }
+  .admin-brand-lockup {
+    width: 210px !important;
+    max-height: 48px !important;
+  }
+}
