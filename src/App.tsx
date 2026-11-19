@@ -346,26 +346,6 @@ function App() {
     }
   );
 
-  const [adminInstallPrompt, setAdminInstallPrompt] = useState<any>(null);
-  const [adminInstallDismissed, setAdminInstallDismissed] = useState(false);
-  useEffect(() => {
-    const onInstallAvailable = (event: Event) => {
-      event.preventDefault();
-      setAdminInstallPrompt(event);
-      setAdminInstallDismissed(false);
-    };
-    const onInstalled = () => {
-      setAdminInstallPrompt(null);
-      setAdminInstallDismissed(true);
-    };
-    window.addEventListener('beforeinstallprompt', onInstallAvailable as EventListener);
-    window.addEventListener('appinstalled', onInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onInstallAvailable as EventListener);
-      window.removeEventListener('appinstalled', onInstalled);
-    };
-  }, []);
-
   // Keep direct admin links working when Opera or another browser reuses an
   // already-open public-site tab and changes only the URL fragment.
   useEffect(() => { try { localStorage.setItem('tesla-markets-last-page', page); } catch {} }, [page]);
@@ -1443,13 +1423,7 @@ function App() {
   return (
     <div className="app-shell" lang={detectedLanguage} dir={!isAdminOrWorkspace && detectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
       <LanguageDialog/>
-      {page === 'admin' && adminInstallPrompt && !adminInstallDismissed && <div role="dialog" aria-label="Install Tesla Markets Admin" style={{position:'fixed',zIndex:10000,left:'50%',bottom:20,transform:'translateX(-50%)',width:'min(92vw,460px)',background:'#111b22',color:'#fff',border:'1px solid rgba(255,255,255,.16)',borderRadius:16,boxShadow:'0 18px 60px rgba(0,0,0,.38)',padding:18,display:'flex',alignItems:'center',gap:14}}>
-        <img src="/icons/tesla-app-icon-192.png" alt="" width="48" height="48" style={{borderRadius:10,objectFit:'cover'}}/>
-        <div style={{flex:1,minWidth:0}}><strong style={{display:'block',fontSize:15}}>Install Tesla Markets Admin</strong><span style={{display:'block',fontSize:12,color:'#c4cbd0',marginTop:4}}>Install the private management app on this device.</span></div>
-        <button type="button" onClick={async()=>{try{await adminInstallPrompt.prompt();await adminInstallPrompt.userChoice;setAdminInstallPrompt(null);}catch(error){console.error('Admin app install prompt failed',error);}}} style={{border:0,borderRadius:8,padding:'11px 15px',background:'#e82127',color:'#fff',fontWeight:700,whiteSpace:'nowrap'}}>Install app</button>
-        <button type="button" aria-label="Dismiss install prompt" onClick={()=>setAdminInstallDismissed(true)} style={{border:0,background:'transparent',color:'#fff',fontSize:20,padding:4}}>×</button>
-      </div>}
-      {!hideSiteChrome && <Header />}
+            {!hideSiteChrome && <Header />}
       {page !== 'home' && page !== 'shop' && !hasOwnBack && <button type="button" className={'global-page-back '+(hideSiteChrome?'standalone':'')} onClick={goBack} aria-label="Go back to previous page"><ChevronLeft size={16}/><span>Back</span></button>}
       {content}
       {!['chat','admin','signup','login'].includes(page) && <button type="button" className="site-chat-launcher" onClick={()=>go('chat')} aria-label="Open your Tesla Markets conversation" title="Chat with Tesla Markets Management"><MessageCircle size={19}/>{chatUnread>0&&<span className="site-chat-unread">{chatUnread>9?'9+':chatUnread}</span>}</button>}
