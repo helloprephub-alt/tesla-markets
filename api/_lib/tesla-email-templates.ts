@@ -105,7 +105,7 @@ export function renderTeslaEmail(input: EmailTemplateInput) {
       ${rows.map(([label,value]) => `<tr><td style="padding:13px 16px;font-size:13px;line-height:1.4;color:#73777d;border-bottom:1px solid #e6e8eb">${escapeHtml(label)}</td><td align="right" style="padding:13px 16px;font-size:13px;line-height:1.4;font-weight:700;color:#17191c;border-bottom:1px solid #e6e8eb">${escapeHtml(value)}</td></tr>`).join('')}
       ${detail ? `<tr><td colspan="2" style="padding:15px 16px;font-size:13px;line-height:1.65;color:#4d5258">${detail}</td></tr>` : ''}
     </table>` : (detail ? `<div style="margin:24px 0;padding:17px 18px;background:#f7f8fa;border:1px solid #e6e8eb;border-radius:10px;font-size:13px;line-height:1.65;color:#4d5258">${detail}</div>` : '');
-  const logoUrl = process.env.TESLA_MARKETS_LOGO_URL || 'https://raw.githubusercontent.com/helloprephub-alt/tesla-markets/live-production-ready-20261118/public/tesla-markets-logo.jpg';
+  const logoUrl = process.env.TESLA_MARKETS_LOGO_URL || 'https://teslamarketsofficial.com/tesla-markets-logo.jpg';
   const actionUrl = input.actionUrl || 'https://teslamarketsofficial.com';
   const action = input.actionUrl || input.kind === 'welcome' || input.kind === 'getting_started'
     ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0 4px"><tr><td bgcolor="#e82127" style="border-radius:5px"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;padding:15px 25px;color:#ffffff;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.4px;border-radius:5px">${escapeHtml(input.actionLabel || template.action || 'Explore Tesla Markets')} &nbsp; &#8594;</a></td></tr></table>`
