@@ -1277,9 +1277,12 @@ function App() {
               onClick={async () => {
                 setAuthBusy(true); setAuthError(''); setAuthMessage('');
                 try {
-                  const { error } = await supabase.auth.resetPasswordForEmail(form.email.trim().toLowerCase(), { redirectTo: window.location.origin + '/#login' });
+                  const { data, error } = await supabase.functions.invoke('tesla-customer-signup', {
+                    body: { action: 'recovery', email: form.email.trim().toLowerCase() },
+                  });
                   if (error) throw error;
-                  setAuthMessage('If the address is registered, a password recovery email has been sent.');
+                  if (data?.error) throw new Error(String(data.error));
+                  setAuthMessage(data?.message || 'If the address is registered, a secure password reset link has been sent.');
                 } catch (error) {
                   setAuthError(error instanceof Error ? error.message : 'Password recovery could not be started.');
                 } finally { setAuthBusy(false); }
