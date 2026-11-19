@@ -719,7 +719,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
         <div><Truck size={19}/><span><b>Delivery details before payment</b><small>Shipping and taxes are shown before order confirmation</small></span></div>
         <div><CreditCard size={19}/><span><b>Secure checkout design</b><small>Payment is only confirmed after verified settlement</small></span></div>
       </section>
-      <p className="tm-store-marketplace-note">Tesla Markets is an independent marketplace and is not Tesla’s official store or dealer. Product eligibility and resale terms vary by listing.</p>
+
 
       {selected && (
         <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) { setSelected(null); setSelectedGalleryImage(''); } }}>
