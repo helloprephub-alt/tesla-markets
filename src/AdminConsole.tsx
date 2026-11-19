@@ -896,7 +896,7 @@ export function AdminConsole() {
       </div>
       {showInstallCard && <div className="tm-install-overlay" role="presentation">
         <section className="tm-install-dialog" role="dialog" aria-modal="true" aria-labelledby="tm-install-title">
-          <img src="/icons/admin-app-icon.svg" alt="" className="tm-install-icon"/>
+          <img src="/icons/tesla-app-icon-512.png" alt="" className="tm-install-icon"/>
           <div className="tm-install-eyebrow">TESLA MARKETS · PRIVATE MANAGEMENT</div>
           <h2 id="tm-install-title">{isInstalled || installedAppMode ? 'Enable app notifications' : 'Install your management app'}</h2>
           <p>{isInstalled || installedAppMode ? 'Allow notifications to receive new customer messages, vehicle enquiries, orders and important management alerts, even when the app is closed.' : 'Keep your customer inbox, vehicle enquiries, AI management and dashboard together in a dedicated app on this device.'}</p>
