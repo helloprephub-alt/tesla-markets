@@ -517,7 +517,7 @@ function App() {
       onClick={() => go('home')}
       aria-label="Tesla Markets home"
     >
-      <img className="brand-logo" src="/tesla-markets-logo.jpg" alt="Tesla Markets logo" />
+      <img className="brand-logo" src="/icons/tesla-app-icon-512.png" alt="Tesla Markets logo" />
     </button>
   );
   const Header = () => (
