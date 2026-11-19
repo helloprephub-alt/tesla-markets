@@ -893,7 +893,7 @@ function App() {
           <h1>{publicContent.investmentHeading}</h1>
           <p className="investment-description">{publicContent.investmentDescription}</p>
           <div className="investment-info-grid"><article><b>Tesla, Inc.</b><span>NASDAQ: TSLA</span><small>{t('Publicly traded company information')}</small></article><article><b>{t('Direct management contact')}</b><span>{t('Enquiry support')}</span><small>{t('Discuss your questions with management')}</small></article></div>
-          <button className="btn btn-dark investment-cta" onClick={()=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'}));go('chat')}}>{t('INVEST NOW')} <ArrowUpRight size={17}/></button>
+          <button className="btn btn-dark investment-cta" onClick={()=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'}));go('signup')}}>{t('INVEST NOW')} <ArrowUpRight size={17}/></button>
         </div>
       </section>
       <section className="investment-trust-note"><span>{t('Broker connected')}. Contact management to discuss your Tesla investment enquiry and the available next steps.</span></section>
