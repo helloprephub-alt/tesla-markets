@@ -46,9 +46,10 @@ export default async function handler(request: IncomingRequest, response: Server
 
   webpush.setVapidDetails('mailto:oyejideoluwatobi7@gmail.com', publicKey, privateKey);
   const body = (payload.record.body || 'A customer sent a new message.').replace(/\s+/g, ' ').slice(0, 180);
+  const adminUrl = '/admin.html?page=admin&app=tesla-markets-admin';
   const fallbackUrl = payload.record.conversation_id
-    ? `/#admin?conversation=${encodeURIComponent(payload.record.conversation_id)}`
-    : '/admin.html?page=admin&app=tesla-markets-admin';
+    ? adminUrl + '#admin?conversation=' + encodeURIComponent(payload.record.conversation_id)
+    : adminUrl;
   const requestedUrl = typeof payload.record.url === 'string' ? payload.record.url : '';
   const notificationUrl = requestedUrl.startsWith('/') && !requestedUrl.startsWith('//') ? requestedUrl : fallbackUrl;
   const message = JSON.stringify({
