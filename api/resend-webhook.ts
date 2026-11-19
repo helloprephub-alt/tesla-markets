@@ -43,7 +43,7 @@ export default async function handler(req: Request, res: ServerResponse) {
 
   const signingSecret = process.env.RESEND_WEBHOOK_SECRET || '';
   const workerSecret = process.env.TESLA_EMAIL_WORKER_SECRET || '';
-  const supabaseUrl = (process.env.VITE_SUPABASE_URL || '').replace(/\\/+$/, '');
+  const supabaseUrl = (process.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
   if (!signingSecret || !workerSecret || !supabaseUrl || !supabaseAnonKey) {
     return respond(res, 503, { error: 'Webhook forwarding is not configured.' });
