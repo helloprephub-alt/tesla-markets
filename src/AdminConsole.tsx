@@ -152,7 +152,7 @@ export function AdminConsole() {
     };
     window.addEventListener('beforeinstallprompt', onInstallPrompt);
     window.addEventListener('appinstalled', onInstalled);
-    if ('serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(() => setNotificationStatus('App worker could not be registered. Refresh and try again.'));
+    if ('serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js').catch(() => setNotificationStatus('App worker could not be registered. Refresh and try again.'));
     return () => { window.removeEventListener('beforeinstallprompt', onInstallPrompt); window.removeEventListener('appinstalled', onInstalled); };
   }, []);
 
@@ -246,7 +246,7 @@ export function AdminConsole() {
       setShowInstallCard(false);
       localStorage.setItem('tesla-admin-notifications-dismissed','true');
       setNotificationStatus('Notifications are enabled for this app. You can turn them off here at any time.');
-      await registration.showNotification('Tesla Markets Management',{body:'Customer message alerts are enabled on this app.',icon:'/tesla-markets-logo.jpg',badge:'/tesla-markets-logo.jpg',tag:'tesla-admin-notifications-enabled'});
+      await registration.showNotification('Tesla Markets Management',{body:'Customer message alerts are enabled on this app.',icon:'/tesla-markets-brand.webp',badge:'/tesla-markets-brand.webp',tag:'tesla-admin-notifications-enabled'});
     } catch(e) { setPushSubscribed(false); setNotificationStatus(e instanceof Error?e.message:'Could not enable notifications.'); }
     finally { setPushBusy(false); }
   };
@@ -760,7 +760,7 @@ export function AdminConsole() {
       </div>}
       <header className="admin-topbar">
         <button className="admin-mobile-menu" onClick={()=>setMobileNavOpen(v=>!v)} aria-label={mobileNavOpen?'Close navigation':'Open navigation'}>{mobileNavOpen?<X size={20}/>:<Menu size={20}/>}</button>
-        <div className="admin-console-brand"><img className="admin-brand-lockup" src="/tesla-markets-logo.jpg" alt="Tesla Markets logo"/></div>
+        <div className="admin-console-brand"><img className="admin-brand-lockup" src="/tesla-markets-brand.webp" alt="Tesla Markets logo"/></div>
         <div className="admin-topbar-right"><button className="icon-btn admin-theme-toggle" onClick={toggleAdminTheme} aria-label={'Theme: '+adminTheme+'. Tap to change.'} title={'Theme: '+adminTheme+' · tap to cycle'}>{adminTheme==='light'?<Sun size={16}/>:adminTheme==='dark'?<Moon size={16}/>:<Monitor size={16}/>}</button><button className="icon-btn admin-view-toggle" onClick={toggleDesktopView} aria-label={desktopView?'Use phone layout':'Use desktop layout'} title={desktopView?'Use phone layout':'Use desktop layout'}>{desktopView?<Smartphone size={16}/>:<Monitor size={16}/>}</button><span className="admin-secure-label"><ShieldCheck size={14}/> Secure workspace</span><span className="admin-live-dot"/><span className="admin-topbar-email">{user.email}</span><button className="icon-btn" onClick={()=>void load()} aria-label="Refresh management data" disabled={refreshing}><RefreshCw size={16}/></button><button className="icon-btn" onClick={()=>supabase.auth.signOut().then(()=>setUser(null))} aria-label="Sign out"><LogOut size={16}/></button></div>
       </header>
       <div className="admin-shell">

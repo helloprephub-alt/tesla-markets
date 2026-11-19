@@ -44,9 +44,9 @@ export default async function handler(req: Request, res: ServerResponse) {
 
   const url = process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const apiKey = process.env.RESEND_API_KEY;
-  const senderEmail = process.env.TESLA_MARKETS_EMAIL_FROM || 'support@teslamarketsofficial.com';
-  if (!url || !serviceKey || !apiKey) return send(503, { error: 'Email worker configuration is incomplete.' });
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL;
+  if (!url || !serviceKey || !apiKey || !senderEmail) return send(503, { error: 'Email worker configuration is incomplete.' });
 
   const db = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: rows, error } = await db.from('email_notification_outbox')
@@ -92,26 +92,25 @@ export default async function handler(req: Request, res: ServerResponse) {
         detail: detailParts.join(' | '),
         actionUrl: process.env.TESLA_MARKETS_SITE_URL || 'https://teslamarketsofficial.com'
       });
-      const response = await fetch('https://api.resend.com/emails', {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
-        headers: { accept: 'application/json', authorization: `Bearer ${apiKey}`, 'content-type': 'application/json', 'Idempotency-Key': `tesla-${row.event_key}` },
+        headers: { accept: 'application/json', 'api-key': apiKey, 'content-type': 'application/json' },
         body: JSON.stringify({
-          from: `${process.env.TESLA_MARKETS_EMAIL_SENDER_NAME || 'Tesla Markets'} <${senderEmail}>`,
-          to: [row.recipient_email],
-          subject: message.subject, text: message.text, html: message.html,
-          tags: [{ name: 'category', value: row.category === 'marketing' ? 'marketing' : 'transactional' }, { name: 'event', value: row.event_type.slice(0, 50) }],
+          sender: { name: process.env.BREVO_SENDER_NAME || 'Tesla', email: senderEmail },
+          to: [{ email: row.recipient_email, name: row.recipient_name || undefined }],
+          subject: message.subject, textContent: message.text, htmlContent: message.html,
           headers: { 'X-Tesla-Event-Key': row.event_key }
         })
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(safeString(result.message || result.name, 'Resend rejected email (' + response.status + ')'));
+      if (!response.ok) throw new Error(safeString(result.message, 'Brevo rejected email (' + response.status + ')'));
       await db.from('email_notification_outbox').update({
-        status: 'sent', provider_message_id: result.id || null,
+        status: 'sent', provider_message_id: result.messageId || null,
         sent_at: new Date().toISOString(), last_error: null, updated_at: new Date().toISOString()
       }).eq('id', row.id);
       await db.from('email_notification_events').insert({
         outbox_id: row.id, provider_event_id: result.messageId || null,
-        event_type: 'sent', event_data: { provider: 'resend' }
+        event_type: 'sent', event_data: { provider: 'brevo' }
       });
       sent++;
     } catch (e) {
