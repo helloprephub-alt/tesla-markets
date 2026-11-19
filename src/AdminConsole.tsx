@@ -323,7 +323,7 @@ export function AdminConsole() {
   const load = async () => {
     setRefreshing(true);
     try {
-      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, customerProfileRows, vehicleEnquiryRows, investmentEnquiryRows, orderRows, paymentRows, storeOrderRows, storeProofRows, taskRows, noticeRows, auditRows] = await Promise.all([
+      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, customerProfileRows, vehicleEnquiryRows, investmentEnquiryRows, vehicleCatalogRows, orderRows, paymentRows, storeOrderRows, storeProofRows, taskRows, noticeRows, auditRows] = await Promise.all([
         supabase.from('site_visits').select('id', { count:'exact', head:true }),
         supabase.from('site_clicks').select('id', { count:'exact', head:true }),
         supabase.from('support_conversations').select('id', { count:'exact', head:true }),
@@ -335,6 +335,7 @@ export function AdminConsole() {
         supabase.from('customer_profiles').select('id,display_name,email,phone,crm_stage,created_at,is_admin').order('created_at',{ascending:false}).limit(500),
         supabase.from('vehicle_enquiries').select('id,customer_id,vehicle_model,configuration,customer_note,status,created_at,updated_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('investment_enquiries').select('id,customer_id,opportunity,category,customer_question,status,created_at,updated_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('vehicle_catalog').select('id,name,model,slug,price_usd,availability,is_published,verification_status,source_type,source_url,last_verified_at,images').order('name'),
         supabase.from('business_orders').select('id,order_reference,item_description,status,agreed_amount,currency,customer_id,conversation_id,payment_url,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,method,provider_reference,status,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_region,delivery_postal_code,delivery_country,delivery_carrier,tracking_number,tracking_url,items,subtotal,discount_total,currency,status,created_at').order('created_at',{ascending:false}).limit(200),
@@ -343,7 +344,7 @@ export function AdminConsole() {
         supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('admin_audit_logs').select('id,action,entity_type,entity_id,details,created_at').order('created_at',{ascending:false}).limit(100),
       ]);
-      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,customerProfileRows,vehicleEnquiryRows,investmentEnquiryRows,orderRows,paymentRows,storeOrderRows,storeProofRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
+      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,customerProfileRows,vehicleEnquiryRows,investmentEnquiryRows,vehicleCatalogRows,orderRows,paymentRows,storeOrderRows,storeProofRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
       const profiles=customerProfileRows.data||[];
       const names=new Map(profiles.map(profile=>[profile.id,profile]));
@@ -351,6 +352,7 @@ export function AdminConsole() {
       setRegisteredCustomerCount(customerCount.count??profiles.filter(profile=>!profile.is_admin).length);
       setVehicleEnquiries((vehicleEnquiryRows.data||[]).map(row=>{const profile=names.get(row.customer_id);const delivery=row.configuration?.delivery||{};return {id:row.id,customer_id:row.customer_id,vehicle_model:row.vehicle_model,configuration:row.configuration||{},customer_note:row.customer_note||'',status:row.status||'new',created_at:row.created_at,customerName:profile?.display_name||delivery.full_name||'Customer',customerEmail:profile?.email||delivery.email||'',customerPhone:profile?.phone||delivery.phone||''};}));
       setInvestmentEnquiries((investmentEnquiryRows.data||[]).map(row=>{const profile=names.get(row.customer_id);return {id:row.id,customer_id:row.customer_id,opportunity:row.opportunity||'Investment information',category:row.category||'public_market_information',customer_question:row.customer_question||'',status:row.status||'new',created_at:row.created_at,customerName:profile?.display_name||'Customer',customerEmail:profile?.email||''};}));
+      setVehicleCatalog((vehicleCatalogRows.data||[]).map(row=>({id:row.id,name:row.name,model:row.model,slug:row.slug,price_usd:String(row.price_usd||''),availability:row.availability||'coming_soon',is_published:!!row.is_published,verification_status:row.verification_status||'unverified',source_type:row.source_type||null,source_url:row.source_url||null,last_verified_at:row.last_verified_at||null,images:Array.isArray(row.images)?row.images:[]})));
       const mapped=await Promise.all(rows.map(async row=>{
         const {data:last,error:lastError}=await supabase.from('support_messages').select('body,created_at').eq('conversation_id',row.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
         if(lastError) throw lastError;
