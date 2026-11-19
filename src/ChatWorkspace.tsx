@@ -122,8 +122,8 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
   const [problem,setProblem] = useState('');
   const [images,setImages] = useState<File[]>([]);
   const [attachOpen,setAttachOpen] = useState(false);
-  const [context] = useState(()=>{try{return JSON.parse(sessionStorage.getItem('tesla-markets-enquiry-intent')||'null')?.context||sessionStorage.getItem('tesla-markets-chat-context')||'';}catch{return sessionStorage.getItem('tesla-markets-chat-context')||'';}});
-  const [intent] = useState<any>(()=>{try{return JSON.parse(sessionStorage.getItem('tesla-markets-enquiry-intent')||'null');}catch{return null;}});
+  const [context] = useState(()=>{try{return JSON.parse(localStorage.getItem('tesla-markets-enquiry-intent')||sessionStorage.getItem('tesla-markets-enquiry-intent')||'null')?.context||localStorage.getItem('tesla-markets-chat-context')||sessionStorage.getItem('tesla-markets-chat-context')||'';}catch{return localStorage.getItem('tesla-markets-chat-context')||sessionStorage.getItem('tesla-markets-chat-context')||'';}});
+  const [intent] = useState<any>(()=>{try{return JSON.parse(localStorage.getItem('tesla-markets-enquiry-intent')||sessionStorage.getItem('tesla-markets-enquiry-intent')||'null');}catch{return null;}});
   const [customerDetails,setCustomerDetails] = useState<{name:string;email:string;phone:string}>(()=>{try{return JSON.parse(localStorage.getItem('tesla-markets-customer-details')||'null')||JSON.parse(sessionStorage.getItem('tesla-markets-customer-details')||'null')||{name:'',email:'',phone:''};}catch{return {name:'',email:'',phone:''};}});
   const [vehicleCheckout,setVehicleCheckout]=useState<VehicleCheckoutDraft|null>(null);
   const [vehicleCheckoutForm,setVehicleCheckoutForm]=useState<VehicleCheckoutForm>(emptyVehicleCheckoutForm);
@@ -153,7 +153,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
         if(id){ const {data,error}=await supabase.from('support_conversations').select('id').eq('id',id).eq('customer_id',user.id).maybeSingle(); if(error)throw error; if(!data)id=''; }
         if(intent && customerDetails.name){id='';localStorage.removeItem('tesla-markets-enquiry-id');}
         if(!id){ const {data,error}=await supabase.from('support_conversations').insert({customer_id:user.id,subject:context.slice(0,160)||'Website enquiry',status:'open',visitor_email:customerDetails.email||null,contact_phone:customerDetails.phone||null,enquiry_type:intent?.type==='vehicle'?enquiryKind:(intent?.type||'general'),enquiry_source:intent?.source||'Website chat',vehicle_model:intent?.vehicleModel||null}).select('id').single(); if(error)throw error; id=data.id; localStorage.setItem('tesla-markets-enquiry-id',id); if(intent?.type==='vehicle'&&context){const {data:initial,error:initialError}=await supabase.from('support_messages').insert({conversation_id:id,sender_id:user.id,sender_role:'customer',body:'Vehicle enquiry details: '+context}).select('id').single();if(initialError)throw initialError; } }
-        if(intent)sessionStorage.removeItem('tesla-markets-enquiry-intent');
+        if(intent){localStorage.removeItem('tesla-markets-enquiry-intent');sessionStorage.removeItem('tesla-markets-enquiry-intent');}
         if(active)setThreadId(id);
       } catch(e){if(active)setProblem(errorText(e));}
       finally{if(active)setBooting(false);}
