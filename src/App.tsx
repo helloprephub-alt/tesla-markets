@@ -395,7 +395,7 @@ function App() {
         setPage('login');
         location.hash = 'login';
       } else if (event === 'SIGNED_IN' && location.hash === '#oauth-callback') {
-        const next: Page = sessionStorage.getItem('tesla-markets-enquiry-intent') ? 'chat'
+        const next: Page = localStorage.getItem('tesla-markets-enquiry-intent') ? 'chat'
           : sessionStorage.getItem('tesla-markets-checkout-intent') ? 'shop' : 'dashboard';
         setPage(next);
         location.hash = next;
@@ -470,7 +470,7 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const requireVerifiedAction = async (intent: { source: string; type: string; context: string; vehicleModel?: string }) => {
-    try { sessionStorage.setItem('tesla-markets-enquiry-intent', JSON.stringify(intent)); } catch {}
+    try { localStorage.setItem('tesla-markets-enquiry-intent', JSON.stringify(intent)); } catch {}
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user || !data.user.email_confirmed_at) {
       go('signup');
@@ -894,7 +894,7 @@ function App() {
           <h1>{publicContent.investmentHeading}</h1>
           <p className="investment-description">{publicContent.investmentDescription}</p>
           <div className="investment-info-grid"><article><b>Tesla, Inc.</b><span>NASDAQ: TSLA</span><small>{t('Publicly traded company information')}</small></article><article><b>{t('Direct management contact')}</b><span>{t('Enquiry support')}</span><small>{t('Discuss your questions with management')}</small></article></div>
-          <button className="btn btn-dark investment-cta" onClick={()=>{sessionStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'}));go('signup')}}>{t('INVEST NOW')} <ArrowUpRight size={17}/></button>
+          <button className="btn btn-dark investment-cta" onClick={()=>{localStorage.setItem('tesla-markets-enquiry-intent',JSON.stringify({source:'Invest Now',type:'investment',context:'Tesla investment enquiry — I would like to speak directly with Tesla Markets Management.'}));go('signup')}}>{t('INVEST NOW')} <ArrowUpRight size={17}/></button>
         </div>
       </section>
       <section className="investment-trust-note"><span>{t('Broker connected')}. Contact management to discuss your Tesla investment enquiry and the available next steps.</span></section>
@@ -1163,7 +1163,7 @@ function App() {
                   setPasswordRecovery(false);
                   setAuthMessage('Your password has been updated. Sign in with your new password.');
                 } else if (signup) {
-                  const redirectPage = sessionStorage.getItem('tesla-markets-enquiry-intent')
+                  const redirectPage = localStorage.getItem('tesla-markets-enquiry-intent')
                     ? 'chat'
                     : sessionStorage.getItem('tesla-markets-checkout-intent')
                       ? 'shop'
