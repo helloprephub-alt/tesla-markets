@@ -339,8 +339,9 @@ function App() {
     () => {
       const route = new URLSearchParams(location.search).get('page');
       const hash = location.hash.replace(/^#\/?/, '');
-      const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : '');
       const savedPage = (() => { try { return localStorage.getItem('tesla-markets-last-page') || ''; } catch { return ''; } })();
+      const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : savedPage);
+      const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : '');
       const allowed: Page[] = ['home','how','markets','ai','shop','vehicles','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       return allowed.includes(requested as Page) ? requested as Page : 'home';
     }
@@ -348,7 +349,6 @@ function App() {
 
   // Keep direct admin links working when Opera or another browser reuses an
   // already-open public-site tab and changes only the URL fragment.
-  useEffect(() => {
   useEffect(() => { try { localStorage.setItem('tesla-markets-last-page', page); } catch {} }, [page]);
 
   useEffect(() => {
@@ -361,6 +361,8 @@ function App() {
     const frame = window.requestAnimationFrame(() => { window.scrollTo(0, saved); restoring = false; });
     return () => { save(); window.cancelAnimationFrame(frame); window.removeEventListener('scroll', onScroll); };
   }, [page]);
+
+  useEffect(() => {
     const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (manifest) manifest.href = page === 'admin' ? '/admin-manifest.webmanifest' : '/manifest.webmanifest';
     document.title = page === 'admin' ? 'Tesla Markets Admin | Private Management' : page === 'shop' ? 'Tesla Markets | Shop' : 'Tesla Markets';
