@@ -17,8 +17,8 @@
   height: 42px !important;
   flex: 0 0 174px !important;
   max-width: none !important;
-  object-fit: fill !important;
-  object-position: center !important;
+  object-fit: cover !important;
+  object-position: center center !important;
 }
 @media (max-width: 760px) {
   .topbar .brand-logo {
