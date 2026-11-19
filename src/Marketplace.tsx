@@ -215,7 +215,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [checkoutReference, setCheckoutReference] = useState('');
   const [checkoutAction, setCheckoutAction] = useState<'pay' | 'save'>('pay');
-  const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'visa_gift_card' | 'google_play_gift_card' | 'razor_gold_gift_card' | ''>('');
+  const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'google_play_gift_card' | 'razor_gold_gift_card' | ''>('');
   const [paymentProofFiles, setPaymentProofFiles] = useState<File[]>([]);
   const [paymentProofPreviews, setPaymentProofPreviews] = useState<Array<{name:string;url:string}>>([]);
   const [paymentProofError, setPaymentProofError] = useState('');
@@ -851,9 +851,6 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'amazon_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('amazon_gift_card')}>
                     <span className="tm-store-method-logo amazon"><span className="tm-store-amazon-wordmark" role="img" aria-label="Amazon">amazon</span></span><b>Amazon Gift Card</b><small>Amazon</small>
-                  </button>
-                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'visa_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('visa_gift_card')}>
-                    <span className="tm-store-method-logo visa"><img src="https://cdn.simpleicons.org/visa/1A1F71" alt="Visa logo"/></span><b>Visa Gift Card</b><small>Visa</small>
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'google_play_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('google_play_gift_card')}>
                     <span className="tm-store-method-logo google"><img src="https://cdn.simpleicons.org/googleplay/414141" alt="Google Play logo"/></span><b>Google Play Gift Card</b><small>Google Play</small>
