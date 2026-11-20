@@ -29,6 +29,15 @@ assert.match(aiSource, /type: "payment_evidence_submitted"/, 'Payment evidence m
 assert.match(aiSource, /type: "ai_responder_failure"/, 'AI failures must create an admin notification.');
 assert.match(aiSource, /message_type: "ai_fallback"/, 'AI failures must provide a safe customer fallback when possible.');
 assert.match(aiSource, /gift-card PINs or redemption codes/, 'The responder must not request gift-card redemption secrets.');
+assert.match(aiSource, /from\("business_orders"\)\.insert\(\{/, 'A genuine vehicle order must be persisted before payment instructions are issued.');
+assert.match(aiSource, /order_reference: orderReference/, 'Vehicle orders must receive a unique order reference.');
+assert.match(aiSource, /vehicle_enquiry_id: vehicleEnquiry\.id/, 'Vehicle orders must remain linked to the originating customer enquiry.');
+const evidenceGuardIndex = aiSource.indexOf('const hasPendingPaymentEvidence = Boolean(');
+const pauseGuardIndex = aiSource.indexOf('if (conversation.status === "closed" || (conversation.responder_paused && !hasPendingPaymentEvidence))');
+const evidenceHandlerIndex = aiSource.indexOf('if (customerMessage.attachment_path && savedPaymentLockAtMessage');
+assert.ok(evidenceGuardIndex >= 0 && pauseGuardIndex > evidenceGuardIndex && evidenceHandlerIndex > pauseGuardIndex, 'Order-linked payment evidence must still be processed during human takeover while automated replies remain paused.');
+assert.match(chatSource, /AI OFF · Resume AI/, 'Management must be able to explicitly resume the AI after human takeover.');
+assert.match(chatSource, /message_type:'payment_account_card'/, 'Verified payment instructions must be delivered as a structured customer message.');
 
 assert.match(adminSource, /Enable \{method\} for customer checkout/, 'Admin settings must expose independent method toggles.');
 assert.match(adminSource, /details\.enabled===true&&!hasRecipient/, 'Admin settings must reject enabling a method without recipient details.');
