@@ -482,6 +482,12 @@ function App() {
   const [verificationPurpose, setVerificationPurpose] = useState<'signup' | 'recovery'>('signup');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setTimeout(() => setResendCooldown(value => Math.max(0, value - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
   const [tab, setTab] = useState('Overview');
@@ -1191,7 +1197,10 @@ function App() {
                     else go('dashboard');
                   }
                 }
-              } catch (error) { setAuthError(error instanceof Error ? error.message : 'That code could not be verified. Please try again.'); }
+              } catch (error) {
+                const message = error instanceof Error ? error.message.toLowerCase() : '';
+                setAuthError(message.includes('expired') ? 'This verification code has expired. Please request a new code.' : 'That verification code is incorrect. Please check your email and try again.');
+              }
               finally { setAuthBusy(false); }
             }}>
               <div className="eyebrow dark">{verificationPurpose === 'recovery' ? 'PASSWORD RECOVERY' : 'EMAIL VERIFICATION'}</div>
@@ -1201,7 +1210,7 @@ function App() {
               {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
               {authMessage && <p className="auth-feedback success" role="status">{authMessage}</p>}
               <button className="btn btn-red full" disabled={authBusy || verificationCode.length!==6}>{authBusy ? 'Verifying…' : 'Verify email'} <ArrowUpRight size={16}/></button>
-              <button type="button" className="forgot" disabled={authBusy} onClick={async()=>{setAuthBusy(true);setAuthError('');setAuthMessage('');try{if(verificationPurpose==='recovery'){const {data,error}=await supabase.functions.invoke('tesla-customer-signup',{body:{action:'recovery',email:pendingVerificationEmail}});if(error)throw error;if(data?.error)throw new Error(String(data.error));}else{const {error}=await supabase.auth.resend({type:'signup',email:pendingVerificationEmail});if(error)throw error;}setAuthMessage('If the address can receive a code, a new verification email has been requested. Check Inbox, Spam and Promotions.');}catch(error){setAuthError(error instanceof Error?error.message:'Could not resend the code. Please try again shortly.');}finally{setAuthBusy(false);}}}>Resend verification code</button>
+              <button type="button" className="forgot" disabled={authBusy || resendCooldown > 0} onClick={async()=>{setAuthBusy(true);setAuthError('');setAuthMessage('');try{if(verificationPurpose==='recovery'){const {data,error}=await supabase.functions.invoke('tesla-customer-signup',{body:{action:'recovery',email:pendingVerificationEmail}});if(error)throw error;if(data?.error)throw new Error(String(data.error));}else{const {error}=await supabase.auth.resend({type:'signup',email:pendingVerificationEmail});if(error)throw error;}setResendCooldown(30);setAuthMessage('If the address can receive a code, a new verification email has been requested. Check Inbox, Spam and Promotions.');}catch(error){setAuthError(error instanceof Error?error.message:'Could not resend the code. Please try again shortly.');}finally{setAuthBusy(false);}}}>{resendCooldown > 0 ? 'Resend code in ' + resendCooldown + 's' : 'Resend verification code'}</button>
               <button type="button" className="forgot" onClick={()=>{setVerificationPending(false);setVerificationCode('');try{sessionStorage.removeItem('tesla-markets-pending-verification');}catch{}setAuthError('');setAuthMessage('');}}>Use a different email address</button>
             </form>
           ) : (
@@ -1241,6 +1250,7 @@ function App() {
                   setPendingVerificationEmail(form.email.trim().toLowerCase());
                   setVerificationPurpose('signup');
                   setVerificationPending(true);
+                  setResendCooldown(30);
                   setVerificationCode('');
                   try { sessionStorage.setItem('tesla-markets-pending-verification', JSON.stringify({email:form.email.trim().toLowerCase(),purpose:'signup'})); } catch {}
                   setAuthMessage(data?.message || 'A six-digit verification code has been sent. Enter it below to activate your account.');
@@ -1254,7 +1264,15 @@ function App() {
                   else go('dashboard');
                 }
               } catch (error) {
-                setAuthError(error instanceof Error ? error.message : 'We could not complete that account request. Please try again.');
+                const authCode = error && typeof error === 'object' && 'code' in error ? String((error as {code?:unknown}).code) : '';
+                if (authCode === 'email_not_confirmed') {
+                  setPendingVerificationEmail(form.email.trim().toLowerCase());
+                  setVerificationPurpose('signup');
+                  setVerificationPending(true);
+                  setAuthError('Please verify your email address before continuing. Request a new code below if needed.');
+                } else {
+                  setAuthError(error instanceof Error ? error.message : 'We could not complete that account request. Please try again.');
+                }
               } finally { setAuthBusy(false); }
             }}
           >
@@ -1331,6 +1349,7 @@ function App() {
                   setPendingVerificationEmail(form.email.trim().toLowerCase());
                   setVerificationPurpose('recovery');
                   setVerificationPending(true);
+                  setResendCooldown(30);
                   setVerificationCode('');
                   try { sessionStorage.setItem('tesla-markets-pending-verification', JSON.stringify({email:form.email.trim().toLowerCase(),purpose:'recovery'})); } catch {}
                   setAuthMessage('If this address is registered, a six-digit password recovery code has been sent.');
