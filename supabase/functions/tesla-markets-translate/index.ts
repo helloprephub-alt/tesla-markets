@@ -42,10 +42,10 @@ async function sha256(value: string) {
 }
 
 function protectTokens(source: string) {
-  const pattern = /https?:\/\/[^\s<>"']+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\{\{?[\w.:-]+\}?\}|\b[A-Z]{2,10}-\d{3,}(?:-[A-Z0-9]+)*\b/gi;
+  const pattern = /https?:\/\/[^\s<>"']+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\{\{?[\w.:-]+\}?\}|\b[A-Z]{2,10}-\d{3,}(?:-[A-Z0-9]+)*\b|\b(?:Tesla Markets|Tesla Semi|Solar Roof|Supercharger|Cybertruck|Roadster|Powerwall|Megapack|Optimus|SpaceX|NASDAQ|TSLA|Tesla|Model\s*[3YSX])\b|(?:\$|USD\s*|EUR\s*|GBP\s*|NGN\s*|₦|€|£)\s*\d[\d,]*(?:\.\d{1,2})?|\b\d[\d,]*(?:\.\d+)?\s?(?:%|km\/h|mph|kWh|kW|mi|miles|km|mm|cm|m|kg|lbs?|sec(?:onds)?|hours?|years?)\b|\b\d[\d,]*(?:\.\d+)?\b/gi;
   const tokens: string[] = [];
   const protectedText = source.replace(pattern, (match) => {
-    if (tokens.length >= 2) return match;
+    if (tokens.length >= 20) return match;
     const marker = "ZXQTMX" + tokens.length + "XQZ";
     tokens.push(match);
     return marker;
