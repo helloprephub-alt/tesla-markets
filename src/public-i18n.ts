@@ -3,6 +3,50 @@ export const supportedPublicLanguages = [
   ['pt','Português'],['ar','العربية'],['zh','中文（简体）'],['ja','日本語'],
   ['ko','한국어'],['it','Italiano'],['nl','Nederlands'],['ru','Русский'],
   ['hi','हिन्दी'],['tr','Türkçe'],['sw','Kiswahili'],
+  ['af','Afrikaans'],
+  ['sq','Shqip'],
+  ['hy','Հայերեն'],
+  ['az','Azərbaycan dili'],
+  ['eu','Euskara'],
+  ['be','Беларуская'],
+  ['bn','বাংলা'],
+  ['bs','Bosanski'],
+  ['bg','Български'],
+  ['ca','Català'],
+  ['hr','Hrvatski'],
+  ['cs','Čeština'],
+  ['da','Dansk'],
+  ['et','Eesti'],
+  ['fi','Suomi'],
+  ['gl','Galego'],
+  ['el','Ελληνικά'],
+  ['hu','Magyar'],
+  ['is','Íslenska'],
+  ['id','Bahasa Indonesia'],
+  ['ga','Gaeilge'],
+  ['he','עברית'],
+  ['kk','Қазақша'],
+  ['lv','Latviešu'],
+  ['lt','Lietuvių'],
+  ['mk','Македонски'],
+  ['ms','Bahasa Melayu'],
+  ['mt','Malti'],
+  ['mr','मराठी'],
+  ['ne','नेपाली'],
+  ['no','Norsk'],
+  ['fa','فارسی'],
+  ['pl','Polski'],
+  ['ro','Română'],
+  ['sr','Српски'],
+  ['sk','Slovenčina'],
+  ['sl','Slovenščina'],
+  ['sv','Svenska'],
+  ['ta','தமிழ்'],
+  ['te','తెలుగు'],
+  ['th','ไทย'],
+  ['uk','Українська'],
+  ['ur','اردو'],
+  ['vi','Tiếng Việt'],
 ] as const;
 export type PublicLanguage = typeof supportedPublicLanguages[number][0];
 const translations: Record<string, Record<string,string>> = {
@@ -326,4 +370,59 @@ zh: {'Cash':'现金','Lease':'租赁','Finance':'融资','Range':'续航里程',
 ja: {'Cash':'現金','Lease':'リース','Finance':'ファイナンス','Range':'航続距離','Performance':'性能','Drivetrain':'駆動方式','From ':'価格 ','Invite only':'招待制','Electric sedan':'電動セダン','Electric SUV':'電動SUV','View gallery & details':'ギャラリーと詳細を見る','All vehicles':'すべての車両','Order now / Enquire':'注文 / お問い合わせ','INVEST NOW':'今すぐ投資','Broker connected':'ブローカー接続済み'},
 ko: {'Cash':'현금','Lease':'리스','Finance':'금융','Range':'주행 가능 거리','Performance':'성능','Drivetrain':'구동 방식','From ':'시작가 ','Invite only':'초대 전용','Electric sedan':'전기 세단','Electric SUV':'전기 SUV','View gallery & details':'갤러리 및 상세 정보 보기','All vehicles':'전체 차량','Order now / Enquire':'주문 / 문의','INVEST NOW':'지금 투자하기','Broker connected':'브로커 연결됨'}
 };
-export function publicText(value: string, language: PublicLanguage): string { return language === 'en' ? value : translations[language]?.[value] ?? extendedTranslations[language]?.[value] ?? value; }
+const runtimeTranslations = new Map<PublicLanguage, Map<string, string>>();
+const languageStorageKey = 'tesla-markets-language';
+const runtimeStoragePrefix = 'tesla-markets-translations:';
+
+export function normalizePublicLanguage(candidate: string | null | undefined): PublicLanguage | null {
+  if (!candidate) return null;
+  const code = candidate.trim().replace(/_/g, '-').toLowerCase().split('-')[0];
+  return (supportedPublicLanguages.find(([supported]) => supported === code)?.[0] as PublicLanguage | undefined) ?? null;
+}
+
+export function getSavedPublicLanguage(): PublicLanguage | null {
+  if (typeof window === 'undefined') return null;
+  try { return normalizePublicLanguage(window.localStorage.getItem(languageStorageKey)); } catch { return null; }
+}
+
+export function getInitialPublicLanguage(): PublicLanguage {
+  const saved = getSavedPublicLanguage();
+  if (saved) return saved;
+  if (typeof navigator !== 'undefined') {
+    for (const candidate of [...(navigator.languages || []), navigator.language || '']) {
+      const detected = normalizePublicLanguage(candidate);
+      if (detected) return detected;
+    }
+  }
+  return 'en';
+}
+
+export function savePublicLanguage(language: PublicLanguage): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(languageStorageKey, language); } catch { /* Keep session preference. */ }
+}
+
+export function restorePublicTranslations(language: PublicLanguage): void {
+  if (typeof window === 'undefined' || runtimeTranslations.has(language)) return;
+  try {
+    const rows = JSON.parse(window.localStorage.getItem(runtimeStoragePrefix + language) || '[]');
+    if (Array.isArray(rows)) runtimeTranslations.set(language, new Map(rows.filter((row) => Array.isArray(row) && typeof row[0] === 'string' && typeof row[1] === 'string')));
+  } catch { /* Ignore a damaged local translation cache. */ }
+}
+
+export function setPublicTranslations(language: PublicLanguage, entries: Array<{ source: string; translated: string }>): void {
+  const cache = runtimeTranslations.get(language) || new Map<string, string>();
+  for (const entry of entries) if (entry.source && entry.translated) cache.set(entry.source, entry.translated);
+  runtimeTranslations.set(language, cache);
+  if (typeof window !== 'undefined') {
+    try { window.localStorage.setItem(runtimeStoragePrefix + language, JSON.stringify([...cache.entries()])); } catch { /* In-memory cache remains available. */ }
+  }
+}
+
+export function getCachedPublicTranslation(language: PublicLanguage, source: string): string | null {
+  return runtimeTranslations.get(language)?.get(source) || null;
+}
+
+export function publicText(value: string, language: PublicLanguage): string {
+  return language === 'en' ? value : translations[language]?.[value] ?? extendedTranslations[language]?.[value] ?? runtimeTranslations.get(language)?.get(value) ?? value;
+}
