@@ -169,7 +169,7 @@ Deno.serve(async (req: Request) => {
     let generated = new Map<string, string>();
 
     if (missing.length) {
-      const supportedM2M100 = new Set(["af","sq","hy","az","eu","be","bn","bs","bg","ca","hr","cs","da","de","el","en","es","et","ar","fa","fi","fr","gl","ga","gd","he","hi","hr","hu","hy","id","is","it","ja","jv","ka","kk","km","kn","ko","lt","lv","mk","ml","mr","ms","my","ne","nl","no","oc","pa","pl","pt","ro","ru","si","sk","sl","sq","sr","sv","sw","ta","te","th","tl","tr","uk","ur","uz","vi","zh"]);
+      const supportedM2M100 = new Set(["af","sq","hy","az","eu","be","bn","bs","bg","ca","hr","cs","da","de","el","en","es","et","fa","fi","fr","gl","ga","gd","he","hi","hr","hu","hy","id","is","it","ja","jv","ka","kk","km","kn","ko","lt","lv","mk","ml","mr","ms","my","ne","nl","no","oc","pa","pl","pt","ro","ru","si","sk","sl","sq","sr","sv","sw","ta","te","th","tl","tr","uk","ur","uz","vi","zh"]);
       const byKey = new Map<string, string>();
       if (sourceLanguage !== "auto" && supportedM2M100.has(sourceLanguage) && supportedM2M100.has(target)) {
         try {
@@ -231,7 +231,7 @@ Deno.serve(async (req: Request) => {
               method: "POST",
               headers: { "Authorization": "Bearer " + apiToken, "Content-Type": "application/json" },
               body: JSON.stringify({
-                model: "@cf/zai-org/glm-4.7-flash",
+                model: target === "ar" ? "@cf/qwen/qwen3.8-27b" : "@cf/zai-org/glm-4.7-flash",
                 messages: [
                   {
                     role: "system",
@@ -270,6 +270,8 @@ Deno.serve(async (req: Request) => {
           return json({ error: "Translation provider timed out or could not be reached." }, 504, headers);
         }
         if (!response.ok) {
+          const providerError = await response.text();
+          console.error("Cloudflare translation provider returned an error:", { status: response.status, target, providerError: providerError.slice(0, 1200) });
           await recordIssue(admin, target, "provider_unavailable", undefined, component);
           return json({ error: "Translation provider request failed." }, 502, headers);
         }
