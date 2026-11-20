@@ -116,8 +116,6 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
   const tr = (value: string) => publicText(value, language);
   const [threadId,setThreadId] = useState('');
     const [messages,setMessages] = useState<Message[]>([]);
-    const [translatedMessages,setTranslatedMessages]=useState<Record<string,string>>({});
-    const [translatingMessageId,setTranslatingMessageId]=useState<string|null>(null);
   const [draft,setDraft] = useState('');
   const [busy,setBusy] = useState(false);
   const [isTyping,setIsTyping] = useState(false);
@@ -379,6 +377,8 @@ export function AdminInbox() {
   const [threads,setThreads]=useState<Thread[]>([]);
   const [selected,setSelected]=useState(()=>new URLSearchParams(window.location.hash.split('?')[1]||'').get('conversation')||'');
   const [messages,setMessages]=useState<Message[]>([]);
+  const [translatedMessages,setTranslatedMessages]=useState<Record<string,string>>({});
+  const [translatingMessageId,setTranslatingMessageId]=useState<string|null>(null);
   const [draft,setDraft]=useState('');
   const [images,setImages]=useState<File[]>([]);
   const [busy,setBusy]=useState(false);
