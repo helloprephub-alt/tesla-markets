@@ -596,10 +596,11 @@ Deno.serve(async (req: Request) => {
         sender_role: "management",
         body: "Thanks — I’ve recorded your selection of " + selectedPaymentMethod + " for " + paymentLockNext.vehicle + ". Tesla Markets Management has been notified. The matching recipient instructions will be sent here after review. Never share passwords, one-time passcodes, full card numbers, CVV/security codes or gift-card PINs/codes.",
         automated_type: "ai_response",
-        message_type: "payment_selection_received",
+        message_type: "payment_pending",
         structured_data: {
           title: "Payment method selected",
           subtitle: "AWAITING MANAGEMENT INSTRUCTIONS",
+          status: "Awaiting management instructions",
           method: selectedPaymentMethod,
           amount: paymentLockNext.amount,
           source_message_id: messageId
