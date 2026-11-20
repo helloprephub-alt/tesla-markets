@@ -41,8 +41,10 @@ async function sha256(value: string) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function protectTokens(source: string) {
-  const pattern = /https?:\/\/[^\s<>"']+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\{\{?[\w.:-]+\}?\}|\b[A-Z]{2,10}-\d{3,}(?:-[A-Z0-9]+)*\b|\b(?:Tesla Markets|Tesla Semi|Solar Roof|Supercharger|Cybertruck|Roadster|Powerwall|Megapack|Optimus|SpaceX|NASDAQ|TSLA|Tesla|Model\s*[3YSX])\b|(?:\$|USD\s*|EUR\s*|GBP\s*|NGN\s*|₦|€|£)\s*\d[\d,]*(?:\.\d{1,2})?|\b\d[\d,]*(?:\.\d+)?\s?(?:%|km\/h|mph|kWh|kW|mi|miles|km|mm|cm|m|kg|lbs?|sec(?:onds)?|hours?|years?)\b|\b\d[\d,]*(?:\.\d+)?\b/gi;
+function protectTokens(source: string, target: string) {
+  const commonPattern = /https?:\/\/[^\s<>"']+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\{\{?[\w.:-]+\}?\}|\b[A-Z]{2,10}-\d{3,}(?:-[A-Z0-9]+)*\b|(?:\$|USD\s*|EUR\s*|GBP\s*|NGN\s*|₦|€|£)\s*\d[\d,]*(?:\.\d{1,2})?|\b\d[\d,]*(?:\.\d+)?\s?(?:%|km\/h|mph|kWh|kW|mi|miles|km|mm|cm|m|kg|lbs?|sec(?:onds)?|hours?|years?)\b|\b\d[\d,]*(?:\.\d+)?\b/gi;
+  const brandPattern = /\b(?:Tesla Markets|Tesla Semi|Solar Roof|Supercharger|Cybertruck|Roadster|Powerwall|Megapack|Optimus|SpaceX|NASDAQ|TSLA|Tesla|Model\s*[3YSX])\b/gi;
+  const pattern = target === "ar" ? commonPattern : new RegExp(commonPattern.source + "|" + brandPattern.source, "gi");
   const tokens: string[] = [];
   const protectedText = source.replace(pattern, (match) => {
     if (tokens.length >= 20) return match;
@@ -147,7 +149,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const prepared = await Promise.all(normalized.map(async (item: any) => {
-      const protectedData = protectTokens(item.text);
+      const protectedData = protectTokens(item.text, target);
       const sourceHash = await sha256(item.text);
       const cacheKey = await sha256(sourceLanguage + "|" + target + "|" + sourceHash);
       return { ...item, ...protectedData, sourceHash, cacheKey };
@@ -167,36 +169,51 @@ Deno.serve(async (req: Request) => {
     let generated = new Map<string, string>();
 
     if (missing.length) {
-      const supportedM2M100 = new Set(["af","sq","hy","az","eu","be","bn","bs","bg","ca","hr","cs","da","de","el","en","es","et","fa","fi","fr","gl","ga","gd","he","hi","hr","hu","hy","id","is","it","ja","jv","ka","kk","km","kn","ko","lt","lv","mk","ml","mr","ms","my","ne","nl","no","oc","pa","pl","pt","ro","ru","si","sk","sl","sq","sr","sv","sw","ta","te","th","tl","tr","uk","ur","uz","vi","zh"]);
+      const supportedM2M100 = new Set(["af","sq","hy","az","eu","be","bn","bs","bg","ca","hr","cs","da","de","el","en","es","et","ar","fa","fi","fr","gl","ga","gd","he","hi","hr","hu","hy","id","is","it","ja","jv","ka","kk","km","kn","ko","lt","lv","mk","ml","mr","ms","my","ne","nl","no","oc","pa","pl","pt","ro","ru","si","sk","sl","sq","sr","sv","sw","ta","te","th","tl","tr","uk","ur","uz","vi","zh"]);
       const byKey = new Map<string, string>();
       if (sourceLanguage !== "auto" && supportedM2M100.has(sourceLanguage) && supportedM2M100.has(target)) {
         try {
           for (let offset = 0; offset < missing.length; offset += 5) {
             const batch = missing.slice(offset, offset + 5);
             const translatedBatch = await Promise.all(batch.map(async (item: any) => {
-              const sourceLetters = item.protectedText.replace(/ZXQTMX\d+XQZ/g, "").replace(/[^A-Za-z]/g, "");
-              const preserveUppercase = sourceLetters.length >= 3 && sourceLetters === sourceLetters.toUpperCase() && /[A-Z]{3}/.test(sourceLetters);
-              const translationInput = preserveUppercase
-                ? item.protectedText.replace(/ZXQTMX\d+XQZ|[A-Z]{2,}/g, (part: string) => part.startsWith("ZXQTMX") ? part : part.toLowerCase())
-                : item.protectedText;
-              const response = await fetch(
-                "https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(accountId) + "/ai/run/@cf/meta/m2m100-1.2b",
-                {
-                  method: "POST",
-                  headers: { "Authorization": "Bearer " + apiToken, "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    text: translationInput,
-                    source_lang: sourceLanguage,
-                    target_lang: target
-                  }),
-                  signal: AbortSignal.timeout(25000)
+              const parts = item.protectedText.split(/(ZXQTMX\d+XQZ)/g);
+              const translatedParts: string[] = [];
+              for (const part of parts) {
+                if (!part) continue;
+                if (/^ZXQTMX\d+XQZ$/.test(part)) {
+                  translatedParts.push(part);
+                  continue;
                 }
-              );
-              if (!response.ok) throw new Error("M2M100 provider returned HTTP " + response.status);
-              const payload = await response.json();
-              const translated = clean(payload?.translated_text ?? payload?.result?.translated_text ?? payload?.result?.answer ?? payload?.answer, 4000);
-              if (!translated) throw new Error("M2M100 returned an empty translation");
-              return { key: item.key, text: preserveUppercase ? translated.toUpperCase() : translated };
+                const leading = part.match(/^\s*/u)?.[0] || "";
+                const trailing = part.match(/\s*$/u)?.[0] || "";
+                const core = part.slice(leading.length, part.length - trailing.length);
+                if (!core || !/[A-Za-z\p{L}]{2}/u.test(core)) {
+                  translatedParts.push(part);
+                  continue;
+                }
+                const sourceLetters = core.replace(/[^A-Za-z]/g, "");
+                const preserveUppercase = sourceLetters.length >= 3 && sourceLetters === sourceLetters.toUpperCase() && /[A-Z]{3}/.test(sourceLetters);
+                const translationInput = preserveUppercase ? core.toLowerCase() : core;
+                const response = await fetch(
+                  "https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(accountId) + "/ai/run/@cf/meta/m2m100-1.2b",
+                  {
+                    method: "POST",
+                    headers: { "Authorization": "Bearer " + apiToken, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      text: translationInput,
+                      source_lang: sourceLanguage,
+                      target_lang: target
+                    }),
+                    signal: AbortSignal.timeout(25000)
+                  }
+                );
+                if (!response.ok) throw new Error("M2M100 provider returned HTTP " + response.status);
+                const payload = await response.json();
+                const translated = clean(payload?.translated_text ?? payload?.result?.translated_text ?? payload?.result?.answer ?? payload?.answer, 4000);
+                if (!translated) throw new Error("M2M100 returned an empty translation");
+                translatedParts.push(leading + (preserveUppercase ? translated.toUpperCase() : translated) + trailing);
+              }
+              return { key: item.key, text: translatedParts.join("") };
             }));
             for (const row of translatedBatch) byKey.set(row.key, row.text);
           }
