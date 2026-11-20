@@ -4,8 +4,7 @@ begin;
 alter table public.store_orders
   add column if not exists payment_method text,
   add column if not exists payment_method_selected_at timestamptz,
-  add column if not exists payment_verified_at timestamptz,
-  add column if not exists payment_verified_by uuid;
+  add column if not exists payment_verified_at timestamptz;
 
 alter table public.store_orders
   drop constraint if exists store_orders_payment_method_check;
@@ -32,8 +31,7 @@ alter table public.store_orders
 
 alter table public.store_payment_submissions
   add column if not exists provider_reference text,
-  add column if not exists verified_at timestamptz,
-  add column if not exists verified_by uuid;
+  add column if not exists verified_at timestamptz;
 
 alter table public.store_payment_submissions
   drop constraint if exists store_payment_submissions_provider_reference_length_check;
@@ -145,7 +143,5 @@ comment on column public.store_orders.payment_method is
   'Customer-selected shop payment method, set by the owner-scoped payment instructions function.';
 comment on column public.store_orders.payment_verified_at is
   'Timestamp when management independently confirmed the received payment.';
-comment on column public.store_orders.payment_verified_by is
-  'Administrator user ID that independently confirmed the received payment.';
 
 commit;
