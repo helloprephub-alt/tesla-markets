@@ -40,6 +40,8 @@ assert.match(paymentMigration, /payment_method is null/, 'Customers must not sel
 assert.match(paymentMigration, /enforce_store_order_payment_verification/, 'Database must enforce payment verification before new fulfilment transitions.');
 assert.match(appSource, /Payment verified/, 'Customers must see payment verification in order tracking.');
 assert.match(adminSource, /Confirm funds received/, 'Management must explicitly verify funds before fulfilment.');
+assert.match(paymentMigration, /review_store_payment_proof/, 'Proof acceptance and payment verification must be atomic.');
+assert.match(adminSource, /rpc\('review_store_payment_proof'/, 'Admin review must use the atomic verification function.');
 assert.match(adminSource, /Confirm receipt of the payment from the recipient account/, 'Fulfilment must be blocked until payment is verified.');
 assert.match(chatSource, /selectedPaymentLock/, 'Admin chat payment instructions must be tied to the customer's selected method.');
 const customerChatSource = chatSource.split('export function AdminInbox()')[0];
