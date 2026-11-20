@@ -621,15 +621,41 @@ Deno.serve(async (req: Request) => {
     if (["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLock?.status || ""))) {
       const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
-      const reminder = savedPaymentLock?.method === "Gift Card" && savedPaymentLock?.status !== "proof_submitted"
-        ? "Your gift-card payment option is selected. Please upload clear images of the accepted gift-card proof using the chat attachment button. Do not send gift-card PINs or redemption codes in ordinary chat. Management must review the image before payment can be verified."
-        : savedPaymentLock?.status === "proof_submitted"
-          ? "Your gift-card proof has been received and is under management review. Your payment remains unverified until management completes its checks."
+
+      if (customerMessage.attachment_path) {
+        const nextPaymentLock = { ...savedPaymentLock, status: "proof_submitted", proof_submitted_at: new Date().toISOString() };
+        const { error: lockUpdateError } = await admin.from("support_conversations")
+          .update({ delivery_details: { ...(conversation.delivery_details || {}), payment_lock: nextPaymentLock }, updated_at: new Date().toISOString() })
+          .eq("id", conversationId);
+        if (lockUpdateError) throw lockUpdateError;
+        const { data: receiptMessage, error: receiptError } = await admin.from("support_messages").insert({
+          conversation_id: conversationId, sender_id: managementProfile.id, sender_role: "management",
+          body: "Thank you. Your payment evidence has been received and sent to Tesla Markets Management for review. Payment remains unverified until management independently confirms receipt. Never send passwords, one-time passcodes, full card numbers, CVV/security codes or gift-card PINs or redemption codes.",
+          automated_type: "ai_response", message_type: "payment_receipt",
+          structured_data: {
+            title: "Payment evidence received",
+            subtitle: "PENDING MANAGEMENT REVIEW",
+            status: "Awaiting management verification",
+            method: savedPaymentLock.method,
+            amount: savedPaymentLock.amount,
+            vehicle: savedPaymentLock.vehicle,
+            source_message_id: messageId
+          }
+        }).select("id").single();
+        if (receiptError) throw receiptError;
+        await admin.from("ai_responder_runs").update({ status: "completed", response_message_id: receiptMessage.id, updated_at: new Date().toISOString() }).eq("message_id", messageId);
+        return json({ ok: true, payment_proof_received: true, response_message_id: receiptMessage.id }, 200, headers);
+      }
+
+      const reminder = savedPaymentLock?.status === "proof_submitted"
+        ? "Your payment evidence has been received and is under management review. Payment remains unverified until management independently confirms receipt. Please do not send passwords, one-time passcodes, full card numbers, CVV/security codes or gift-card PINs or redemption codes."
+        : savedPaymentLock?.method === "Gift Card"
+          ? "Your gift-card payment option is selected. Upload a clear image of the purchase receipt or transaction confirmation using the chat attachment button. Hide all redemption codes and PINs before uploading. Management must review the evidence before payment can be verified."
           : "Your payment is still pending. Your selected payment method and amount remain unchanged while Tesla Markets Management verifies the payment. This conversation cannot start a second checkout or change the pending amount. Please wait for management to confirm the payment status.";
       const { data: responseMessage, error: responseError } = await admin.from("support_messages").insert({
         conversation_id: conversationId, sender_id: managementProfile.id, sender_role: "management",
         body: reminder, automated_type: "ai_response", message_type: "payment_pending",
-        structured_data: { status: "Payment pending", method: savedPaymentLock.method, amount: savedPaymentLock.amount, vehicle: savedPaymentLock.vehicle, source_message_id: messageId }
+        structured_data: { status: savedPaymentLock?.status === "proof_submitted" ? "Awaiting management verification" : "Payment pending", method: savedPaymentLock.method, amount: savedPaymentLock.amount, vehicle: savedPaymentLock.vehicle, source_message_id: messageId }
       }).select("id").single();
       if (responseError) throw responseError;
       await admin.from("ai_responder_runs").update({ status: "completed", response_message_id: responseMessage.id, updated_at: new Date().toISOString() }).eq("message_id", messageId);
