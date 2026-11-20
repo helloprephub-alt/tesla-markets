@@ -456,7 +456,7 @@ export function AdminInbox() {
     if(config.enabled!==true){setProblem('This payment method is disabled in Settings. Enable it and save verified recipient details first.');return;}
     if(![config.email,config.phone,config.username].some(value=>String(value||'').trim())){setProblem('Add the recipient email, phone or payment handle in Settings before sending instructions.');return;}
     if(!paymentAccountName.trim()||!paymentAccountDetails.trim()||!paymentAccountAmount.trim()){setProblem('Complete the recipient name, recipient details and exact amount before sending.');return;}
-    const numericAmount=(value:string)=>{const match=value.replace(/,/g,'').match(/[0-9]+(?:\\.[0-9]{1,2})?/);return match?Number(match[0]).toFixed(2):value.trim().toLowerCase();};
+    const numericAmount=(value:string)=>{const match=value.replace(/,/g,'').match(/[0-9]+(?:\.[0-9]{1,2})?/);return match?Number(match[0]).toFixed(2):value.trim().toLowerCase();};
     if(lock.amount&&lock.amount!=='Amount to be confirmed'&&numericAmount(lock.amount)!==numericAmount(paymentAccountAmount)){setProblem('The amount must match the amount locked for this customer order.');return;}
     setBusy(true);setProblem('');
     try{
