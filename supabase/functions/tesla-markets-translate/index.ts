@@ -174,10 +174,10 @@ Deno.serve(async (req: Request) => {
           for (let offset = 0; offset < missing.length; offset += 5) {
             const batch = missing.slice(offset, offset + 5);
             const translatedBatch = await Promise.all(batch.map(async (item: any) => {
-              const sourceLetters = item.protectedText.replace(/ZXQTMX\\d+XQZ/g, "").replace(/[^A-Za-z]/g, "");
+              const sourceLetters = item.protectedText.replace(/ZXQTMX\d+XQZ/g, "").replace(/[^A-Za-z]/g, "");
               const preserveUppercase = sourceLetters.length >= 3 && sourceLetters === sourceLetters.toUpperCase() && /[A-Z]{3}/.test(sourceLetters);
               const translationInput = preserveUppercase
-                ? item.protectedText.replace(/ZXQTMX\\d+XQZ|[A-Z]{2,}/g, (part: string) => part.startsWith("ZXQTMX") ? part : part.toLowerCase())
+                ? item.protectedText.replace(/ZXQTMX\d+XQZ|[A-Z]{2,}/g, (part: string) => part.startsWith("ZXQTMX") ? part : part.toLowerCase())
                 : item.protectedText;
               const response = await fetch(
                 "https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(accountId) + "/ai/run/@cf/meta/m2m100-1.2b",
