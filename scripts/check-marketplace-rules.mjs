@@ -13,7 +13,7 @@ assert.deepEqual(migrationGiftCards, [...approvedGiftCards].sort(), 'Only the fo
 assert.doesNotMatch(giftCardMigration, /visa_gift_card/, 'Visa gift cards are not an approved promotional method.');
 assert.match(discountMigration, /discount_percent\\s*=\\s*0/i, 'A product must be allowed to have no discount.');
 assert.match(discountMigration, /discount_percent\\s+between\\s+25\\s+and\\s+70/i, 'Applied discounts must remain between 25% and 70%.');
-assert.match(marketplaceSource, /amazon_gift_card[\\s\\S]*apple_gift_card[\\s\\S]*google_play_gift_card[\\s\\S]*razor_gold_gift_card/, 'Shop checkout must expose the four approved gift-card choices.');
+for (const method of approvedGiftCards) assert.ok(marketplaceSource.includes(method), 'Shop checkout is missing approved gift-card choice: ' + method);
 assert.match(aiSource, /pct>=25&&pct<=70/, 'AI vehicle promotions must enforce the approved discount range.');
 
 console.log(JSON.stringify({
