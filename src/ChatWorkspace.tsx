@@ -510,8 +510,7 @@ export function AdminInbox() {
         attachment_path:null,attachment_name:null,attachment_mime:null
       });
       if(error)throw error;
-      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
-      if(pauseError)throw pauseError;
+      // Keep the responder active so it can process the customer's method selection.
       await loadMessages();await loadThreads();
     }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
   };
