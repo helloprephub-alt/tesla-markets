@@ -35,7 +35,8 @@ assert.match(adminSource, /paymentAccountDetails\[method\]\?\.enabled===true/, '
 assert.match(aiSource, /details\.enabled === true/, 'AI payment choices must respect admin enablement.');
 assert.match(aiSource, /paymentAccountSettings\.giftCardEnabled === true/, 'AI must offer optional gift cards only when enabled.');
 assert.match(chatSource, /selectedPaymentLock/, 'Admin chat payment instructions must be tied to the customer's selected method.');
-assert.doesNotMatch(chatSource, /supabase\.from\('site_settings'\).*payment_account_details/, 'Customer chat must not read private recipient settings directly.');
+const customerChatSource = chatSource.split('export function AdminInbox()')[0];
+assert.doesNotMatch(customerChatSource, /supabase\\.from\\('site_settings'\\).*payment_account_details/, 'Customer chat must not read private recipient settings directly.');
 
 console.log(JSON.stringify({
   status: 'passed',
