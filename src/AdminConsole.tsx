@@ -14,6 +14,7 @@ type OperationalPayment = {id:string;reference:string;orderId:string;amount:numb
 type ShopOrderReview = {
   id:string; reference:string; customerName:string; email:string; phone:string;
   address:string; city:string; region:string|null; postalCode:string|null; country:string;
+  deliveryCarrier:string|null; trackingNumber:string|null; trackingUrl:string|null;
   items:Array<{product_id?:string;name:string;quantity:number;selected_size?:string|null;unit_price:number;original_unit_price?:number;discount_percent?:number}>;
   subtotal:number; discountTotal:number; currency:string; status:string; createdAt:number;
 };
@@ -25,6 +26,10 @@ type Overview = { conversations: number; messages: number; generatedImages: numb
 type AdminTask = {id:string;title:string;description:string;status:string;priority:string;due_at:string|null;created_at:string};
 type AdminNotice = {id:string;title:string;body:string;type:string;is_read:boolean;created_at:string};
 type AuditEntry = {id:number;action:string;entity_type:string;entity_id:string|null;details:any;created_at:string};
+type CustomerProfileRecord = {id:string;display_name:string;email:string;phone:string;crm_stage:string;created_at:string;is_admin:boolean};
+type VehicleEnquiryRecord = {id:string;customer_id:string;vehicle_model:string;configuration:any;customer_note:string;status:string;created_at:string;customerName:string;customerEmail:string;customerPhone:string};
+type InvestmentEnquiryRecord = {id:string;customer_id:string;opportunity:string;category:string;customer_question:string;status:string;created_at:string;customerName:string;customerEmail:string};
+type VehicleCatalogRecord = {id:string;name:string;model:string;slug:string;price_usd:string;availability:string;is_published:boolean;verification_status:string;source_type:string|null;source_url:string|null;last_verified_at:string|null;images:string[]};
 function AdminShopImage({src,name}:{src:string;name:string}) {
   const [status,setStatus]=useState<'loading'|'loaded'|'failed'>('loading');
   return <div className="admin-shop-image-check">
@@ -33,7 +38,7 @@ function AdminShopImage({src,name}:{src:string;name:string}) {
   </div>;
 }
 
-type Section = 'shop' | 'ai' | 'overview' | 'visitors' | 'customers' | 'catalogue' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'orders' | 'tasks' | 'notifications' | 'activity' | 'settings' | 'team' | 'analytics' | 'announcements' | 'profile' | 'security';
+type Section = 'shop' | 'ai' | 'overview' | 'visitors' | 'customers' | 'catalogue' | 'vehicleEnquiries' | 'investment' | 'content' | 'media' | 'messages' | 'operations' | 'orders' | 'tasks' | 'notifications' | 'activity' | 'settings' | 'team' | 'analytics' | 'announcements' | 'profile' | 'security';
 
 const catalogue = [
   { name: 'Model 3', count: 5, first: '/resources/model-3-1.jpg' },
@@ -71,10 +76,17 @@ export function AdminConsole() {
   const [registeredCustomerCount,setRegisteredCustomerCount]=useState<number|null>(null);
   const [dashboardSearch,setDashboardSearch]=useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [customerProfiles,setCustomerProfiles]=useState<CustomerProfileRecord[]>([]);
+  const [vehicleEnquiries,setVehicleEnquiries]=useState<VehicleEnquiryRecord[]>([]);
+  const [investmentEnquiries,setInvestmentEnquiries]=useState<InvestmentEnquiryRecord[]>([]);
+  const [vehicleCatalog,setVehicleCatalog]=useState<VehicleCatalogRecord[]>([]);
+  const [updatingVehicleCatalog,setUpdatingVehicleCatalog]=useState<string|null>(null);
+  const [updatingEnquiry,setUpdatingEnquiry]=useState<string|null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [orders,setOrders]=useState<OperationalOrder[]>([]);
   const [payments,setPayments]=useState<OperationalPayment[]>([]);
   const [shopOrders,setShopOrders]=useState<ShopOrderReview[]>([]);
+  const [shopTrackingDrafts,setShopTrackingDrafts]=useState<Record<string,{carrier:string;number:string;url:string}>>({});
   const [shopProofs,setShopProofs]=useState<ShopProofReview[]>([]);
   const [reviewingShopProof,setReviewingShopProof]=useState<string|null>(null);
   const [shopProofRejectionReasons,setShopProofRejectionReasons]=useState<Record<string,string>>({});
@@ -311,7 +323,7 @@ export function AdminConsole() {
   const load = async () => {
     setRefreshing(true);
     try {
-      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, orderRows, paymentRows, storeOrderRows, storeProofRows, taskRows, noticeRows, auditRows] = await Promise.all([
+      const [visitCount, clickCount, conversationCount, messageCount, presenceCount, visitorLog, conversationRows, customerCount, customerProfileRows, vehicleEnquiryRows, investmentEnquiryRows, vehicleCatalogRows, orderRows, paymentRows, storeOrderRows, storeProofRows, taskRows, noticeRows, auditRows] = await Promise.all([
         supabase.from('site_visits').select('id', { count:'exact', head:true }),
         supabase.from('site_clicks').select('id', { count:'exact', head:true }),
         supabase.from('support_conversations').select('id', { count:'exact', head:true }),
@@ -319,21 +331,28 @@ export function AdminConsole() {
         supabase.from('site_presence').select('visitor_id', { count:'exact', head:true }).gte('last_seen_at', new Date(Date.now()-90000).toISOString()),
         supabase.from('site_visits').select('id,page,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('support_conversations').select('id,customer_id,subject,status,updated_at,visitor_email,enquiry_type,enquiry_source,vehicle_model,contact_phone').order('updated_at',{ascending:false}).limit(100),
-        supabase.from('customer_profiles').select('id',{count:'exact',head:true}),
+        supabase.from('customer_profiles').select('id',{count:'exact',head:true}).eq('is_admin',false),
+        supabase.from('customer_profiles').select('id,display_name,email,phone,crm_stage,created_at,is_admin').order('created_at',{ascending:false}).limit(500),
+        supabase.from('vehicle_enquiries').select('id,customer_id,vehicle_model,configuration,customer_note,status,created_at,updated_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('investment_enquiries').select('id,customer_id,opportunity,category,customer_question,status,created_at,updated_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('vehicle_catalog').select('id,name,model,slug,price_usd,availability,is_published,verification_status,source_type,source_url,last_verified_at,images').order('name'),
         supabase.from('business_orders').select('id,order_reference,item_description,status,agreed_amount,currency,customer_id,conversation_id,payment_url,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,method,provider_reference,status,created_at').order('created_at',{ascending:false}).limit(200),
-        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_region,delivery_postal_code,delivery_country,items,subtotal,discount_total,currency,status,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_region,delivery_postal_code,delivery_country,delivery_carrier,tracking_number,tracking_url,items,subtotal,discount_total,currency,status,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('store_payment_submissions').select('id,order_id,payment_method,proof_storage_path,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_tasks').select('id,title,description,status,priority,due_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('admin_audit_logs').select('id,action,entity_type,entity_id,details,created_at').order('created_at',{ascending:false}).limit(100),
       ]);
-      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,orderRows,paymentRows,storeOrderRows,storeProofRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
+      for (const result of [visitCount,clickCount,conversationCount,messageCount,presenceCount,visitorLog,conversationRows,customerCount,customerProfileRows,vehicleEnquiryRows,investmentEnquiryRows,vehicleCatalogRows,orderRows,paymentRows,storeOrderRows,storeProofRows,taskRows,noticeRows,auditRows]) if (result.error) throw result.error;
       const rows=conversationRows.data||[];
-      const ids=rows.map(row=>row.customer_id);
-      const {data:profiles,error:profilesError}=ids.length?await supabase.from('customer_profiles').select('id,display_name,email,phone').in('id',ids):{data:[],error:null};
-      if(profilesError) throw profilesError;
-      const names=new Map((profiles||[]).map(profile=>[profile.id,profile]));
+      const profiles=customerProfileRows.data||[];
+      const names=new Map(profiles.map(profile=>[profile.id,profile]));
+      setCustomerProfiles(profiles.filter(profile=>!profile.is_admin));
+      setRegisteredCustomerCount(customerCount.count??profiles.filter(profile=>!profile.is_admin).length);
+      setVehicleEnquiries((vehicleEnquiryRows.data||[]).map(row=>{const profile=names.get(row.customer_id);const delivery=row.configuration?.delivery||{};return {id:row.id,customer_id:row.customer_id,vehicle_model:row.vehicle_model,configuration:row.configuration||{},customer_note:row.customer_note||'',status:row.status||'new',created_at:row.created_at,customerName:profile?.display_name||delivery.full_name||'Customer',customerEmail:profile?.email||delivery.email||'',customerPhone:profile?.phone||delivery.phone||''};}));
+      setInvestmentEnquiries((investmentEnquiryRows.data||[]).map(row=>{const profile=names.get(row.customer_id);return {id:row.id,customer_id:row.customer_id,opportunity:row.opportunity||'Investment information',category:row.category||'public_market_information',customer_question:row.customer_question||'',status:row.status||'new',created_at:row.created_at,customerName:profile?.display_name||'Customer',customerEmail:profile?.email||''};}));
+      setVehicleCatalog((vehicleCatalogRows.data||[]).map(row=>({id:row.id,name:row.name,model:row.model,slug:row.slug,price_usd:String(row.price_usd||''),availability:row.availability||'coming_soon',is_published:!!row.is_published,verification_status:row.verification_status||'unverified',source_type:row.source_type||null,source_url:row.source_url||null,last_verified_at:row.last_verified_at||null,images:Array.isArray(row.images)?row.images:[]})));
       const mapped=await Promise.all(rows.map(async row=>{
         const {data:last,error:lastError}=await supabase.from('support_messages').select('body,created_at').eq('conversation_id',row.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
         if(lastError) throw lastError;
@@ -346,12 +365,15 @@ export function AdminConsole() {
       setPaymentLinks(Object.fromEntries((orderRows.data||[]).map(row=>[row.id,row.payment_url||''])));
       setOrderAmounts(Object.fromEntries((orderRows.data||[]).map(row=>[row.id,String(row.agreed_amount||'')])))
       setPayments((paymentRows.data||[]).map(row=>({id:row.id,reference:row.payment_reference,orderId:row.order_id,amount:Number(row.amount||0),currency:row.currency||'USD',method:row.method||'unknown',providerReference:row.provider_reference||null,status:row.status||'pending',createdAt:new Date(row.created_at).getTime()})));
-      setShopOrders((storeOrderRows.data||[]).map(row=>({
+      const mappedShopOrders=(storeOrderRows.data||[]).map(row=>({
         id:row.id,reference:row.order_reference,customerName:row.customer_name,email:row.customer_email,phone:row.customer_phone,
         address:row.delivery_address,city:row.delivery_city,region:row.delivery_region||null,postalCode:row.delivery_postal_code||null,country:row.delivery_country,
+        deliveryCarrier:row.delivery_carrier||null,trackingNumber:row.tracking_number||null,trackingUrl:row.tracking_url||null,
         items:Array.isArray(row.items)?row.items:[],subtotal:Number(row.subtotal||0),discountTotal:Number(row.discount_total||0),
         currency:row.currency||'USD',status:row.status||'awaiting_payment',createdAt:new Date(row.created_at).getTime()
-      })));
+      }));
+      setShopOrders(mappedShopOrders);
+      setShopTrackingDrafts(Object.fromEntries(mappedShopOrders.map(order=>[order.id,{carrier:order.deliveryCarrier||'',number:order.trackingNumber||'',url:order.trackingUrl||''}])));
       const signedShopProofs=await Promise.all((storeProofRows.data||[]).map(async row=>{
         const {data:signed,error:signedError}=await supabase.storage.from('shop-payment-proofs').createSignedUrl(row.proof_storage_path,900);
         if(signedError) throw signedError;
@@ -513,6 +535,75 @@ export function AdminConsole() {
     } finally {
       setUpdatingShopOrder(null);
     }
+  };
+
+  const saveShopOrderTracking = async (orderId:string) => {
+    const draft=shopTrackingDrafts[orderId]||{carrier:'',number:'',url:''};
+    const carrier=draft.carrier.trim(),number=draft.number.trim(),url=draft.url.trim();
+    if((carrier&&!number)||(!carrier&&number)){setError('Enter both the delivery carrier and tracking number, or clear both fields.');return;}
+    if(url){try{const parsed=new URL(url);if(parsed.protocol!=='https:')throw new Error();}catch{setError('Tracking links must be valid HTTPS URLs.');return;}}
+    setUpdatingShopOrder(orderId);
+    try{
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const now=new Date().toISOString();
+      const patch={delivery_carrier:carrier||null,tracking_number:number||null,tracking_url:url||null,updated_at:now};
+      const {error:updateError}=await supabase.from('store_orders').update(patch).eq('id',orderId);
+      if(updateError)throw updateError;
+      setShopOrders(currentOrders=>currentOrders.map(order=>order.id===orderId?{...order,deliveryCarrier:carrier||null,trackingNumber:number||null,trackingUrl:url||null}:order));
+      setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not save shipment tracking details.');}
+    finally{setUpdatingShopOrder(null);}
+  };
+
+  const updateVehicleCatalogRecord = async (vehicleId:string,patch:{verification_status?:string;is_published?:boolean;availability?:string}) => {
+    const currentVehicle=vehicleCatalog.find(item=>item.id===vehicleId);
+    if(!currentVehicle)return;
+    const nextStatus=patch.verification_status??currentVehicle.verification_status;
+    if(patch.is_published===true&&nextStatus!=='verified'){setError('A vehicle cannot be published until its price, source and specification are verified.');return;}
+    const safePatch:{verification_status?:string;is_published?:boolean;availability?:string;last_verified_at?:string}={...patch};
+    if(patch.verification_status==='verified')safePatch.last_verified_at=new Date().toISOString();
+    if(patch.verification_status&&patch.verification_status!=='verified')safePatch.is_published=false;
+    setUpdatingVehicleCatalog(vehicleId);
+    try{
+      const {user:currentUser,isAdmin}=await isCurrentUserAdmin();
+      if(!currentUser||!isAdmin)throw new Error('Administrator session expired.');
+      const {error:updateError}=await supabase.from('vehicle_catalog').update(safePatch).eq('id',vehicleId);
+      if(updateError)throw updateError;
+      setVehicleCatalog(items=>items.map(item=>item.id===vehicleId?{...item,...safePatch}:item));
+      setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not update vehicle inventory.');}
+    finally{setUpdatingVehicleCatalog(null);}
+  };
+
+  const updateVehicleEnquiryStatus = async (enquiryId:string,status:string) => {
+    const allowed=['new','contacted','in_progress','closed'];
+    if(!allowed.includes(status))return;
+    setUpdatingEnquiry('vehicle:'+enquiryId);
+    try{
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const {error:updateError}=await supabase.from('vehicle_enquiries').update({status,updated_at:new Date().toISOString()}).eq('id',enquiryId);
+      if(updateError)throw updateError;
+      setVehicleEnquiries(items=>items.map(item=>item.id===enquiryId?{...item,status}:item));
+      setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not update the vehicle enquiry.');}
+    finally{setUpdatingEnquiry(null);}
+  };
+
+  const updateInvestmentEnquiryStatus = async (enquiryId:string,status:string) => {
+    const allowed=['new','under_review','awaiting_response','follow_up_required','referred_for_verification','closed'];
+    if(!allowed.includes(status))return;
+    setUpdatingEnquiry('investment:'+enquiryId);
+    try{
+      const {user:current,isAdmin}=await isCurrentUserAdmin();
+      if(!current||!isAdmin)throw new Error('Administrator session expired.');
+      const {error:updateError}=await supabase.from('investment_enquiries').update({status,updated_at:new Date().toISOString()}).eq('id',enquiryId);
+      if(updateError)throw updateError;
+      setInvestmentEnquiries(items=>items.map(item=>item.id===enquiryId?{...item,status}:item));
+      setError('');
+    }catch(e){setError(e instanceof Error?e.message:'Could not update the investment enquiry.');}
+    finally{setUpdatingEnquiry(null);}
   };
 
   const updateOrderStatus = async (orderId:string,status:string) => {
@@ -730,6 +821,7 @@ export function AdminConsole() {
     { id: 'tasks' as const, label: 'Tasks & Follow-ups', icon: ListTodo, group:'WORKSPACE' },
     { id: 'shop' as const, label: 'Shop Catalogue', icon: ShoppingBag, group:'BUSINESS OPERATIONS' },
     { id: 'catalogue' as const, label: 'Vehicle Inventory', icon: CarFront, group:'BUSINESS OPERATIONS' },
+    { id: 'vehicleEnquiries' as const, label: 'Vehicle Enquiries', icon: CarFront, group:'BUSINESS OPERATIONS' },
     { id: 'investment' as const, label: 'Investment Enquiries', icon: Inbox, group:'BUSINESS OPERATIONS' },
     { id: 'orders' as const, label: 'Orders & Requests', icon: ClipboardList, group:'BUSINESS OPERATIONS' },
     { id: 'team' as const, label: 'Team Management', icon: Users, group:'BUSINESS OPERATIONS' },
@@ -801,7 +893,7 @@ export function AdminConsole() {
             <section className="tm-dashboard-card tm-quick-links"><div className="tm-card-heading"><div><h2>Management Sections</h2><p>All website controls in one organized place.</p></div></div><div className="admin-quick-actions">{nav.filter(item=>item.id!=='overview').map(item=><button key={item.id} onClick={()=>setSection(item.id)}>{item.label}</button>)}</div></section>
           </>}
           {section === 'visitors' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VISITOR ACTIVITY</div><h2>{visits.length} recent page views</h2><p>Page-level activity; this is not a count of unique people.</p></div></div>{visits.slice(0,8).map(v=><div className="tm-activity-row" key={v.id}><span><Activity size={15}/></span><div><b>Page visit recorded</b><small>{v.page}</small></div><time>{new Date(v.createdAt).toLocaleTimeString()}</time></div>)}{visits.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Page</th><th>Visited at</th><th>Record ID</th></tr></thead><tbody>{visits.map(visit=><tr key={visit.id}><td>{visit.page}</td><td>{new Date(visit.createdAt).toLocaleString()}</td><td>{visit.id.slice(0,12)}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No page views recorded yet.</p>}</section>}
-          {section === 'customers' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER DIRECTORY</div><h2>{threads.length} enquiry contacts</h2><p>Customer records based on saved website conversations.</p></div></div>{threads.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Customer</th><th>Email</th><th>Last activity</th><th>Last message</th></tr></thead><tbody>{threads.map(thread=><tr key={thread.id}><td>{thread.visitorName||'Website visitor'}</td><td>{thread.visitorEmail||'Not provided'}</td><td>{new Date(thread.updatedAt).toLocaleString()}</td><td>{thread.lastMessage||'—'}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">New customer conversations will appear here.</p>}</section>}
+          {section === 'customers' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER DIRECTORY</div><h2>{customerProfiles.length} registered customers</h2><p>Customer accounts from the protected customer profile directory.</p></div></div>{customerProfiles.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Customer</th><th>Email</th><th>Phone</th><th>CRM stage</th><th>Joined</th></tr></thead><tbody>{customerProfiles.filter(profile=>[profile.display_name,profile.email,profile.phone].join(' ').toLowerCase().includes(dashboardSearch.toLowerCase())).map(profile=><tr key={profile.id}><td>{profile.display_name||'Customer'}</td><td>{profile.email||'—'}</td><td>{profile.phone||'—'}</td><td>{(profile.crm_stage||'new').replaceAll('_',' ')}</td><td>{new Date(profile.created_at).toLocaleDateString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No registered customers found.</p>}</section>}
           {section === 'shop' && <section className="admin-console-panel">
             <div className="admin-console-panel-head"><div><div className="eyebrow dark">PUBLIC SHOP INVENTORY</div><h2>Shop catalogue overview</h2><p>Live catalogue audit sourced from the same approved product list used by the storefront. Product editing and publishing controls require a connected catalogue-management schema; this page does not pretend code-managed listings are editable.</p></div></div>
             <div className="tm-kpi-grid">
@@ -825,7 +917,8 @@ export function AdminConsole() {
             {!storeProducts.length&&<p className="admin-empty-note">No approved products are currently published.</p>}
           </section>}
           {section === 'catalogue' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE CATALOGUE</div><h2>Vehicle image collections</h2><p>Review the current vehicle galleries. Vehicle detail and pricing controls are being expanded.</p></div></div><div className="admin-catalogue-grid">{catalogue.map(item=><article key={item.name}><img src={item.first} alt={item.name}/><div><b>{item.name}</b><small>{item.count} attached images</small></div></article>)}</div></section>}
-          {section === 'investment' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER ENQUIRIES</div><h2>Investment enquiries</h2><p>Customer communication and follow-up only. No portfolios, balances, returns, payments or financial records.</p></div></div>{threads.filter(thread=>(thread.enquiryType||'').toLowerCase().includes('invest')).length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Customer</th><th>Contact</th><th>Enquiry</th><th>Status</th><th>Received</th></tr></thead><tbody>{threads.filter(thread=>(thread.enquiryType||'').toLowerCase().includes('invest')).map(thread=><tr key={thread.id}><td>{thread.visitorName||'Website visitor'}</td><td>{thread.visitorEmail||thread.phone||'Not provided'}</td><td>{thread.lastMessage||'Investment information request'}</td><td><select value={thread.status||'new'} onChange={event=>void updateStatus(thread.id,event.target.value)}>{['new','awaiting_response','in_conversation','follow_up_required','interested','completed','closed'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td>{new Date(thread.updatedAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No investment enquiries have been recorded yet.</p>}</section>}
+          {section === 'vehicleEnquiries' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER VEHICLE REQUESTS</div><h2>{vehicleEnquiries.length} vehicle enquiries</h2><p>Vehicle configurations and purchase requests submitted by customers. A request is not a confirmed factory order or payment.</p></div></div>{vehicleEnquiries.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Customer</th><th>Vehicle / configuration</th><th>Delivery details</th><th>Customer note</th><th>Status</th><th>Received</th></tr></thead><tbody>{vehicleEnquiries.map(enquiry=>{const delivery=enquiry.configuration?.delivery||{};return <tr key={enquiry.id}><td>{enquiry.customerName}<small>{enquiry.customerEmail||'—'}{enquiry.customerPhone?' · '+enquiry.customerPhone:''}</small></td><td><b>{enquiry.vehicle_model}</b><small>{enquiry.configuration?.selected_variant||'Variant not selected'} · {enquiry.configuration?.action==='cart'?'Added to cart':'Purchase request'}</small></td><td>{[delivery.address,delivery.city,delivery.country].filter(Boolean).join(', ')||'Not provided'}</td><td>{enquiry.customer_note||'—'}</td><td><select value={enquiry.status} disabled={updatingEnquiry==='vehicle:'+enquiry.id} onChange={event=>void updateVehicleEnquiryStatus(enquiry.id,event.target.value)}>{['new','contacted','in_progress','closed'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td>{new Date(enquiry.created_at).toLocaleString()}</td></tr>;})}</tbody></table></div>:<p className="admin-empty-note">No vehicle enquiries have been recorded yet.</p>}</section>}
+          {section === 'investment' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER ENQUIRIES</div><h2>{investmentEnquiries.length} investment enquiries</h2><p>Enquiry and follow-up records only. This workspace does not execute trades, hold customer funds or provide regulated investment advice.</p></div></div>{investmentEnquiries.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Customer</th><th>Contact</th><th>Opportunity / category</th><th>Customer question</th><th>Status</th><th>Received</th></tr></thead><tbody>{investmentEnquiries.map(enquiry=><tr key={enquiry.id}><td>{enquiry.customerName}</td><td>{enquiry.customerEmail||'—'}</td><td>{enquiry.opportunity}<small>{enquiry.category.replaceAll('_',' ')}</small></td><td>{enquiry.customer_question||'—'}</td><td><select value={enquiry.status} disabled={updatingEnquiry==='investment:'+enquiry.id} onChange={event=>void updateInvestmentEnquiryStatus(enquiry.id,event.target.value)}>{['new','under_review','awaiting_response','follow_up_required','referred_for_verification','closed'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td>{new Date(enquiry.created_at).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No investment enquiries have been recorded yet.</p>}</section>}
           {section === 'content' && <section className="admin-console-panel admin-content-editor"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PUBLIC WEBSITE CONTENT</div><h2>Website copy editor</h2><p>Edit the supported homepage, investment page and footer text.</p></div></div><label>Homepage headline<input value={contentDraft.homeHeadline} onChange={e=>setContentDraft(current=>({...current,homeHeadline:e.target.value}))}/></label><label>Homepage description<textarea rows={3} value={contentDraft.homeDescription} onChange={e=>setContentDraft(current=>({...current,homeDescription:e.target.value}))}/></label><label>Investment heading<input value={contentDraft.investmentHeading} onChange={e=>setContentDraft(current=>({...current,investmentHeading:e.target.value}))}/></label><label>Investment description<textarea rows={3} value={contentDraft.investmentDescription} onChange={e=>setContentDraft(current=>({...current,investmentDescription:e.target.value}))}/></label><label>Footer description<textarea rows={2} value={contentDraft.footerBlurb} onChange={e=>setContentDraft(current=>({...current,footerBlurb:e.target.value}))}/></label><div className="admin-content-preview"><b>Live preview</b><h3>{contentDraft.homeHeadline}</h3><p>{contentDraft.homeDescription}</p><h3>{contentDraft.investmentHeading}</h3><p>{contentDraft.investmentDescription}</p><small>{contentDraft.footerBlurb}</small></div><div className="admin-content-actions"><button className="btn btn-outline" onClick={()=>setContentDraft(siteContent)}>Discard changes</button><button className="btn btn-dark" disabled={savingContent} onClick={()=>void saveContent()}>{savingContent?'Saving…':'Publish website content'}</button></div></section>}
           {section === 'media' && <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">MEDIA LIBRARY</div><h2>Website media</h2><p>Manage investment slides and the management profile image. Vehicle gallery assets remain attached to the current site resources.</p></div></div><div className="admin-media-links"><button onClick={()=>setSection('investment')}>Manage investment images</button><button onClick={()=>setSection('catalogue')}>View vehicle galleries</button><button onClick={()=>setSection('settings')}>Management profile image</button></div></section>}
           {section === 'messages' && <section className="admin-console-panel admin-messages-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">CUSTOMER COMMUNICATIONS</div><h2>Customer inbox</h2><p>Customer conversation list and replies. The conversation header and reply bar remain in place while messages scroll.</p></div></div><AdminInbox/></section>}
@@ -879,6 +972,12 @@ export function AdminConsole() {
                     <option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
                   </select>
                 </label>
+                <div className="tm-shop-order-tracking-fields">
+                  <label>Delivery carrier<input value={shopTrackingDrafts[order.id]?.carrier||''} placeholder="e.g. DHL, FedEx" onChange={event=>setShopTrackingDrafts(current=>({...current,[order.id]:{...(current[order.id]||{carrier:'',number:'',url:''}),carrier:event.target.value}}))}/></label>
+                  <label>Tracking number<input value={shopTrackingDrafts[order.id]?.number||''} placeholder="Shipment tracking number" onChange={event=>setShopTrackingDrafts(current=>({...current,[order.id]:{...(current[order.id]||{carrier:'',number:'',url:''}),number:event.target.value}}))}/></label>
+                  <label>Tracking link (HTTPS)<input type="url" value={shopTrackingDrafts[order.id]?.url||''} placeholder="https://carrier.example/track/…" onChange={event=>setShopTrackingDrafts(current=>({...current,[order.id]:{...(current[order.id]||{carrier:'',number:'',url:''}),url:event.target.value}}))}/></label>
+                  <button className="btn btn-outline" type="button" disabled={updatingShopOrder===order.id} onClick={()=>void saveShopOrderTracking(order.id)}>{updatingShopOrder===order.id?'Saving…':'Save tracking'}</button>
+                </div>
               </article>)}</div> : <p className="admin-empty-note">No shop orders have been saved yet.</p>}
             </section>
             <section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">VEHICLE ORDERS & PRO FORMA</div><h2>{orders.length} recorded orders</h2><p>Set the final amount, paste a hosted checkout URL from your approved payment provider, then approve and send it to the customer. Verify incoming funds before marking payment complete.</p></div><button className="btn btn-outline" onClick={()=>void load()} disabled={refreshing}><RefreshCw size={15}/> Refresh</button></div>{orders.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Reference</th><th>Vehicle</th><th>Final amount (USD)</th><th>Order status</th><th>Checkout link</th><th>Received</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td>{order.reference}</td><td>{order.item}</td><td><input aria-label={'Final amount for '+order.reference} type="number" min="0.01" step="0.01" value={orderAmounts[order.id]??String(order.amount)} onChange={event=>setOrderAmounts(current=>({...current,[order.id]:event.target.value}))}/></td><td><select value={order.status} onChange={event=>void updateOrderStatus(order.id,event.target.value)}>{['draft','awaiting_payment','processing','completed','cancelled','refunded'].map(status=><option key={status} value={status}>{status.replaceAll('_',' ')}</option>)}</select></td><td><input aria-label={'Hosted checkout link for '+order.reference} type="url" placeholder="https://…" value={paymentLinks[order.id]??''} onChange={event=>setPaymentLinks(current=>({...current,[order.id]:event.target.value}))}/><button className="btn btn-dark" onClick={()=>void sendPaymentLink(order.id)}>Approve & send link</button></td><td>{new Date(order.createdAt).toLocaleString()}</td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No vehicle orders have been recorded yet.</p>}</section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECONCILIATION</div><h2>Record an incoming payment</h2><p>Use this for payments received through an independently approved method. New records stay pending until management verifies the transaction.</p></div></div><div className="admin-task-create"><label>Order<select value={paymentOrderId} onChange={event=>setPaymentOrderId(event.target.value)}><option value="">Select an order</option>{orders.filter(order=>!['cancelled','refunded'].includes(order.status)).map(order=><option key={order.id} value={order.id}>{order.reference} · {order.item}</option>)}</select></label><div className="admin-task-fields"><label>Amount (USD)<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={event=>setPaymentAmount(event.target.value)} placeholder="e.g. 39990"/></label><label>Payment method<select value={paymentMethod} onChange={event=>setPaymentMethod(event.target.value)}><option value="bank_transfer">Bank transfer</option><option value="card">Card / online gateway</option><option value="wire_transfer">International wire</option><option value="other">Other approved method</option></select></label><label>Transaction / provider reference<input value={paymentProviderReference} onChange={event=>setPaymentProviderReference(event.target.value)} placeholder="Bank or gateway reference"/></label><button className="btn btn-dark" disabled={savingPayment||!paymentOrderId||!paymentAmount.trim()||!paymentProviderReference.trim()} onClick={()=>void recordPayment()}>{savingPayment?'Saving…':'Record pending payment'}</button></div></div></section><section className="admin-console-panel"><div className="admin-console-panel-head"><div><div className="eyebrow dark">PAYMENT RECORDS</div><h2>{payments.length} recorded payments</h2><p>Verify only after matching the transaction against the bank or payment provider.</p></div></div>{payments.length?<div className="admin-table-wrap"><table className="admin-record-table"><thead><tr><th>Payment reference</th><th>Order</th><th>Amount</th><th>Method / provider reference</th><th>Verification</th></tr></thead><tbody>{payments.map(payment=><tr key={payment.id}><td>{payment.reference}</td><td>{orders.find(order=>order.id===payment.orderId)?.reference||'Order'}</td><td>{new Intl.NumberFormat('en-US',{style:'currency',currency:payment.currency||'USD'}).format(payment.amount)}</td><td>{payment.method.replaceAll('_',' ')}<small>{payment.providerReference||'No provider reference'}</small></td><td><select value={payment.status} onChange={event=>void updatePaymentStatus(payment.id,event.target.value)}>{['pending','verified','rejected','refunded'].map(status=><option key={status} value={status}>{status}</option>)}</select></td></tr>)}</tbody></table></div>:<p className="admin-empty-note">No payments have been recorded. Payments must be recorded and independently verified.</p>}</section></>}

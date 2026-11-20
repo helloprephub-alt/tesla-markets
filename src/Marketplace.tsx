@@ -11,9 +11,10 @@ import { supabase } from './lib/supabase';
 type Props = { onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
 type CartLine = { id: string; quantity: number; selectedSize?: string };
+type CheckoutDetails = { fullName: string; email: string; phone: string; address: string; city: string; region: string; postalCode: string; country: string };
 type CheckoutIntent = {
   cart: CartLine[];
-  checkoutDetails?: { fullName: string; email: string; phone: string; address: string; city: string; region?: string; postalCode: string; country: string };
+  checkoutDetails?: Partial<CheckoutDetails>;
 };
 const CHECKOUT_INTENT_KEY = 'tesla-markets-checkout-intent';
 const GUEST_CART_KEY = 'tesla-markets-saved-cart';
@@ -187,7 +188,7 @@ function ProductCard({ product, onOpen, onAdd, saved, onSave }: {
   );
 }
 
-export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire }: Props) {
+export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
@@ -206,7 +207,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [showAllDepartments, setShowAllDepartments] = useState(false);
   const [checkoutStage, setCheckoutStage] = useState<'details' | 'payment' | 'done'>('details');
-  const [checkoutDetails, setCheckoutDetails] = useState(() => ({
+  const [checkoutDetails, setCheckoutDetails] = useState<CheckoutDetails>(() => ({
     fullName: '', email: '', phone: '', address: '', city: '', region: '', postalCode: '', country: '',
     ...readSavedDeliveryAddress(),
     ...(readCheckoutIntent()?.checkoutDetails || {})
@@ -214,7 +215,7 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [checkoutReference, setCheckoutReference] = useState('');
   const [checkoutAction, setCheckoutAction] = useState<'pay' | 'save'>('pay');
-  const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'visa_gift_card' | 'google_play_gift_card' | 'razor_gold_gift_card' | ''>('');
+  const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'google_play_gift_card' | 'razor_gold_gift_card' | ''>('');
   const [paymentProofFiles, setPaymentProofFiles] = useState<File[]>([]);
   const [paymentProofPreviews, setPaymentProofPreviews] = useState<Array<{name:string;url:string}>>([]);
   const [paymentProofError, setPaymentProofError] = useState('');
@@ -285,7 +286,25 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
       window.setTimeout(()=>{void restoreCustomerCart(session?.user.id);},0);
     });
     const savedIntent=readCheckoutIntent();
-    if(savedIntent){if(savedIntent.checkoutDetails)setCheckoutDetails(savedIntent.checkoutDetails);setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');localStorage.removeItem(CHECKOUT_INTENT_KEY);}
+    if(savedIntent){
+      if(savedIntent.checkoutDetails){
+        const savedDetails=savedIntent.checkoutDetails;
+        setCheckoutDetails(current=>({
+          fullName:savedDetails.fullName ?? current.fullName,
+          email:savedDetails.email ?? current.email,
+          phone:savedDetails.phone ?? current.phone,
+          address:savedDetails.address ?? current.address,
+          city:savedDetails.city ?? current.city,
+          region:savedDetails.region ?? current.region,
+          postalCode:savedDetails.postalCode ?? current.postalCode,
+          country:savedDetails.country ?? current.country
+        }));
+      }
+      setCheckoutOpen(true);
+      setCartOpen(false);
+      setCheckoutStage('details');
+      localStorage.removeItem(CHECKOUT_INTENT_KEY);
+    }
     return()=>{active=false;subscription.unsubscribe();};
   }, []);
 
@@ -566,7 +585,9 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
   }, [department, vehicleModelFilter]);
 
   const visibleProducts = useMemo(() => {
+    // Keep the public catalogue image-complete: entries without a verified primary Tesla asset stay out of the storefront until management adds one.
     let items = storeProducts.filter(product =>
+      Boolean(product.image) &&
       (department === 'All products' || product.department === department) &&
       (department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter)) &&
       (categoryFilter === 'All categories' || product.category === categoryFilter) &&
@@ -848,9 +869,6 @@ export function Marketplace({ onSelectModel, onOrders, onRequireAuth, onEnquire 
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'amazon_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('amazon_gift_card')}>
                     <span className="tm-store-method-logo amazon"><span className="tm-store-amazon-wordmark" role="img" aria-label="Amazon">amazon</span></span><b>Amazon Gift Card</b><small>Amazon</small>
-                  </button>
-                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'visa_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('visa_gift_card')}>
-                    <span className="tm-store-method-logo visa"><img src="https://cdn.simpleicons.org/visa/1A1F71" alt="Visa logo"/></span><b>Visa Gift Card</b><small>Visa</small>
                   </button>
                   <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'google_play_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('google_play_gift_card')}>
                     <span className="tm-store-method-logo google"><img src="https://cdn.simpleicons.org/googleplay/414141" alt="Google Play logo"/></span><b>Google Play Gift Card</b><small>Google Play</small>

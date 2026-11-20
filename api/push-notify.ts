@@ -32,7 +32,7 @@ export default async function handler(request: IncomingRequest, response: Server
   if (!publicKey || !privateKey) return send(503, { error: 'Push keys are not configured' });
 
   let payload: {
-    record?: { id?: string; body?: string; conversation_id?: string; customer_name?: string; customer_email?: string };
+    record?: { id?: string; body?: string; conversation_id?: string; customer_name?: string; customer_email?: string; url?: string };
     subscriptions?: PushSubscriptionRecord[];
   } | null = null;
   try {
@@ -46,11 +46,17 @@ export default async function handler(request: IncomingRequest, response: Server
 
   webpush.setVapidDetails('mailto:oyejideoluwatobi7@gmail.com', publicKey, privateKey);
   const body = (payload.record.body || 'A customer sent a new message.').replace(/\s+/g, ' ').slice(0, 180);
+  const adminUrl = '/admin.html?page=admin&app=tesla-markets-admin';
+  const fallbackUrl = payload.record.conversation_id
+    ? adminUrl + '&conversation=' + encodeURIComponent(payload.record.conversation_id)
+    : adminUrl;
+  const requestedUrl = typeof payload.record.url === 'string' ? payload.record.url : '';
+  const notificationUrl = requestedUrl.startsWith('/') && !requestedUrl.startsWith('//') ? requestedUrl : fallbackUrl;
   const message = JSON.stringify({
-    title: `New message · ${payload.record.customer_name || 'Customer'}`,
+    title: `Tesla Markets alert · ${payload.record.customer_name || 'Customer'}`,
     body,
     tag: payload.record.id || 'tesla-customer-message',
-    url: `/#admin?conversation=${encodeURIComponent(payload.record.conversation_id || '')}`,
+    url: notificationUrl,
     conversationId: payload.record.conversation_id
   });
 

@@ -16,32 +16,32 @@ type Model = {
 
 const models: Model[] = [
   { id: 'model-3', name: 'Model 3', subtitle: 'Electric sedan', variants: [
-    { name: 'Model 3', price: '$36,990', discountPercent: 28 }, { name: 'Model 3 Premium', price: '$42,490', discountPercent: 35 }, { name: 'Model 3 Performance', price: '$54,990', discountPercent: 42 }
-  ], lease: 'From $540 / month', priceNote: 'Starting prices supplied by Tesla Markets management; final quotation and availability are confirmed individually.',
-    gallery: Array.from({ length: 5 }, (_, i) => '/resources/model-3-' + (i + 1) + '.jpg'), range: 'Varies by trim and model year', performance: 'Varies by trim', drivetrain: 'Rear-wheel or all-wheel drive, depending on trim',
+    { name: 'Model 3 Rear-Wheel Drive', price: '$36,990' }, { name: 'Model 3 Premium', price: '$42,490' }, { name: 'Model 3 Performance', price: '$54,990' }
+  ], lease: 'Lease and finance options vary by market', priceNote: 'US reference prices checked against Tesla’s official configurator on 19 November 2026. Local pricing, taxes, fees, configuration and availability may differ. Tesla Markets is an independent enquiry platform and is not affiliated with Tesla, Inc.',
+    gallery: Array.from({ length: 5 }, (_, i) => '/resources/model-3-' + (i + 1) + '.jpg'), range: 'Up to 321 miles (EPA estimate; configuration-dependent)', performance: '0–60 mph in as little as 5.8 seconds, depending on trim', drivetrain: 'Rear-wheel or all-wheel drive, depending on trim',
     features: ['Five-seat electric sedan', 'Glass roof and minimalist cabin', 'Driver assistance options', 'Configuration and delivery subject to confirmation'],
     colors: ['Pearl White', 'Solid Black', 'Stealth Grey', 'Quicksilver', 'Ultra Red', 'Deep Blue'], wheels: ['18-inch Photon', '19-inch Nova'] },
   { id: 'model-y', name: 'Model Y', subtitle: 'Electric SUV', variants: [
-    { name: 'Model Y', price: '$39,990', discountPercent: 25 }, { name: 'Model Y Premium', price: '$45,990', discountPercent: 32 }, { name: 'Model YL Premium', price: '$61,990', discountPercent: 40 }, { name: 'Model Y Performance', price: '$57,990', discountPercent: 45 }
-  ], lease: 'From $799 / month', priceNote: 'Starting prices supplied by Tesla Markets management; final quotation and availability are confirmed individually.',
-    gallery: Array.from({ length: 5 }, (_, i) => '/resources/model-y-' + (i + 1) + '.jpg'), range: 'Varies by trim and model year', performance: 'Varies by trim', drivetrain: 'Rear-wheel or all-wheel drive, depending on trim',
+    { name: 'Model Y Rear-Wheel Drive', price: '$39,990' }, { name: 'Model Y Premium', price: '$45,990' }, { name: 'Model Y L Premium', price: '$61,990' }, { name: 'Model Y Performance', price: 'Price on request' }
+  ], lease: 'Lease and finance options vary by market', priceNote: 'US reference prices checked against Tesla’s official configurator on 19 November 2026. The Performance trim price is not shown here because it was not verified. Local pricing, taxes, fees and availability may differ.',
+    gallery: Array.from({ length: 5 }, (_, i) => '/resources/model-y-' + (i + 1) + '.jpg'), range: 'Up to 321 miles (EPA estimate; configuration-dependent)', performance: '0–60 mph in as little as 6.8 seconds, depending on trim', drivetrain: 'Rear-wheel or all-wheel drive, depending on trim',
     features: ['Versatile electric SUV layout', 'Flexible passenger and cargo space', 'Driver assistance options', 'Configuration and delivery subject to confirmation'],
     colors: ['Pearl White', 'Solid Black', 'Stealth Grey', 'Quicksilver', 'Ultra Red', 'Deep Blue'], wheels: ['19-inch Gemini', '20-inch Induction'] },
   { id: 'cybertruck', name: 'Cybertruck', subtitle: 'All-electric utility vehicle', variants: [
-    { name: 'Cybertruck', price: '$82,490', discountPercent: 30 }, { name: 'Cybertruck Premium', price: '$92,490', discountPercent: 38 }, { name: 'Cyberbeast', price: '$102,490', discountPercent: 45 }
-  ], lease: 'From $1,450 / month', priceNote: 'Starting prices supplied by Tesla Markets management; trim, market availability and final quotation require confirmation.',
-    gallery: Array.from({ length: 9 }, (_, i) => '/resources/cybertruck-' + (i + 1) + '.jpg'), range: 'Varies by configuration', performance: 'Varies by configuration', drivetrain: 'Electric all-wheel drive on applicable versions',
+    { name: 'Cybertruck Dual Motor All-Wheel Drive', price: '$74,990' }, { name: 'Cybertruck Premium All-Wheel Drive', price: '$84,990' }, { name: 'Cyberbeast', price: '$99,990' }
+  ], lease: 'Lease and finance options vary by market', priceNote: 'US reference prices checked against Tesla’s official configurator on 19 November 2026. Final pricing depends on configuration, destination, taxes, fees and availability. Tesla Markets is an independent enquiry platform and is not affiliated with Tesla, Inc.',
+    gallery: [1, 2, 3, 4, 5, 6, 7, 9].map((number) => '/resources/cybertruck-' + number + '.jpg'), range: 'Up to 325 miles (EPA estimate; configuration-dependent)', performance: '0–60 mph in as little as 4.1 seconds on the listed configuration', drivetrain: 'Dual-motor or tri-motor all-wheel drive, depending on trim',
     features: ['Stainless-steel exoskeleton design', 'Utility-focused storage and load area', 'Adaptive air suspension on selected versions', 'Final specification must be confirmed'],
     colors: ['Stainless Steel', 'Matte Black preference', 'Arctic White preference'], wheels: ['20-inch Core', 'Cyber Wheel'] },
   { id: 'roadster', name: 'Roadster', subtitle: 'Next-generation electric sports car', variants: [
-    { name: 'Roadster Performance', price: '$45,000', discountPercent: 25 }, { name: 'Roadster Thrust', price: '$245,000', discountPercent: 40 }, { name: 'Roadster Limited', price: 'Price to be specified' }, { name: 'Roadster Rocket', price: 'Invite only', inviteOnly: true }
-  ], priceNote: 'Roadster variant labels and prices supplied by Tesla Markets management. Confirm specification and availability with management.',
-    gallery: Array.from({ length: 5 }, (_, i) => '/resources/roadster-' + (i + 2) + '.jpg'), range: 'Final production specification to be confirmed', performance: 'Variant-dependent', drivetrain: 'Final production specification to be confirmed',
-    features: ['Next-generation electric sports car collection', 'Variant-specific enquiries handled by management', 'Specifications and delivery timing require confirmation'],
+    { name: 'Roadster enquiry', price: 'Price on request' }
+  ], priceNote: 'Tesla does not publish a confirmed current Roadster purchase price on its public Roadster page. Any reservation payment, final specification and purchase price must be confirmed directly with Tesla. Tesla Markets records enquiries only.',
+    gallery: Array.from({ length: 5 }, (_, i) => '/resources/roadster-' + (i + 2) + '.jpg'), range: 'Up to 620 miles (Tesla estimate)', performance: 'Tesla lists 0–60 mph in 1.9 seconds and a top speed above 250 mph; final production specification may change', drivetrain: 'Final production specification to be confirmed',
+    features: ['Next-generation electric sports car', 'Roadster information and reservation enquiries', 'Specifications and delivery timing require confirmation'],
     colors: ['Pearl White preference', 'Solid Black preference', 'Ultra Red preference', 'Deep Blue preference'], wheels: ['Performance wheel preference', 'Aero wheel preference'] },
-  { id: 'semi', name: 'Tesla Semi', subtitle: 'All-electric heavy-duty truck', variants: [{ name: 'Tesla Semi', price: '$260,000', discountPercent: 35 }],
-    priceNote: 'Catalogue price supplied by Tesla Markets management; final quotation and availability must be confirmed.',
-    gallery: Array.from({ length: 10 }, (_, i) => '/resources/semi-' + (i + 1) + '.jpg'), range: 'Depends on configuration and operating conditions', performance: 'Heavy-duty electric truck; final specification to be confirmed', drivetrain: 'Electric powertrain',
+  { id: 'semi', name: 'Tesla Semi', subtitle: 'All-electric heavy-duty truck', variants: [{ name: 'Tesla Semi fleet enquiry', price: 'Price on request' }],
+    priceNote: 'Tesla directs fleet customers to contact its team for ordering; no public purchase price is listed on the official Semi page. Tesla Markets records enquiries only.',
+    gallery: Array.from({ length: 10 }, (_, i) => '/resources/semi-' + (i + 1) + '.jpg'), range: 'Up to 500 miles (Tesla estimate)', performance: 'Tesla lists 1.7 kWh per mile energy consumption and up to 1.2 MW charging capability', drivetrain: 'Electric powertrain',
     features: ['Commercial heavy-duty vehicle', 'Designed for freight and fleet operations', 'Fleet suitability and delivery require confirmation', 'Contact management for a formal quotation'],
     colors: ['Factory finish preference', 'Custom fleet finish enquiry'], wheels: ['Standard configuration enquiry'] },
 ];
