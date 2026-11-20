@@ -500,9 +500,9 @@ Deno.serve(async (req: Request) => {
       const enabled = details.enabled === true || (details.enabled !== false && hasRecipient);
       return enabled && hasRecipient;
     }).map((method:any) => method.label);
-    if (paymentAccountSettings.giftCardEnabled === true) configuredPaymentMethods.push("Gift Card");
+    if (configuredPaymentMethods.length === 0 && paymentAccountSettings.giftCardEnabled === true) configuredPaymentMethods.push("Gift Card");
 
-    if (customerMessage.attachment_path && savedPaymentLockAtMessage && ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockAtMessage.status || ""))) {
+    if (customerMessage.attachment_path && savedPaymentLockAtMessage && ["pending", "awaiting_proof"].includes(String(savedPaymentLockAtMessage.status || ""))) {
       const mime = cleanString(customerMessage.attachment_mime, 100).toLowerCase();
       if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mime)) {
         return json({ error: "Payment evidence must be a JPG, PNG, WEBP or GIF image." }, 400, headers);
@@ -523,7 +523,7 @@ Deno.serve(async (req: Request) => {
 
       let orderQuery = admin.from("business_orders")
         .select("id,order_reference,agreed_amount,currency,item_description,status")
-        .eq("conversation_id", conversationId).eq("customer_id", user.id).neq("status", "cancelled");
+        .eq("conversation_id", conversationId).eq("customer_id", user.id).in("status", ["draft", "awaiting_payment"]);
       if (savedPaymentLockAtMessage.order_id) orderQuery = orderQuery.eq("id", String(savedPaymentLockAtMessage.order_id));
       const { data: linkedOrder, error: linkedOrderError } = await orderQuery
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -665,7 +665,7 @@ Deno.serve(async (req: Request) => {
       const { data: linkedOrder, error: linkedOrderError } = await admin.from("business_orders")
         .select("id,order_reference,agreed_amount,currency,item_description,status")
         .eq("conversation_id", conversationId).eq("customer_id", user.id)
-        .in("status", ["draft", "awaiting_payment", "partially_paid"])
+        .in("status", ["draft", "awaiting_payment"])
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (linkedOrderError) throw linkedOrderError;
       const orderAmount = Number(linkedOrder?.agreed_amount || 0);
@@ -1627,7 +1627,7 @@ Deno.serve(async (req: Request) => {
           title: "Choose a payment method",
           subtitle: "TESLA MARKETS · AVAILABLE PAYMENT OPTIONS",
           payment_methods: configuredPaymentMethods,
-          note: "Choose one of the currently available methods. For PayPal, Zelle, Apple Pay or Chime, Tesla Markets Management will send a separate card containing the verified payment details. Gift-card proof must be uploaded securely and remains pending until reviewed."
+          note: "Choose one of the currently available methods. For PayPal, Zelle, Apple Pay or Chime, Tesla Markets Management will send a separate card containing the verified payment details. Gift-card fallback is shown only when management enables it and no primary payment account is configured. Proof remains pending until reviewed."
         }
       });
       if (paymentCardError) console.error("Could not send payment methods card:", paymentCardError.message);
