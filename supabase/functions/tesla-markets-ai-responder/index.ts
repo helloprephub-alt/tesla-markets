@@ -657,7 +657,13 @@ Deno.serve(async (req: Request) => {
 
     const lastAutomatedReply = [...history].reverse().find((row: any) => row.sender_role === "management" && row.automated_type === "ai_response");
     const discount = detectDiscountRequest(customerMessage.body);
-    const vehicle = matchVehicle(customerMessage.body, conversation.vehicle_model || "", catalogue || []);
+    const priorCustomerVehicle = [...history].reverse().find((row:any) =>
+      row.sender_role === "customer" && canonicalVehicle(cleanString(row.body, 500))
+    );
+    const contextualVehicle = canonicalVehicle(customerMessage.body) ||
+      canonicalVehicle(cleanString(conversation.vehicle_model || aiMemory.selected_vehicle || "", 100)) ||
+      canonicalVehicle(cleanString(priorCustomerVehicle?.body || "", 500));
+    const vehicle = matchVehicle(customerMessage.body, contextualVehicle, catalogue || []);
     let reply = "";
     let intent = "general";
     let requiresManagement = false;
