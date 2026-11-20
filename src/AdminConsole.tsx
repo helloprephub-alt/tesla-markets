@@ -495,6 +495,7 @@ export function AdminConsole() {
     const proof=shopProofs.find(item=>item.id===proofId);
     const order=proof?shopOrders.find(item=>item.id===proof.orderId):null;
     if(!proof||!order){setError('The shop payment proof or order could not be found.');return;}
+    if(['payment_verified','processing','shipped','delivered','completed'].includes(order.status)){setError('Payment has already been verified for this order. No further proof review is required.');return;}
     if(decision==='approve'&&proof.status!=='pending'){setError('Only pending evidence can be accepted.');return;}
     if(decision==='reject'&&!reason.trim()){setError('Enter a rejection reason for the customer.');return;}
     if(decision==='verify'&&(proof.status!=='approved_pending_settlement'||order.status!=='proof_approved_pending_settlement')){setError('Accept the evidence first, then independently confirm the payment in the recipient account before marking it verified.');return;}
@@ -976,9 +977,9 @@ export function AdminConsole() {
                     {proof.providerReference && <p className="tm-shop-review-method">Transaction reference: <b>{proof.providerReference}</b></p>}
                     {proof.signedUrl ? <a className="tm-shop-review-proof" href={proof.signedUrl} target="_blank" rel="noreferrer"><img src={proof.signedUrl} alt={'Payment proof for '+(order?.reference||'shop order')}/><span>Open full image</span></a> : <p className="admin-empty-note">Proof image unavailable. Refresh to request a new secure link.</p>}
                     {proof.reviewNote && <small className="tm-shop-review-note">{proof.reviewNote}</small>}
-                    {proof.status==='approved_pending_settlement' && <div className="tm-shop-review-actions tm-shop-review-actions-expanded"><p>Evidence has been accepted, but the payment is not yet confirmed. Check the recipient account or provider record before continuing.</p><button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'verify')}>{reviewingShopProof===proof.id?'Verifying…':'Confirm funds received'}</button></div>}
+                    {proof.status==='approved_pending_settlement' && !['payment_verified','processing','shipped','delivered','completed'].includes(order?.status||'') && <div className="tm-shop-review-actions tm-shop-review-actions-expanded"><p>Evidence has been accepted, but the payment is not yet confirmed. Check the recipient account or provider record before continuing.</p><button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'verify')}>{reviewingShopProof===proof.id?'Verifying…':'Confirm funds received'}</button></div>}
                     {proof.status==='verified' && <small className="tm-shop-review-note">Payment independently verified {proof.verifiedAt?'on '+new Date(proof.verifiedAt).toLocaleString():''}. This order may proceed to fulfilment.</small>}
-                    {proof.status==='pending' && <div className="tm-shop-review-actions tm-shop-review-actions-expanded">
+                    {proof.status==='pending' && !['payment_verified','processing','shipped','delivered','completed'].includes(order?.status||'') && <div className="tm-shop-review-actions tm-shop-review-actions-expanded">
                       <button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'approve')}>Accept evidence · pending settlement</button>
                       <label className="tm-shop-rejection-field">Reason for rejection
                         <textarea rows={3} value={shopProofRejectionReasons[proof.id]||''} onChange={event=>setShopProofRejectionReasons(current=>({...current,[proof.id]:event.target.value}))} placeholder="Write the reason the customer should see…"/>
@@ -1000,8 +1001,8 @@ export function AdminConsole() {
                   <select value={order.status} disabled={updatingShopOrder===order.id} onChange={event=>void updateShopOrderProgress(order.id,event.target.value)}>
                     <option value="saved_for_later">Saved for later</option>
                     <option value="awaiting_payment">Not submitted yet</option>
-                    <option value="proof_submitted">Submission received · pending review</option>
-                    <option value="payment_proof_rejected">Submission rejected</option>
+                    <option value="proof_submitted" disabled>Submission received · pending review</option>
+                    <option value="payment_proof_rejected" disabled>Submission rejected</option>
                     <option value="proof_approved_pending_settlement" disabled>Evidence accepted · awaiting settlement</option>
                     <option value="payment_verified" disabled>Payment verified</option>
                     <option value="processing" disabled={!['payment_verified','processing','shipped','delivered','completed'].includes(order.status)}>Processing</option><option value="shipped" disabled={!['payment_verified','processing','shipped','delivered','completed'].includes(order.status)}>Shipped</option><option value="delivered" disabled={!['payment_verified','processing','shipped','delivered','completed'].includes(order.status)}>Delivered</option><option value="completed" disabled={!['payment_verified','processing','shipped','delivered','completed'].includes(order.status)}>Completed</option><option value="cancelled">Cancelled</option>
