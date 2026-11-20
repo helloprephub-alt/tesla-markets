@@ -73,7 +73,9 @@ async function generateCloudflareCustomerReply(input: {
     message: cleanString(row.body, 1200)
   })).filter((row: any) => row.message);
 
-  const response = await fetch(
+  let response: Response;
+  try {
+    response = await fetch(
     "https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(accountId) + "/ai/v1/chat/completions",
     {
       method: "POST",
@@ -116,7 +118,11 @@ async function generateCloudflareCustomerReply(input: {
       }),
       signal: AbortSignal.timeout(22000)
     }
-  );
+    );
+  } catch (error) {
+    console.error("Cloudflare customer reply request failed:", error);
+    return { reply: input.approvedDraft, language: input.previousLanguage || "en", used: false, error: "Cloudflare inference request failed" };
+  }
 
   if (!response.ok) {
     return { reply: input.approvedDraft, language: input.previousLanguage || "en", used: false, error: "Cloudflare inference returned HTTP " + response.status };
@@ -1276,15 +1282,32 @@ Deno.serve(async (req: Request) => {
         if (profileLanguageError) console.error("Could not persist profile language:", profileLanguageError.message);
       }
     } else {
-      console.error("Tesla Markets Cloudflare AI fallback:", cloudflareReply.error || "unknown inference failure");
-      await admin.from("admin_notifications").insert({
+      const failureReason = cleanString(cloudflareReply.error || "Unknown Cloudflare inference failure", 200);
+      console.error("Tesla Markets AI responder paused for human review:", failureReason);
+      const { error: notificationError } = await admin.from("admin_notifications").insert({
         type: "ai_model_unavailable",
-        title: "AI model unavailable — fallback reply used",
-        body: ("Cloudflare AI could not generate a customer reply. " + (cloudflareReply.error || "The existing safe response was retained.") + " Review the AI connection and quota.").slice(0, 240),
+        title: "AI paused — human response required",
+        body: ("Cloudflare AI could not safely generate a customer reply. Automated replies have been paused for this conversation. Reason: " + failureReason).slice(0, 240),
         entity_type: "conversation",
         entity_id: conversationId,
         is_read: false
       });
+      if (notificationError) console.error("Could not create AI escalation notification:", notificationError.message);
+      const { error: pauseError } = await admin.from("support_conversations")
+        .update({ responder_paused: true, updated_at: new Date().toISOString() })
+        .eq("id", conversationId);
+      if (pauseError) console.error("Could not pause AI after model failure:", pauseError.message);
+      const { error: runError } = await admin.from("ai_responder_runs")
+        .update({
+          status: "failed",
+          error_code: "cloudflare_ai_unavailable",
+          error_message: failureReason,
+          updated_at: new Date().toISOString(),
+          completed_at: new Date().toISOString()
+        })
+        .eq("message_id", messageId);
+      if (runError) console.error("Could not mark AI responder run as failed:", runError.message);
+      return json({ ok: true, escalated: true, responder_paused: true, reason: "ai_model_unavailable" }, 200, headers);
     }
 
     const { data: responseMessage, error: responseInsertError } = await admin
