@@ -11,8 +11,8 @@ const approvedGiftCards = ['amazon_gift_card','apple_gift_card','google_play_gif
 const migrationGiftCards = [...giftCardMigration.matchAll(/'([a-z_]+_gift_card)'/g)].map((match) => match[1]).sort();
 assert.deepEqual(migrationGiftCards, [...approvedGiftCards].sort(), 'Only the four approved promotional gift-card methods may be accepted.');
 assert.doesNotMatch(giftCardMigration, /visa_gift_card/, 'Visa gift cards are not an approved promotional method.');
-assert.match(discountMigration, /discount_percent\\s*=\\s*0/i, 'A product must be allowed to have no discount.');
-assert.match(discountMigration, /discount_percent\\s+between\\s+25\\s+and\\s+70/i, 'Applied discounts must remain between 25% and 70%.');
+assert.match(discountMigration, /discount_percent\s*=\s*0/i, 'A product must be allowed to have no discount.');
+assert.match(discountMigration, /discount_percent\s+between\s+25\s+and\s+70/i, 'Applied discounts must remain between 25% and 70%.');
 for (const method of approvedGiftCards) assert.ok(marketplaceSource.includes(method), 'Shop checkout is missing approved gift-card choice: ' + method);
 assert.match(aiSource, /pct>=25&&pct<=70/, 'AI vehicle promotions must enforce the approved discount range.');
 
