@@ -269,6 +269,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
         translateTextNode(record.target as Text);
       } else if (record.type === 'attributes' && record.target instanceof Element && record.attributeName) {
         translateAttributes(record.target);
+        if (['class', 'style', 'hidden', 'aria-expanded'].includes(record.attributeName)) scan(record.target);
       } else {
         record.addedNodes.forEach(scan);
       }
@@ -286,6 +287,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
     });
   };
   window.addEventListener('scroll', scanVisibleContent, { passive: true });
+  document.addEventListener('scroll', scanVisibleContent, { passive: true, capture: true });
   window.addEventListener('resize', scanVisibleContent, { passive: true });
 
   const fallback = window.setTimeout(() => { if (initialPass) fallbackToEnglish(); }, 90000);
@@ -293,6 +295,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
     disposed = true;
     observer?.disconnect();
     window.removeEventListener('scroll', scanVisibleContent);
+    document.removeEventListener('scroll', scanVisibleContent, true);
     window.removeEventListener('resize', scanVisibleContent);
     window.clearTimeout(fallback);
     document.documentElement.classList.remove('tm-language-pending');
