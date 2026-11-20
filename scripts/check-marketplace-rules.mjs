@@ -8,6 +8,7 @@ const paymentMigration = read('supabase/migrations/20261120204842_enable_managem
 const paymentOptionsSource = read('supabase/functions/store-payment-options/index.ts');
 const marketplaceSource = read('src/Marketplace.tsx');
 const adminSource = read('src/AdminConsole.tsx');
+const appSource = read('src/App.tsx');
 const chatSource = read('src/ChatWorkspace.tsx');
 const aiSource = read('supabase/functions/tesla-markets-ai-responder/index.ts');
 
@@ -35,6 +36,9 @@ assert.match(adminSource, /paymentAccountDetails\[method\]\?\.enabled===true/, '
 assert.match(aiSource, /details\.enabled === true/, 'AI payment choices must respect admin enablement.');
 assert.match(aiSource, /paymentAccountSettings\.giftCardEnabled === true/, 'AI must offer optional gift cards only when enabled.');
 assert.match(paymentMigration, /payment_verified/, 'Shop orders must have an explicit payment-verified state.');
+assert.match(paymentMigration, /payment_method is null/, 'Customers must not self-select or pre-verify payment during order creation.');
+assert.match(paymentMigration, /enforce_store_order_payment_verification/, 'Database must enforce payment verification before new fulfilment transitions.');
+assert.match(appSource, /Payment verified/, 'Customers must see payment verification in order tracking.');
 assert.match(adminSource, /Confirm funds received/, 'Management must explicitly verify funds before fulfilment.');
 assert.match(adminSource, /Confirm receipt of the payment from the recipient account/, 'Fulfilment must be blocked until payment is verified.');
 assert.match(chatSource, /selectedPaymentLock/, 'Admin chat payment instructions must be tied to the customer's selected method.');
