@@ -1726,8 +1726,10 @@ Deno.serve(async (req: Request) => {
       try {
         const { data: existingRun } = await admin.from("ai_responder_runs")
           .select("response_message_id").eq("message_id", runMessageId).maybeSingle();
+        const hasPriorResponse = !!existingRun?.response_message_id;
         await admin.from("ai_responder_runs").update({
-          status: "failed", error_code: "ai_responder_exception", error_message: failureMessage,
+          status: hasPriorResponse ? "completed" : "failed",
+          ...(hasPriorResponse ? {} : { error_code: "ai_responder_exception", error_message: failureMessage }),
           updated_at: new Date().toISOString()
         }).eq("message_id", runMessageId);
         if (runConversationId) {
