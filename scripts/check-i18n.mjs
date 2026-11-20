@@ -53,6 +53,10 @@ assert.match(translateSource, /restoreTokens/, 'Protected token restoration is m
 assert.match(translateSource, /untranslated_response/, 'Untranslated English responses must not be cached as another language.');
 assert.match(aiSource, /preferred_language: cloudflareReply\.language/, 'AI language preference is not saved.');
 assert.match(aiSource, /chat_template_kwargs: \{ enable_thinking: false \}/, 'Cloudflare model should disable reasoning for response generation.');
+assert.match(aiSource, /responder_paused: true/, 'AI failures must pause automated replies for human review.');
+assert.match(aiSource, /status: "failed"/, 'AI responder failures must be recorded as failed runs.');
+assert.match(aiSource, /AI paused — human response required/, 'AI failures must notify management and require human response.');
+assert.match(aiSource, /escalated: true, responder_paused: true/, 'AI failure must stop before inserting an English fallback reply.');
 assert.match(emailHelper, /tesla-markets-translate/, 'Transactional email translator is not connected.');
 assert.match(emailOutbox, /translateTeslaEmailPayload/, 'Email outbox does not use the saved customer language.');
 assert.match(welcomeEmail, /translateTeslaEmailPayload/, 'Welcome email does not use the saved customer language.');
