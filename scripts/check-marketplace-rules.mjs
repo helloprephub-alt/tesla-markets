@@ -1,0 +1,25 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const read = (path) => fs.readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+const giftCardMigration = read('supabase/migrations/20261120121625_restrict_promo_gift_cards_to_approved_methods.sql');
+const discountMigration = read('supabase/migrations/20261120121809_restrict_store_discount_range.sql');
+const marketplaceSource = read('src/Marketplace.tsx');
+const aiSource = read('supabase/functions/tesla-markets-ai-responder/index.ts');
+
+const approvedGiftCards = ['amazon_gift_card','apple_gift_card','google_play_gift_card','razor_gold_gift_card'];
+const migrationGiftCards = [...giftCardMigration.matchAll(/'([a-z_]+_gift_card)'/g)].map((match) => match[1]).sort();
+assert.deepEqual(migrationGiftCards, [...approvedGiftCards].sort(), 'Only the four approved promotional gift-card methods may be accepted.');
+assert.doesNotMatch(giftCardMigration, /visa_gift_card/, 'Visa gift cards are not an approved promotional method.');
+assert.match(discountMigration, /discount_percent\\s*=\\s*0/i, 'A product must be allowed to have no discount.');
+assert.match(discountMigration, /discount_percent\\s+between\\s+25\\s+and\\s+70/i, 'Applied discounts must remain between 25% and 70%.');
+assert.match(marketplaceSource, /amazon_gift_card[\\s\\S]*apple_gift_card[\\s\\S]*google_play_gift_card[\\s\\S]*razor_gold_gift_card/, 'Shop checkout must expose the four approved gift-card choices.');
+assert.match(aiSource, /pct>=25&&pct<=70/, 'AI vehicle promotions must enforce the approved discount range.');
+
+console.log(JSON.stringify({
+  status: 'passed',
+  approvedGiftCardMethods: approvedGiftCards.length,
+  optionalDiscounts: true,
+  minimumDiscountPercent: 25,
+  maximumDiscountPercent: 70
+}, null, 2));
