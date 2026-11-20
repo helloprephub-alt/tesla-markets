@@ -412,7 +412,7 @@ function App() {
   const [languageSearch,setLanguageSearch]=useState('');
   const [detectedLanguage,setDetectedLanguage] = useState<PublicLanguage>(()=>getInitialPublicLanguage());
   const currentLanguageName=String(supportedLanguages.find(([code])=>code===detectedLanguage)?.[1]||'English');
-  const t=(key:string)=>translations[detectedLanguage]?.[key]||publicText(translations.en[key]||key, detectedLanguage as PublicLanguage);
+  const t=(key:string)=>translations.en[key]||key;
   const translateSite = async (lang:string) => {
     const normalized = normalizePublicLanguage(lang);
     if (!normalized) return;
