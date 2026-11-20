@@ -41,6 +41,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
   loadingOverlay.id = 'tm-language-loading-overlay';
   loadingOverlay.setAttribute('role', 'status');
   loadingOverlay.setAttribute('aria-live', 'polite');
+  loadingOverlay.setAttribute('data-no-translate', 'true');
   loadingOverlay.textContent = 'TESLA MARKETS\nPreparing your selected language…';
   Object.assign(loadingOverlay.style, {
     position: 'fixed', inset: '0', zIndex: '2147483647', display: 'grid',
@@ -89,6 +90,18 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
     return false;
   };
 
+  const isTextInViewport = (node: Text) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const rect = range.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && rect.bottom >= 0 && rect.top <= window.innerHeight && rect.right >= 0 && rect.left <= window.innerWidth;
+  };
+
+  const isElementInViewport = (element: Element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && rect.bottom >= 0 && rect.top <= window.innerHeight && rect.right >= 0 && rect.left <= window.innerWidth;
+  };
+
   const applyText = (target: TextTarget, translated: string) => {
     if (disposed || failed || !target.node.isConnected) return;
     const current = target.node.nodeValue || '';
@@ -129,7 +142,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
 
   const translateTextNode = (node: Text) => {
     const parent = node.parentElement;
-    if (!parent || isSkipped(parent) || failed) return;
+    if (!parent || isSkipped(parent) || failed || !isTextInViewport(node)) return;
     const current = node.nodeValue || '';
     const previous = originals.get(node);
     if (previous && current === previous.translated) return;
@@ -154,7 +167,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
   };
 
   const translateAttributes = (element: Element) => {
-    if (failed) return;
+    if (failed || !isElementInViewport(element)) return;
     let current: Element | null = element;
     while (current) {
       if (SKIP_TAGS.has(current.tagName) || current.hasAttribute('data-no-translate')) return;
@@ -261,12 +274,26 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
       }
     }
   });
-  observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: TRANSLATABLE_ATTRIBUTES });
+  observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: [...TRANSLATABLE_ATTRIBUTES, 'class', 'style', 'hidden', 'aria-expanded'] });
+
+  let scrollScanQueued = false;
+  const scanVisibleContent = () => {
+    if (scrollScanQueued || disposed || failed) return;
+    scrollScanQueued = true;
+    window.requestAnimationFrame(() => {
+      scrollScanQueued = false;
+      if (!disposed && !failed) scan(document.body);
+    });
+  };
+  window.addEventListener('scroll', scanVisibleContent, { passive: true });
+  window.addEventListener('resize', scanVisibleContent, { passive: true });
 
   const fallback = window.setTimeout(() => { if (initialPass) fallbackToEnglish(); }, 90000);
   return () => {
     disposed = true;
     observer?.disconnect();
+    window.removeEventListener('scroll', scanVisibleContent);
+    window.removeEventListener('resize', scanVisibleContent);
     window.clearTimeout(fallback);
     document.documentElement.classList.remove('tm-language-pending');
     loadingOverlay.remove();
