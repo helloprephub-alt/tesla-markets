@@ -114,6 +114,19 @@ function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; v
     setImageLoaded(false);
     setImageRetryCount(0);
   }, [imageSrc]);
+
+  useEffect(() => {
+    if (!imageSrc || imageFailed || imageLoaded) return;
+    const timer = window.setTimeout(() => {
+      if (retryableImage && imageRetryCount < 2) {
+        setImageLoaded(false);
+        setImageRetryCount(attempt => attempt + 1);
+      } else {
+        setImageFailed(true);
+      }
+    }, 12000);
+    return () => window.clearTimeout(timer);
+  }, [imageSrc, imageRequestSrc, imageLoaded, imageFailed, imageRetryCount, retryableImage]);
   const handleImageError = () => {
     if (retryableImage && imageRetryCount < 2) {
       setImageLoaded(false);
