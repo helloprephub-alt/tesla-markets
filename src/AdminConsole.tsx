@@ -504,31 +504,22 @@ export function AdminConsole() {
     try {
       const {user:current,isAdmin}=await isCurrentUserAdmin();
       if(!current||!isAdmin) throw new Error('Administrator session expired.');
-      const now=new Date().toISOString();
-      const proofStatus=decision==='approve'?'approved_pending_settlement':decision==='verify'?'verified':'rejected';
-      let orderStatus=decision==='approve'?'proof_approved_pending_settlement':decision==='verify'?'payment_verified':'payment_proof_rejected';
-      const note=decision==='approve'
-        ? 'Evidence accepted by management. Payment is not yet confirmed; fulfilment must wait for independent settlement verification.'
-        : decision==='verify'
-          ? 'Payment was independently matched against the recipient account or provider record and confirmed by management.'
-          : reason.trim();
-      const proofPatch:any={status:proofStatus,review_note:note,reviewed_by:current.id,reviewed_at:now};
-      if(decision==='verify')proofPatch.verified_at=now;
-      if(decision==='reject')proofPatch.verified_at=null;
-      const {error:proofError}=await supabase.from('store_payment_submissions').update(proofPatch).eq('id',proofId);
-      if(proofError) throw proofError;
-      if(decision==='reject'){
-        const {data:remainingAccepted,error:acceptedError}=await supabase.from('store_payment_submissions').select('id').eq('order_id',order.id).eq('status','approved_pending_settlement').neq('id',proofId).limit(1);
-        if(acceptedError)throw acceptedError;
-        if((remainingAccepted||[]).length>0)orderStatus='proof_approved_pending_settlement';
-      }
-      const orderPatch:any={status:orderStatus,updated_at:now};
-      if(decision==='verify')orderPatch.payment_verified_at=now;
-      if(decision==='reject')orderPatch.payment_verified_at=null;
-      const {error:orderError}=await supabase.from('store_orders').update(orderPatch).eq('id',order.id);
-      if(orderError) throw orderError;
-      setShopProofs(currentProofs=>currentProofs.map(item=>item.id===proofId?{...item,status:proofStatus,reviewNote:note,reviewedAt:now,verifiedAt:decision==='verify'?now:decision==='reject'?null:item.verifiedAt}:item));
-      setShopOrders(currentOrders=>currentOrders.map(item=>item.id===order.id?{...item,status:orderStatus,paymentVerifiedAt:decision==='verify'?now:decision==='reject'?null:item.paymentVerifiedAt}:item));
+      const {data,error:reviewError}=await supabase.rpc('review_store_payment_proof',{
+        p_proof_id:proofId,
+        p_decision:decision,
+        p_reason:reason.trim()||null
+      });
+      if(reviewError)throw reviewError;
+      if(!data||typeof data!=='object')throw new Error('The payment review did not return a verified result.');
+      const result=data as any;
+      const proofStatus=String(result.proof_status||'');
+      const orderStatus=String(result.order_status||'');
+      const note=String(result.review_note||'');
+      const reviewedAt=String(result.reviewed_at||new Date().toISOString());
+      const verifiedAt=result.verified_at?String(result.verified_at):null;
+      if(!proofStatus||!orderStatus)throw new Error('The payment review result was incomplete.');
+      setShopProofs(currentProofs=>currentProofs.map(item=>item.id===proofId?{...item,status:proofStatus,reviewNote:note,reviewedAt,verifiedAt}:item));
+      setShopOrders(currentOrders=>currentOrders.map(item=>item.id===order.id?{...item,status:orderStatus,paymentVerifiedAt:verifiedAt}:item));
       setShopProofRejectionReasons(currentReasons=>({...currentReasons,[proofId]:''}));
       setError('');
     } catch(e) {
