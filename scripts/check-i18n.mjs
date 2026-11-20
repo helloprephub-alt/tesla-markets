@@ -53,10 +53,11 @@ assert.match(translateSource, /restoreTokens/, 'Protected token restoration is m
 assert.match(translateSource, /untranslated_response/, 'Untranslated English responses must not be cached as another language.');
 assert.match(aiSource, /preferred_language: cloudflareReply\.language/, 'AI language preference is not saved.');
 assert.match(aiSource, /chat_template_kwargs: \{ enable_thinking: false \}/, 'Cloudflare model should disable reasoning for response generation.');
-assert.match(aiSource, /responder_paused: true/, 'AI failures must pause automated replies for human review.');
-assert.match(aiSource, /status: "failed"/, 'AI responder failures must be recorded as failed runs.');
-assert.match(aiSource, /AI paused — human response required/, 'AI failures must notify management and require human response.');
-assert.match(aiSource, /escalated: true, responder_paused: true/, 'AI failure must stop before inserting an English fallback reply.');
+assert.doesNotMatch(aiSource, /responder_paused: true/, 'A model formatting failure must not permanently pause an otherwise active customer conversation.');
+assert.match(aiSource, /status: "failed"/, 'Unexpected responder execution failures must still be recorded as failed runs.');
+assert.match(aiSource, /AI used safe fallback response/, 'Model formatting failures must notify management when a safe fallback is sent.');
+assert.match(aiSource, /Some model responses are valid plain text/, 'The responder must accept valid plain-text model responses as well as JSON.');
+assert.match(aiSource, /I don't have enough verified information to answer that accurately yet/, 'Unknown questions must receive a contextual, honest fallback rather than silence.');
 assert.match(emailHelper, /tesla-markets-translate/, 'Transactional email translator is not connected.');
 assert.match(emailOutbox, /translateTeslaEmailPayload/, 'Email outbox does not use the saved customer language.');
 assert.match(welcomeEmail, /translateTeslaEmailPayload/, 'Welcome email does not use the saved customer language.');
