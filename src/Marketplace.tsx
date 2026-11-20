@@ -11,6 +11,8 @@ import { supabase } from './lib/supabase';
 type Props = { onOrders: () => void; onRequireAuth: () => void; onEnquire: (context: string) => void };
 type Department = StoreDepartment | 'All products';
 type CartLine = { id: string; quantity: number; selectedSize?: string };
+type StorePaymentMethod = { key: string; label: string; kind: 'manual' | 'gift_card' };
+type StorePaymentInstructions = { method: string; label: string; kind: 'manual' | 'gift_card'; accountName?: string | null; recipient?: string; recipientLabel?: string; additionalInstructions?: string | null; note: string };
 type CheckoutDetails = { fullName: string; email: string; phone: string; address: string; city: string; region: string; postalCode: string; country: string };
 type CheckoutIntent = {
   cart: CartLine[];
@@ -228,7 +230,12 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [checkoutReference, setCheckoutReference] = useState('');
   const [checkoutAction, setCheckoutAction] = useState<'pay' | 'save'>('pay');
-  const [selectedGiftCard, setSelectedGiftCard] = useState<'apple_gift_card' | 'amazon_gift_card' | 'google_play_gift_card' | 'razor_gold_gift_card' | ''>('');
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<StorePaymentMethod[]>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+  const [paymentInstructions, setPaymentInstructions] = useState<StorePaymentInstructions | null>(null);
+  const [paymentOptionsLoading, setPaymentOptionsLoading] = useState(false);
+  const [paymentOptionsError, setPaymentOptionsError] = useState('');
+  const [providerReference, setProviderReference] = useState('');
   const [paymentProofFiles, setPaymentProofFiles] = useState<File[]>([]);
   const [paymentProofPreviews, setPaymentProofPreviews] = useState<Array<{name:string;url:string}>>([]);
   const [paymentProofError, setPaymentProofError] = useState('');
@@ -432,6 +439,53 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
     });
   };
 
+  const loadPaymentOptions = async (orderId: string) => {
+    setPaymentOptionsLoading(true);
+    setPaymentOptionsError('');
+    setAvailablePaymentMethods([]);
+    setSelectedPaymentMethod('');
+    setPaymentInstructions(null);
+    setProviderReference('');
+    try {
+      const { data, error } = await supabase.functions.invoke('store-payment-options', { body: { order_id: orderId } });
+      if (error) throw error;
+      if (data?.error) throw new Error(String(data.error));
+      const methods = Array.isArray(data?.methods)
+        ? data.methods.filter((method: any) => typeof method?.key === 'string' && typeof method?.label === 'string' && ['manual','gift_card'].includes(method?.kind))
+        : [];
+      setAvailablePaymentMethods(methods);
+      if (methods.length === 0) {
+        setPaymentOptionsError('No payment method is currently enabled. Please contact Tesla Markets Management or save your order and pay later.');
+      }
+    } catch (error) {
+      setPaymentOptionsError(error instanceof Error ? error.message : 'Payment methods could not be loaded. Please try again.');
+    } finally {
+      setPaymentOptionsLoading(false);
+    }
+  };
+
+  const choosePaymentMethod = async (method: string) => {
+    if (!checkoutOrderId || paymentOptionsLoading || !availablePaymentMethods.some(item => item.key === method)) return;
+    setPaymentOptionsLoading(true);
+    setPaymentOptionsError('');
+    setPaymentInstructions(null);
+    setSelectedPaymentMethod(method);
+    try {
+      const { data, error } = await supabase.functions.invoke('store-payment-options', {
+        body: { order_id: checkoutOrderId, payment_method: method }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(String(data.error));
+      if (!data?.instructions || data.instructions.method !== method) throw new Error('The selected payment instructions could not be verified.');
+      setPaymentInstructions(data.instructions as StorePaymentInstructions);
+    } catch (error) {
+      setSelectedPaymentMethod('');
+      setPaymentOptionsError(error instanceof Error ? error.message : 'The selected payment method is unavailable. Please choose another option.');
+    } finally {
+      setPaymentOptionsLoading(false);
+    }
+  };
+
   const validateCheckoutDetails = () => {
     const d = checkoutDetails;
     if (!d.fullName.trim() || !d.email.trim() || !d.phone.trim() || !d.address.trim() || !d.city.trim() || !d.country.trim()) {
@@ -504,6 +558,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
       } else {
         setCheckoutStage('payment');
         setCheckoutMessage('');
+        void loadPaymentOptions(orderId);
       }
     } catch (error) {
       setCheckoutMessage(error instanceof Error ? error.message : 'We could not save this order. Please try again.');
@@ -514,8 +569,8 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
 
   const submitPaymentProof = async () => {
     if (checkoutBusy) return;
-    if (!checkoutOrderId || !selectedGiftCard || paymentProofFiles.length === 0) {
-      setPaymentProofError('Choose a gift card and upload at least one image.');
+    if (!checkoutOrderId || !selectedPaymentMethod || !paymentInstructions || paymentProofFiles.length === 0) {
+      setPaymentProofError('Choose an available payment method, review its instructions and upload at least one image.');
       return;
     }
     setCheckoutBusy(true);
@@ -539,8 +594,9 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
         uploadedPaths.push(path);
         submissions.push({
           order_id: checkoutOrderId,
-          payment_method: selectedGiftCard,
+          payment_method: selectedPaymentMethod,
           proof_storage_path: path,
+          provider_reference: providerReference.trim() || null,
           status: 'pending'
         });
       }
@@ -563,9 +619,10 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
       if (clearCartError) console.warn('Payment proof was submitted, but the saved cart could not be cleared:', clearCartError.message);
 
       setCheckoutStage('done');
-      setCheckoutMessage('Your images have been submitted. Review may take up to 30 minutes. You can track the decision in My Orders.');
+      setCheckoutMessage('Your payment evidence has been submitted. Management will review it before confirming payment. You can track the decision in My Orders.');
       setPaymentProofFiles([]);
       setPaymentProofPreviews([]);
+      setProviderReference('');
     } catch (error) {
       if (uploadedPaths.length) {
         await supabase.storage.from('shop-payment-proofs').remove(uploadedPaths);
@@ -837,8 +894,8 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
                   <h2 id="tm-store-checkout-title">Where should we deliver?</h2>
                   <div className="tm-store-checkout-form">
                     <div className="tm-store-checkout-promo">
-                      <span>CHRISTMAS PROMOTION · PAYMENT INFORMATION</span>
-                      <p>Gift-card image submissions are the only payment method offered during this promotion. Select an available gift-card option on the next step. When the promotion ends, standard debit-card options may return.</p>
+                      <span>PAYMENT INFORMATION</span>
+                      <p>Choose one of the payment methods enabled by Tesla Markets Management after confirming your delivery details. Optional gift-card methods appear only when management enables them.</p>
                       <small>You can return to this delivery-details step from the payment screen at any time before submitting.</small>
                     </div>
                     <label>Full name<input value={checkoutDetails.fullName} onChange={event => setCheckoutField('fullName',event.target.value)} placeholder="Customer name" autoComplete="name" required/></label>
@@ -871,46 +928,55 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
             {checkoutStage === 'payment' && (
               <div className="tm-store-payment-step">
                 <span className="tm-store-eyebrow">STEP 2 · PAYMENT METHOD</span>
-                <h2 id="tm-store-checkout-title">Choose your payment card</h2>
-                <div className="tm-store-christmas-note">
-                  <span className="tm-store-christmas-kicker">CHRISTMAS SPECIAL</span>
-                  <p>During our Christmas promotion, payment is accepted through the gift-card options shown here. When the promotion ends, standard debit-card payment will resume.</p>
-                </div>
+                <h2 id="tm-store-checkout-title">Choose your payment method</h2>
+                <p>Only methods currently enabled by Tesla Markets Management are shown.</p>
+                {paymentOptionsLoading && <p className="tm-store-checkout-message" role="status">Loading available payment methods…</p>}
+                {paymentOptionsError && <p className="tm-store-checkout-message" role="alert">{paymentOptionsError}</p>}
+                {paymentOptionsError && availablePaymentMethods.length === 0 && (
+                  <button type="button" className="tm-store-pay-later" disabled={paymentOptionsLoading} onClick={() => void loadPaymentOptions(checkoutOrderId)}>Retry loading payment methods</button>
+                )}
                 <div className="tm-store-payment-methods tm-store-payment-methods-premium">
-                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'apple_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('apple_gift_card')}>
-                    <span className="tm-store-method-logo apple"><img src="https://cdn.simpleicons.org/apple/111111" alt="Apple logo"/></span><b>Apple Gift Card</b><small>Apple</small>
-                  </button>
-                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'amazon_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('amazon_gift_card')}>
-                    <span className="tm-store-method-logo amazon"><span className="tm-store-amazon-wordmark" role="img" aria-label="Amazon">amazon</span></span><b>Amazon Gift Card</b><small>Amazon</small>
-                  </button>
-                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'google_play_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('google_play_gift_card')}>
-                    <span className="tm-store-method-logo google"><img src="https://cdn.simpleicons.org/googleplay/414141" alt="Google Play logo"/></span><b>Google Play Gift Card</b><small>Google Play</small>
-                  </button>
-                  <button type="button" className={'tm-store-payment-method'+(selectedGiftCard === 'razor_gold_gift_card'?' selected':'')} onClick={() => setSelectedGiftCard('razor_gold_gift_card')}>
-                    <span className="tm-store-method-logo razor"><img src="https://cdn.simpleicons.org/razer/44D62C" alt="Razer logo"/></span><b>Razer Gold Gift Card</b><small>Razer Gold</small>
-                  </button>
+                  {availablePaymentMethods.map(method => (
+                    <button type="button" key={method.key} disabled={paymentOptionsLoading} className={'tm-store-payment-method'+(selectedPaymentMethod === method.key ? ' selected' : '')} onClick={() => void choosePaymentMethod(method.key)}>
+                      <span className="tm-store-method-logo"><CreditCard size={19}/></span>
+                      <b>{method.label}</b>
+                      <small>{method.kind === 'gift_card' ? 'Optional gift-card evidence' : 'Management-assisted payment'}</small>
+                    </button>
+                  ))}
                 </div>
-                <div className="tm-store-proof-panel tm-store-proof-panel-premium">
-                  <div className="tm-store-proof-heading"><span>PAYMENT EVIDENCE</span><b>Add your images</b><small>Select up to 5 images · JPG, PNG or WebP · 5 MB each</small></div>
-                  <label className="tm-store-proof-upload tm-store-proof-upload-premium">
-                    <span className="tm-store-upload-symbol">＋</span>
-                    <b>Choose images</b>
-                    <small>Tap to select one or multiple images</small>
-                    <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event => handlePaymentProof(event.target.files)}/>
-                  </label>
-                  {paymentProofPreviews.length > 0 && <div className="tm-store-proof-gallery">
-                    {paymentProofPreviews.map((preview,index) => <div className="tm-store-proof-preview tm-store-proof-preview-premium" key={preview.name+'-'+index}>
-                      <img src={preview.url} alt={'Selected payment image '+(index+1)}/>
-                      <span><b>{preview.name}</b><small>Image {index+1} · Ready to submit</small></span>
-                    </div>)}
-                    <button type="button" className="tm-store-proof-clear" onClick={() => handlePaymentProof(null)}>Remove all images</button>
-                  </div>}
-                  {paymentProofError && <small role="alert" className="tm-store-proof-error">{paymentProofError}</small>}
-                </div>
+                {paymentInstructions && (
+                  <div className="tm-store-proof-panel tm-store-proof-panel-premium">
+                    <div className="tm-store-proof-heading"><span>SELECTED PAYMENT METHOD</span><b>{paymentInstructions.label}</b></div>
+                    {paymentInstructions.kind === 'manual' ? <>
+                      {paymentInstructions.accountName && <p><b>Account holder:</b> {paymentInstructions.accountName}</p>}
+                      {paymentInstructions.recipient && <p><b>{paymentInstructions.recipientLabel || 'Recipient'}:</b> {paymentInstructions.recipient}</p>}
+                      {paymentInstructions.additionalInstructions && <p><b>Instructions:</b> {paymentInstructions.additionalInstructions}</p>}
+                    </> : <p>Upload a clear purchase receipt or transaction confirmation. Hide all gift-card redemption codes and PINs before uploading.</p>}
+                    <p>{paymentInstructions.note}</p>
+                    {paymentInstructions.kind === 'manual' && <label>Transaction reference (optional)
+                      <input value={providerReference} onChange={event => setProviderReference(event.target.value.slice(0,120))} maxLength={120} placeholder="Reference ID only — never enter card or account security details"/>
+                    </label>}
+                    <div className="tm-store-proof-heading"><span>PAYMENT EVIDENCE</span><b>Add your images</b><small>Select up to 5 images · JPG, PNG or WebP · 5 MB each</small></div>
+                    <label className="tm-store-proof-upload tm-store-proof-upload-premium">
+                      <span className="tm-store-upload-symbol">＋</span>
+                      <b>Choose images</b>
+                      <small>Upload only a receipt or payment confirmation. Hide passwords, OTPs, full card numbers, CVV, gift-card PINs and redemption codes.</small>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event => handlePaymentProof(event.target.files)}/>
+                    </label>
+                    {paymentProofPreviews.length > 0 && <div className="tm-store-proof-gallery">
+                      {paymentProofPreviews.map((preview,index) => <div className="tm-store-proof-preview tm-store-proof-preview-premium" key={preview.name+'-'+index}>
+                        <img src={preview.url} alt={'Selected payment image '+(index+1)}/>
+                        <span><b>{preview.name}</b><small>Image {index+1} · Ready to submit</small></span>
+                      </div>)}
+                      <button type="button" className="tm-store-proof-clear" onClick={() => handlePaymentProof(null)}>Remove all images</button>
+                    </div>}
+                    {paymentProofError && <small role="alert" className="tm-store-proof-error">{paymentProofError}</small>}
+                    <div className="tm-store-checkout-actions">
+                      <button type="button" disabled={checkoutBusy||paymentOptionsLoading||!selectedPaymentMethod||!paymentInstructions||paymentProofFiles.length===0} onClick={() => void submitPaymentProof()}>{checkoutBusy ? 'Submitting…' : 'Submit payment evidence'}</button>
+                    </div>
+                  </div>
+                )}
                 {checkoutMessage && <p className="tm-store-checkout-message" role="alert">{checkoutMessage}</p>}
-                <div className="tm-store-checkout-actions">
-                  <button type="button" disabled={checkoutBusy||!selectedGiftCard||paymentProofFiles.length===0} onClick={() => void submitPaymentProof()}>{checkoutBusy ? 'Submitting…' : 'Submit payment proof'}</button>
-                </div>
                 <p className="tm-store-payment-reference">Order {checkoutReference}</p>
               </div>
             )}
@@ -921,8 +987,8 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
                 <h2 id="tm-store-checkout-title">{checkoutAction === 'save' ? 'Your order is saved' : 'Proof submitted for verification'}</h2>
                 <p>{checkoutMessage}</p>
                 <div className="tm-store-complete-actions">
-                  <button type="button" className="tm-store-track-order-btn" onClick={() => { setCheckoutOpen(false); setCart([]); setCheckoutStage('details'); setCheckoutMessage(''); setSelectedGiftCard(''); onOrders(); }}>View my orders <ArrowRight size={15}/></button>
-                  <button type="button" className="tm-store-continue-btn" onClick={() => { setCheckoutOpen(false); setCart([]); setCheckoutStage('details'); setCheckoutMessage(''); setSelectedGiftCard(''); }}>Continue shopping</button>
+                  <button type="button" className="tm-store-track-order-btn" onClick={() => { setCheckoutOpen(false); setCart([]); setCheckoutStage('details'); setCheckoutMessage(''); setSelectedPaymentMethod('');setPaymentInstructions(null);setProviderReference(''); onOrders(); }}>View my orders <ArrowRight size={15}/></button>
+                  <button type="button" className="tm-store-continue-btn" onClick={() => { setCheckoutOpen(false); setCart([]); setCheckoutStage('details'); setCheckoutMessage(''); setSelectedPaymentMethod('');setPaymentInstructions(null);setProviderReference(''); }}>Continue shopping</button>
                 </div>
               </div>
             )}
