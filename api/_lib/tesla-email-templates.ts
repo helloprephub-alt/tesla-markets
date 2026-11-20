@@ -34,6 +34,9 @@ export type EmailTemplateInput = {
   detail?: string;
   actionLabel?: string;
   actionUrl?: string;
+  localizedCopy?: Partial<{ subject: string; eyebrow: string; title: string; body: string; action: string; greeting: string; supportLine: string; closing: string; referenceLabel: string; statusLabel: string; amountLabel: string }>;
+  localizedDetail?: string;
+  localizedStatus?: string;
 };
 
 const copy: Record<EmailTemplateKind, { subject: string; eyebrow: string; title: string; body: string; action?: string }> = {
@@ -90,15 +93,19 @@ const copy: Record<EmailTemplateKind, { subject: string; eyebrow: string; title:
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c] || c));
 
+export function getTeslaEmailBaseCopy(kind: EmailTemplateKind) { return { ...copy[kind] }; }
+
 export function renderTeslaEmail(input: EmailTemplateInput) {
-  const template = copy[input.kind];
+  const localized = input.localizedCopy || {};
+  const template = { ...copy[input.kind], ...localized };
   const name = escapeHtml(input.customerName || 'there');
   const preheader = escapeHtml(input.preheader || template.eyebrow);
-  const detail = input.detail ? escapeHtml(input.detail) : '';
+  const detailSource = input.localizedDetail ?? input.detail;
+  const detail = detailSource ? escapeHtml(detailSource) : '';
   const rows = [
-    input.reference ? ['Reference', input.reference] : null,
-    input.status ? ['Status', input.status] : null,
-    input.amount ? ['Amount', input.amount] : null
+    input.reference ? [localized.referenceLabel || 'Reference', input.reference] : null,
+    (input.localizedStatus ?? input.status) ? [localized.statusLabel || 'Status', input.localizedStatus ?? input.status!] : null,
+    input.amount ? [localized.amountLabel || 'Amount', input.amount] : null
   ].filter(Boolean) as string[][];
   const details = rows.length ? `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:26px 0;background:#f7f8fa;border:1px solid #e6e8eb;border-radius:10px;border-collapse:separate">
@@ -129,12 +136,12 @@ export function renderTeslaEmail(input: EmailTemplateInput) {
       <tr><td style="padding:42px 42px 40px;background:#ffffff">
         <div style="font-size:10px;line-height:1.5;font-weight:700;letter-spacing:2.3px;color:#d71920;text-transform:uppercase">${escapeHtml(template.eyebrow)}</div>
         <h1 style="margin:15px 0 20px;font-size:32px;line-height:1.16;letter-spacing:-.7px;font-weight:700;color:#111418">${escapeHtml(template.title)}</h1>
-        <p style="margin:0 0 14px;font-size:16px;line-height:1.65;color:#22262b">Hello ${name},</p>
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.65;color:#22262b">${escapeHtml(localized.greeting || 'Hello')} ${name},</p>
         <p style="margin:0;font-size:15px;line-height:1.85;color:#555b62">${escapeHtml(template.body)}</p>
         ${details}
         ${action}
-        <p style="margin:34px 0 0;font-size:13px;line-height:1.75;color:#626870">If you need assistance, reply to this email or contact our support team.</p>
-        <p style="margin:21px 0 0;font-size:14px;line-height:1.7;color:#282d33">Kind regards,<br><strong style="color:#111418">Tesla Markets</strong></p>
+        <p style="margin:34px 0 0;font-size:13px;line-height:1.75;color:#626870">${escapeHtml(localized.supportLine || 'If you need assistance, reply to this email or contact our support team.')}</p>
+        <p style="margin:21px 0 0;font-size:14px;line-height:1.7;color:#282d33">${escapeHtml(localized.closing || 'Kind regards')},<br><strong style="color:#111418">Tesla Markets</strong></p>
       </td></tr>
       <tr><td bgcolor="#090a0c" style="padding:25px 32px;background-color:#090a0c;border-top:1px solid #26292d">
         <div style="font-size:11px;line-height:1.5;font-weight:700;letter-spacing:2.2px;color:#ffffff">TESLA MARKETS</div>
@@ -151,11 +158,11 @@ ${template.eyebrow}
 
 ${template.title}
 
-Hello ${input.customerName || 'there'},
+${localized.greeting || 'Hello'} ${input.customerName || 'there'},
 
-${template.body}${rows.length ? '\n\n' + rows.map(([k,v])=>k+': '+v).join('\n') : ''}${input.detail ? '\n\n' + input.detail : ''}
+${template.body}${rows.length ? '\n\n' + rows.map(([k,v])=>k+': '+v).join('\n') : ''}${detailSource ? '\n\n' + detailSource : ''}
 
-${input.actionUrl || input.kind === 'welcome' || input.kind === 'getting_started' ? 'Explore Tesla Markets: ' + actionUrl + '\n\n' : ''}Kind regards,
+${input.actionUrl || input.kind === 'welcome' || input.kind === 'getting_started' ? 'Explore Tesla Markets: ' + actionUrl + '\n\n' : ''}${localized.closing || 'Kind regards'},
 Tesla Markets
 support@teslamarketsofficial.com`;
   return { subject: template.subject, html, text };
