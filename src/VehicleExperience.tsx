@@ -16,25 +16,25 @@ type Model = {
 
 const models: Model[] = [
   { id: 'model-3', name: 'Model 3', subtitle: 'Electric sedan', variants: [
-    { name: 'Model 3', price: '$36,990', discountPercent: 28 }, { name: 'Model 3 Premium', price: '$42,490', discountPercent: 35 }, { name: 'Model 3 Performance', price: '$54,990', discountPercent: 42 }
+    { name: 'Model 3 Rear-Wheel Drive', price: '$36,990', discountPercent: 35 }, { name: 'Model 3 Premium', price: '$42,490', discountPercent: 40 }, { name: 'Model 3 Performance', price: '$54,990', discountPercent: 45 }
   ], lease: 'Lease and finance options vary by market', priceNote: 'Starting prices supplied by Tesla Markets management; final quotation and availability are confirmed individually.',
     gallery: Array.from({ length: 5 }, (_, i) => '/resources/model-3-' + (i + 1) + '.jpg'), range: 'Up to 321 miles (EPA estimate; configuration-dependent)', performance: '0–60 mph in as little as 5.8 seconds, depending on trim', drivetrain: 'Rear-wheel or all-wheel drive, depending on trim',
     features: ['Five-seat electric sedan', 'Glass roof and minimalist cabin', 'Driver assistance options', 'Configuration and delivery subject to confirmation'],
     colors: ['Pearl White', 'Solid Black', 'Stealth Grey', 'Quicksilver', 'Ultra Red', 'Deep Blue'], wheels: ['18-inch Photon', '19-inch Nova'] },
   { id: 'model-y', name: 'Model Y', subtitle: 'Electric SUV', variants: [
-    { name: 'Model Y', price: '$39,990', discountPercent: 25 }, { name: 'Model Y Premium', price: '$45,990', discountPercent: 32 }, { name: 'Model YL Premium', price: '$61,990', discountPercent: 40 }, { name: 'Model Y Performance', price: '$57,990', discountPercent: 45 }
+    { name: 'Model Y Rear-Wheel Drive', price: '$39,990', discountPercent: 35 }, { name: 'Model Y Premium Rear-Wheel Drive', price: '$45,990', discountPercent: 38 }, { name: 'Model Y Premium All-Wheel Drive', price: '$49,990', discountPercent: 40 }, { name: 'Model YL Premium All-Wheel Drive', price: '$61,990', discountPercent: 42 }, { name: 'Model Y Performance All-Wheel Drive', price: '$57,990', discountPercent: 45 }
   ], lease: 'Lease and finance options vary by market', priceNote: 'Starting prices supplied by Tesla Markets management; final quotation and availability are confirmed individually.',
     gallery: Array.from({ length: 5 }, (_, i) => '/resources/model-y-' + (i + 1) + '.jpg'), range: 'Up to 321 miles (EPA estimate; configuration-dependent)', performance: '0–60 mph in as little as 6.8 seconds, depending on trim', drivetrain: 'Rear-wheel or all-wheel drive, depending on trim',
     features: ['Versatile electric SUV layout', 'Flexible passenger and cargo space', 'Driver assistance options', 'Configuration and delivery subject to confirmation'],
     colors: ['Pearl White', 'Solid Black', 'Stealth Grey', 'Quicksilver', 'Ultra Red', 'Deep Blue'], wheels: ['19-inch Gemini', '20-inch Induction'] },
   { id: 'cybertruck', name: 'Cybertruck', subtitle: 'All-electric utility vehicle', variants: [
-    { name: 'Cybertruck', price: '$82,490', discountPercent: 30 }, { name: 'Cybertruck Premium', price: '$92,490', discountPercent: 38 }, { name: 'Cyberbeast', price: '$102,490', discountPercent: 45 }
+    { name: 'Cybertruck Dual Motor All-Wheel Drive', price: '$74,990', discountPercent: 35 }, { name: 'Cybertruck Premium All-Wheel Drive', price: '$84,990', discountPercent: 40 }, { name: 'Cyberbeast', price: '$99,990', discountPercent: 45 }
   ], lease: 'Lease and finance options vary by market', priceNote: 'Starting prices supplied by Tesla Markets management; trim, market availability and final quotation require confirmation.',
     gallery: [1, 2, 3, 4, 5, 6, 7, 9].map((number) => '/resources/cybertruck-' + number + '.jpg'), range: 'Up to 325 miles (EPA estimate; configuration-dependent)', performance: '0–60 mph in as little as 4.1 seconds on the listed configuration', drivetrain: 'Dual-motor or tri-motor all-wheel drive, depending on trim',
     features: ['Stainless-steel exoskeleton design', 'Utility-focused storage and load area', 'Adaptive air suspension on selected versions', 'Final specification must be confirmed'],
     colors: ['Stainless Steel', 'Matte Black preference', 'Arctic White preference'], wheels: ['20-inch Core', 'Cyber Wheel'] },
   { id: 'roadster', name: 'Roadster', subtitle: 'Next-generation electric sports car', variants: [
-    { name: 'Roadster Performance', price: '$45,000', discountPercent: 25 }, { name: 'Roadster Thrust', price: '$245,000', discountPercent: 40 }, { name: 'Roadster Limited', price: 'Price to be specified' }, { name: 'Roadster Rocket', price: 'Invite only', inviteOnly: true }
+    { name: 'Roadster Performance', price: '$45,000', discountPercent: 35 }, { name: 'Roadster Thrust', price: '$245,000', discountPercent: 40 }, { name: 'Roadster Limited', price: 'Price to be specified' }, { name: 'Roadster Rocket', price: 'Invite only', inviteOnly: true }
   ], priceNote: 'Roadster variant labels and prices supplied by Tesla Markets management. Confirm specification and availability with management.',
     gallery: Array.from({ length: 5 }, (_, i) => '/resources/roadster-' + (i + 2) + '.jpg'), range: 'Up to 620 miles (Tesla estimate)', performance: 'Tesla lists 0–60 mph in 1.9 seconds and a top speed above 250 mph; final production specification may change', drivetrain: 'Final production specification to be confirmed',
     features: ['Next-generation electric sports car', 'Roadster information and reservation enquiries', 'Specifications and delivery timing require confirmation'],
