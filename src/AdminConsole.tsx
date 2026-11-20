@@ -98,7 +98,7 @@ export function AdminConsole() {
   const [paymentAmount,setPaymentAmount]=useState('');
   const [paymentMethod,setPaymentMethod]=useState('bank_transfer');
   const [paymentProviderReference,setPaymentProviderReference]=useState('');
-  const [paymentAccountDetails,setPaymentAccountDetails]=useState<Record<string,{enabled?:boolean;accountName?:string;email?:string;phone?:string;username?:string;instructions?:string}>>({});
+  const [paymentAccountDetails,setPaymentAccountDetails]=useState<Record<string,any>>({});
   const [giftCardEnabled,setGiftCardEnabled]=useState(false);
   const [savingPaymentAccounts,setSavingPaymentAccounts]=useState(false);
   const [savingPayment,setSavingPayment]=useState(false);
