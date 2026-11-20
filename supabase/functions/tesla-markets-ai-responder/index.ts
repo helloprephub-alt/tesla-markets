@@ -453,13 +453,51 @@ Deno.serve(async (req: Request) => {
 
     const { data: customerMessage, error: messageError } = await admin
       .from("support_messages")
-      .select("id,conversation_id,sender_id,sender_role,body,created_at")
+      .select("id,conversation_id,sender_id,sender_role,body,created_at,attachment_path,attachment_name,attachment_mime")
       .eq("id", messageId)
       .eq("conversation_id", conversationId)
       .maybeSingle();
     if (messageError) throw messageError;
     if (!customerMessage || customerMessage.sender_id !== user.id || customerMessage.sender_role !== "customer") {
       return json({ error: "Customer message not found." }, 404, headers);
+    }
+    const savedPaymentLockAtMessage = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
+    if (customerMessage.attachment_path && savedPaymentLockAtMessage?.method === "Gift Card" && ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockAtMessage.status || "pending"))) {
+      const mime = cleanString(customerMessage.attachment_mime, 100).toLowerCase();
+      if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mime)) return json({ error: "Gift-card proof must be a JPG, PNG, WEBP or GIF image." }, 400, headers);
+      const { data: existingProof } = await admin.from("business_payments").select("id,payment_reference").eq("proof_path", customerMessage.attachment_path).maybeSingle();
+      if (existingProof) return json({ ok: true, duplicate: true, payment_reference: existingProof.payment_reference }, 200, headers);
+      const { data: linkedOrder, error: linkedOrderError } = await admin.from("business_orders").select("id,order_reference,agreed_amount,currency,item_description").eq("conversation_id", conversationId).eq("customer_id", user.id).neq("status", "cancelled").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (linkedOrderError) throw linkedOrderError;
+      if (!linkedOrder) {
+        await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card proof needs order matching", body: "A customer uploaded gift-card proof, but no active business order could be linked automatically. Review the conversation.", entity_type: "conversation", entity_id: conversationId, is_read: false });
+        return json({ ok: true, escalated: true, reason: "order_link_required" }, 200, headers);
+      }
+      const paymentReference = "TM-GC-" + crypto.randomUUID().slice(0, 8).toUpperCase();
+      const { data: paymentRow, error: paymentInsertError } = await admin.from("business_payments").insert({
+        payment_reference: paymentReference, order_id: linkedOrder.id, customer_id: user.id,
+        amount: Number(linkedOrder.agreed_amount), currency: cleanString(linkedOrder.currency, 8) || "USD",
+        method: "gift_card", proof_path: customerMessage.attachment_path, status: "pending",
+        notes: "Customer-submitted gift-card proof image. Administrator verification required; image upload is not proof of successful redemption."
+      }).select("id,payment_reference").single();
+      if (paymentInsertError) throw paymentInsertError;
+      const updatedDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
+      const nextLock = { ...savedPaymentLockAtMessage, status: "proof_submitted", payment_record_id: paymentRow.id, payment_reference: paymentReference, proof_submitted_at: new Date().toISOString() };
+      const { error: lockUpdateError } = await admin.from("support_conversations").update({ delivery_details: { ...updatedDetails, payment_lock: nextLock }, updated_at: new Date().toISOString() }).eq("id", conversationId);
+      if (lockUpdateError) throw lockUpdateError;
+      const { data: adminSender } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (adminSender?.id) {
+        await admin.from("support_messages").insert({
+          conversation_id: conversationId, sender_id: adminSender.id, sender_role: "management",
+          body: "Your gift-card proof has been received and is awaiting management verification.",
+          automated_type: "ai_response", message_type: "payment_receipt",
+          structured_data: { title: "Gift-card proof received", subtitle: "PENDING MANAGEMENT VERIFICATION", status: "Under Review",
+            fields: [{ label: "Payment reference", value: paymentReference }, { label: "Order reference", value: linkedOrder.order_reference }, { label: "Payment method", value: "Gift Card" }, { label: "Amount", value: String(linkedOrder.agreed_amount) + " " + (linkedOrder.currency || "USD") }],
+            note: "The uploaded image has been attached to the payment record. Payment is not confirmed until management verifies it." }
+        });
+      }
+      await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card payment proof submitted", body: "Order " + linkedOrder.order_reference + " · " + paymentReference + " · Review the uploaded image in the payment record and customer conversation.", entity_type: "conversation", entity_id: conversationId, is_read: false });
+      return json({ ok: true, payment_reference: paymentReference, status: "pending_verification" }, 200, headers);
     }
     if (!cleanString(customerMessage.body, 4000)) return json({ ok: true, skipped: true, reason: "attachment_only" }, 200, headers);
 
@@ -481,13 +519,13 @@ Deno.serve(async (req: Request) => {
       throw runWrite.error;
     }
 
-    const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Verified broker onboarding)\b/i);
+    const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Gift Card|Verified broker onboarding)\b/i);
     if (paymentChoice && !((conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null)?.status === "pending")) {
       const amountMatch = customerMessage.body.match(/\$[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
       const currentDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
       const previousLock = currentDetails.payment_lock && typeof currentDetails.payment_lock === "object" ? currentDetails.payment_lock : {};
       const paymentLockNext = {
-        status: "pending", method: paymentChoice[1],
+        status: paymentChoice[1] === "Gift Card" ? "awaiting_proof" : "pending", method: paymentChoice[1],
         amount: amountMatch?.[0] || previousLock.amount || "Amount to be confirmed",
         vehicle: cleanString(conversation.vehicle_model,100) || cleanString(customerMessage.body.match(/for (.+?)\. Amount:/i)?.[1],100) || "Tesla Markets order",
         kind: /investment/i.test(customerMessage.body) ? "investment" : "vehicle",
@@ -506,10 +544,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const savedPaymentLock = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
-    if (savedPaymentLock?.status === "pending") {
+    if (["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLock?.status || ""))) {
       const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
-      const reminder = "Your payment is still pending. Your selected payment method and amount remain unchanged while Tesla Markets Management verifies the payment. This conversation cannot start a second checkout or change the pending amount. Please wait for management to confirm the payment status.";
+      const reminder = savedPaymentLock?.method === "Gift Card" && savedPaymentLock?.status !== "proof_submitted"
+        ? "Your gift-card payment option is selected. Please upload clear images of the accepted gift-card proof using the chat attachment button. Do not send gift-card PINs or redemption codes in ordinary chat. Management must review the image before payment can be verified."
+        : savedPaymentLock?.status === "proof_submitted"
+          ? "Your gift-card proof has been received and is under management review. Your payment remains unverified until management completes its checks."
+          : "Your payment is still pending. Your selected payment method and amount remain unchanged while Tesla Markets Management verifies the payment. This conversation cannot start a second checkout or change the pending amount. Please wait for management to confirm the payment status.";
       const { data: responseMessage, error: responseError } = await admin.from("support_messages").insert({
         conversation_id: conversationId, sender_id: managementProfile.id, sender_role: "management",
         body: reminder, automated_type: "ai_response", message_type: "payment_pending",
@@ -605,6 +647,7 @@ Deno.serve(async (req: Request) => {
       return !!details && typeof details === "object" &&
         Object.values(details).some((value:any) => typeof value === "string" && value.trim().length > 0);
     }).map((method:any) => method.label);
+    if (configuredPaymentMethods.length === 0) configuredPaymentMethods.push("Gift Card");
 
     const customerTextNormalized=normalized(customerMessage.body);
     const matchedStoreProduct=(activeProducts||[]).filter((p:any)=>cleanString(p.name,180).length>=4)
