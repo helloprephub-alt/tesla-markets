@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
     const { data: withinLimit, error: rateLimitError } = await admin.rpc("consume_translation_rate_limit", {
       p_ip_hash: ipHash,
       p_bucket: minuteBucket,
-      p_limit: 20
+      p_limit: 60
     });
     if (rateLimitError) {
       console.error("Translation rate limit check failed:", rateLimitError.message);
