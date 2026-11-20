@@ -506,7 +506,7 @@ export function AdminConsole() {
       if(!current||!isAdmin) throw new Error('Administrator session expired.');
       const now=new Date().toISOString();
       const proofStatus=decision==='approve'?'approved_pending_settlement':decision==='verify'?'verified':'rejected';
-      const orderStatus=decision==='approve'?'proof_approved_pending_settlement':decision==='verify'?'payment_verified':'payment_proof_rejected';
+      let orderStatus=decision==='approve'?'proof_approved_pending_settlement':decision==='verify'?'payment_verified':'payment_proof_rejected';
       const note=decision==='approve'
         ? 'Evidence accepted by management. Payment is not yet confirmed; fulfilment must wait for independent settlement verification.'
         : decision==='verify'
@@ -517,6 +517,11 @@ export function AdminConsole() {
       if(decision==='reject')proofPatch.verified_at=null;
       const {error:proofError}=await supabase.from('store_payment_submissions').update(proofPatch).eq('id',proofId);
       if(proofError) throw proofError;
+      if(decision==='reject'){
+        const {data:remainingAccepted,error:acceptedError}=await supabase.from('store_payment_submissions').select('id').eq('order_id',order.id).eq('status','approved_pending_settlement').neq('id',proofId).limit(1);
+        if(acceptedError)throw acceptedError;
+        if((remainingAccepted||[]).length>0)orderStatus='proof_approved_pending_settlement';
+      }
       const orderPatch:any={status:orderStatus,updated_at:now};
       if(decision==='verify')orderPatch.payment_verified_at=now;
       if(decision==='reject')orderPatch.payment_verified_at=null;
