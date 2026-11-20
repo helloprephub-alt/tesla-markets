@@ -540,6 +540,19 @@ Deno.serve(async (req: Request) => {
     }
 
     const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Gift Card|Verified broker onboarding)\b/i);
+    if (paymentChoice?.[1] === "Gift Card" && !configuredPaymentMethods.includes("Gift Card")) {
+      const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
+      const { data: unavailableMessage, error: unavailableError } = await admin.from("support_messages").insert({
+        conversation_id: conversationId, sender_id: managementProfile.id, sender_role: "management",
+        body: "Gift-card payment is not currently enabled. Please choose one of the available payment methods or contact Tesla Markets Management.",
+        automated_type: "ai_response", message_type: "payment_unavailable",
+        structured_data: { title: "Gift-card payment unavailable", source_message_id: messageId }
+      }).select("id").single();
+      if (unavailableError) throw unavailableError;
+      await admin.from("ai_responder_runs").update({ status: "completed", response_message_id: unavailableMessage.id, updated_at: new Date().toISOString() }).eq("message_id", messageId);
+      return json({ ok: true, response_message_id: unavailableMessage.id, payment_unavailable: true }, 200, headers);
+    }
     if (paymentChoice && !["pending", "awaiting_proof", "proof_submitted"].includes(String((conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null)?.status || ""))) {
       const amountMatch = customerMessage.body.match(/\$[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
       const currentDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
@@ -667,7 +680,7 @@ Deno.serve(async (req: Request) => {
       return !!details && typeof details === "object" &&
         Object.values(details).some((value:any) => typeof value === "string" && value.trim().length > 0);
     }).map((method:any) => method.label);
-    if (configuredPaymentMethods.length === 0) configuredPaymentMethods.push("Gift Card");
+    if (configuredPaymentMethods.length === 0 && paymentAccountSettings.giftCardEnabled === true) configuredPaymentMethods.push("Gift Card");
 
     const customerTextNormalized=normalized(customerMessage.body);
     const matchedStoreProduct=(activeProducts||[]).filter((p:any)=>cleanString(p.name,180).length>=4)
