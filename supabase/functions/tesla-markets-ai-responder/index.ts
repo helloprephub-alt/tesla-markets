@@ -465,7 +465,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (conversationError) throw conversationError;
     if (!conversation || conversation.customer_id !== user.id) return json({ error: "Conversation not found." }, 404, headers);
-    // Preserve the explicit human-takeover state: responder_paused: true means management owns this conversation.
+    // Preserve the explicit human-takeover state: a paused conversation remains under management ownership.
     if (conversation.responder_paused || conversation.status === "closed") {
       return json({ ok: true, skipped: true, reason: "management_takeover_or_closed" }, 200, headers);
     }
