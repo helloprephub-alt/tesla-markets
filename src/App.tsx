@@ -1163,11 +1163,11 @@ function App() {
             ← Back to home
           </button>
           <div className="eyebrow dark">
-            {passwordRecovery ? 'ACCOUNT RECOVERY' : signup ? 'CREATE ACCOUNT' : 'WELCOME BACK'}
+            {verificationPending ? (otpPurpose === 'recovery' ? 'PASSWORD RECOVERY' : 'EMAIL VERIFICATION') : passwordRecovery ? 'ACCOUNT RECOVERY' : signup ? 'CREATE ACCOUNT' : 'WELCOME BACK'}
           </div>
-          <h1>{passwordRecovery ? 'Choose a new password' : signup ? 'Create your account' : 'Sign in to your account'}</h1>
+          <h1>{verificationPending ? (otpPurpose === 'recovery' ? 'Verify your recovery code' : 'Verify your email address') : passwordRecovery ? 'Choose a new password' : signup ? 'Create your account' : 'Sign in to your account'}</h1>
           <p className="muted">
-            {passwordRecovery ? 'Set a new password to secure your account.' : signup ? 'Create your secure Tesla Markets customer account.' : 'Sign in to continue to your account and saved checkout.'}
+            {verificationPending ? 'Enter the six-digit code sent to your email to continue.' : passwordRecovery ? 'Set a new password to secure your account.' : signup ? 'Create your secure Tesla Markets customer account.' : 'Sign in to continue to your account and saved checkout.'}
           </p>
 
 
