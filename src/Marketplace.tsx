@@ -442,6 +442,9 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const loadPaymentOptions = async (orderId: string) => {
     setPaymentOptionsLoading(true);
     setPaymentOptionsError('');
+    setPaymentProofError('');
+    setPaymentProofFiles([]);
+    setPaymentProofPreviews([]);
     setAvailablePaymentMethods([]);
     setSelectedPaymentMethod('');
     setPaymentInstructions(null);
@@ -929,6 +932,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
               <div className="tm-store-payment-step">
                 <span className="tm-store-eyebrow">STEP 2 · PAYMENT METHOD</span>
                 <h2 id="tm-store-checkout-title">Choose your payment method</h2>
+                <div className="tm-store-checkout-total"><span>Amount due</span><b>{money(subtotal)}</b></div>
                 <p>Only methods currently enabled by Tesla Markets Management are shown.</p>
                 {paymentOptionsLoading && <p className="tm-store-checkout-message" role="status">Loading available payment methods…</p>}
                 {paymentOptionsError && <p className="tm-store-checkout-message" role="alert">{paymentOptionsError}</p>}
