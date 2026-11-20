@@ -197,7 +197,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
     try {
       while (queue.length && !disposed && !failed) {
         const batches: string[][] = [];
-        for (let index = 0; index < 4 && queue.length; index += 1) {
+        for (let index = 0; index < 1 && queue.length; index += 1) {
           batches.push(queue.splice(0, 5));
         }
         const translatedBatches = await Promise.all(batches.map(async (batch) => {
