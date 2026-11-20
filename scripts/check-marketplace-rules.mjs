@@ -34,6 +34,9 @@ assert.match(marketplaceSource, /provider_reference/, 'Shop checkout must link a
 assert.match(adminSource, /paymentAccountDetails\[method\]\?\.enabled===true/, 'Admin must be able to enable or disable each payment method.');
 assert.match(aiSource, /details\.enabled === true/, 'AI payment choices must respect admin enablement.');
 assert.match(aiSource, /paymentAccountSettings\.giftCardEnabled === true/, 'AI must offer optional gift cards only when enabled.');
+assert.match(paymentMigration, /payment_verified/, 'Shop orders must have an explicit payment-verified state.');
+assert.match(adminSource, /Confirm funds received/, 'Management must explicitly verify funds before fulfilment.');
+assert.match(adminSource, /Confirm receipt of the payment from the recipient account/, 'Fulfilment must be blocked until payment is verified.');
 assert.match(chatSource, /selectedPaymentLock/, 'Admin chat payment instructions must be tied to the customer's selected method.');
 const customerChatSource = chatSource.split('export function AdminInbox()')[0];
 assert.doesNotMatch(customerChatSource, /supabase\.from\('site_settings'\).*payment_account_details/, 'Customer chat must not read private recipient settings directly.');
