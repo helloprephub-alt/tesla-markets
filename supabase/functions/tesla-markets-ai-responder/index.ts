@@ -540,15 +540,31 @@ Deno.serve(async (req: Request) => {
       throw runWrite.error;
     }
 
+    const { data: paymentSettingsRow, error: paymentSettingsError } = await admin
+      .from("site_settings").select("value").eq("key", "payment_account_details").maybeSingle();
+    if (paymentSettingsError) throw paymentSettingsError;
+    const paymentAccountSettings = paymentSettingsRow?.value && typeof paymentSettingsRow.value === "object" ? paymentSettingsRow.value : {};
+    const configuredPaymentMethods = [
+      { key: "PayPal", label: "PayPal", identifiers: ["email", "username"] },
+      { key: "Zelle", label: "Zelle", identifiers: ["email", "phone"] },
+      { key: "Apple Pay", label: "Apple Pay", identifiers: ["email", "phone", "username"] },
+      { key: "Chime", label: "Chime", identifiers: ["username", "phone", "email"] }
+    ].filter((method:any) => {
+      const details = paymentAccountSettings[method.key];
+      return !!details && typeof details === "object" && details.enabled === true &&
+        method.identifiers.some((field:string) => typeof details[field] === "string" && details[field].trim().length > 0);
+    }).map((method:any) => method.label);
+    if (paymentAccountSettings.giftCardEnabled === true) configuredPaymentMethods.push("Gift Card");
+
     const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Gift Card|Verified broker onboarding)\b/i);
-    if (paymentChoice?.[1] === "Gift Card" && !configuredPaymentMethods.includes("Gift Card")) {
+    if (paymentChoice && !configuredPaymentMethods.includes(paymentChoice[1])) {
       const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
       const { data: unavailableMessage, error: unavailableError } = await admin.from("support_messages").insert({
         conversation_id: conversationId, sender_id: managementProfile.id, sender_role: "management",
-        body: "Gift-card payment is not currently enabled. Please choose one of the available payment methods or contact Tesla Markets Management.",
+        body: "That payment method is not currently enabled. Please choose one of the available options shown or contact Tesla Markets Management.",
         automated_type: "ai_response", message_type: "payment_unavailable",
-        structured_data: { title: "Gift-card payment unavailable", source_message_id: messageId }
+        structured_data: { title: "Payment method unavailable", requested_method: paymentChoice[1], source_message_id: messageId }
       }).select("id").single();
       if (unavailableError) throw unavailableError;
       await admin.from("ai_responder_runs").update({ status: "completed", response_message_id: unavailableMessage.id, updated_at: new Date().toISOString() }).eq("message_id", messageId);
@@ -673,22 +689,6 @@ Deno.serve(async (req: Request) => {
     const {data:activeProducts,error:productsError}=await admin.from("store_products")
       .select("product_id,name,original_price,discount_percent,is_active").eq("is_active",true);
     if(productsError)throw productsError;
-    const { data: paymentSettingsRow, error: paymentSettingsError } = await admin
-      .from("site_settings").select("value").eq("key", "payment_account_details").maybeSingle();
-    if (paymentSettingsError) throw paymentSettingsError;
-    const paymentAccountSettings = paymentSettingsRow?.value && typeof paymentSettingsRow.value === "object" ? paymentSettingsRow.value : {};
-    const configuredPaymentMethods = [
-      { key: "PayPal", label: "PayPal" },
-      { key: "Zelle", label: "Zelle" },
-      { key: "Apple Pay", label: "Apple Pay" },
-      { key: "Chime", label: "Chime" }
-    ].filter((method:any) => {
-      const details = paymentAccountSettings[method.key];
-      return !!details && typeof details === "object" &&
-        Object.values(details).some((value:any) => typeof value === "string" && value.trim().length > 0);
-    }).map((method:any) => method.label);
-    if (configuredPaymentMethods.length === 0 && paymentAccountSettings.giftCardEnabled === true) configuredPaymentMethods.push("Gift Card");
-
     const customerTextNormalized=normalized(customerMessage.body);
     const matchedStoreProduct=(activeProducts||[]).filter((p:any)=>cleanString(p.name,180).length>=4)
       .sort((a:any,b:any)=>cleanString(b.name,180).length-cleanString(a.name,180).length)
