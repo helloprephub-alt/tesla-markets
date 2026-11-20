@@ -4,6 +4,18 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const ALLOWED_LANGUAGES = new Set(["en","fr","de","es","pt","ar","zh","ja","ko","it","nl","ru","hi","tr","sw","af","sq","hy","az","eu","be","bn","bs","bg","ca","hr","cs","da","et","fi","gl","el","hu","is","id","ga","he","kk","lv","lt","mk","ms","mt","mr","ne","no","fa","pl","ro","sr","sk","sl","sv","ta","te","th","uk","ur","vi"]);
 const TARGET_LANGUAGE_NAMES: Record<string, string> = { en: "English", fr: "French", de: "German", es: "Spanish", pt: "Portuguese", ar: "Arabic", zh: "Simplified Chinese", ja: "Japanese", ko: "Korean", it: "Italian", nl: "Dutch", ru: "Russian", hi: "Hindi", tr: "Turkish", sw: "Swahili", af: "Afrikaans", sq: "Albanian", hy: "Armenian", az: "Azerbaijani", eu: "Basque", be: "Belarusian", bn: "Bengali", bs: "Bosnian", bg: "Bulgarian", ca: "Catalan", hr: "Croatian", cs: "Czech", da: "Danish", et: "Estonian", fi: "Finnish", gl: "Galician", el: "Greek", hu: "Hungarian", is: "Icelandic", id: "Indonesian", ga: "Irish", he: "Hebrew", kk: "Kazakh", lv: "Latvian", lt: "Lithuanian", mk: "Macedonian", ms: "Malay", mt: "Maltese", mr: "Marathi", ne: "Nepali", no: "Norwegian", fa: "Persian", pl: "Polish", ro: "Romanian", sr: "Serbian", sk: "Slovak", sl: "Slovenian", sv: "Swedish", ta: "Tamil", te: "Telugu", th: "Thai", uk: "Ukrainian", ur: "Urdu", vi: "Vietnamese" };
 
+const NATIVE_SCRIPT_PATTERNS: Record<string, RegExp> = {
+  ar: /[\u0600-\u06ff]/u, fa: /[\u0600-\u06ff]/u, ur: /[\u0600-\u06ff]/u,
+  he: /[\u0590-\u05ff]/u, ja: /[\u3040-\u30ff\u4e00-\u9fff]/u,
+  ko: /[\uac00-\ud7af]/u, zh: /[\u4e00-\u9fff]/u,
+  ru: /[\u0400-\u04ff]/u, uk: /[\u0400-\u04ff]/u, be: /[\u0400-\u04ff]/u,
+  bg: /[\u0400-\u04ff]/u, mk: /[\u0400-\u04ff]/u, sr: /[\u0400-\u04ff]/u,
+  kk: /[\u0400-\u04ff]/u, el: /[\u0370-\u03ff]/u, hy: /[\u0530-\u058f]/u,
+  hi: /[\u0900-\u097f]/u, mr: /[\u0900-\u097f]/u, ne: /[\u0900-\u097f]/u,
+  bn: /[\u0980-\u09ff]/u, ta: /[\u0b80-\u0bff]/u, te: /[\u0c00-\u0c7f]/u,
+  th: /[\u0e00-\u0e7f]/u
+};
+
 const corsHeaders = (origin: string | null) => {
   const allowed = origin === "https://teslamarketsofficial.com" ||
     origin === "https://www.teslamarketsofficial.com" ||
@@ -171,6 +183,7 @@ Deno.serve(async (req: Request) => {
                   "Return only valid JSON: an object with a translations array; each item has exactly key and text string fields.",
                   "Translate each text from " + (sourceLanguage === "auto" ? "the detected source language" : sourceLanguage) + " into " + (TARGET_LANGUAGE_NAMES[target] || target) + " (" + target + "). Use natural, fluent, professional language.",
                   "Translate every ordinary word. Do not leave common English words untranslated. Keep only protected markers, official product names, brand names and unavoidable loanwords in the source language.",
+                  "Use the target language's normal native writing system. Never return an English-only or romanized translation for a language normally written in another script. For Japanese use kanji and kana; Korean use Hangul; Chinese use Hanzi; Arabic, Persian and Urdu use Arabic script; Hebrew use Hebrew script; Greek use Greek; Cyrillic languages use Cyrillic; and Indic languages use their standard native scripts.",
                   target === "sw" ? "Use standard, fluent East African Swahili. Prefer natural phrases such as 'Tutakutumia maelezo ya ufuatiliaji yatakapopatikana' for 'We will share tracking details when available'. Avoid literal English word order." : "",
                   "Write for native speakers in the target locale. Use natural grammar and standard spelling, not word-for-word machine-like phrasing.",
                   "Preserve every ⟦TM_TOKEN_n⟧ marker exactly once and in its original text entry. Never translate, remove, duplicate, or reorder a marker.",
@@ -254,6 +267,10 @@ Deno.serve(async (req: Request) => {
             throw new Error("untranslated_response");
           }
           if (sourceLanguage === "en" && target !== "en" && sourceLetters.length >= 8 && sourceLetters === outputLetters) {
+            throw new Error("untranslated_response");
+          }
+          const requiredScript = NATIVE_SCRIPT_PATTERNS[target];
+          if (requiredScript && !requiredScript.test(outputWithoutProtectedTokens)) {
             throw new Error("untranslated_response");
           }
           const restored = restoreTokens(translated, item.tokens);
