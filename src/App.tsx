@@ -488,6 +488,16 @@ function App() {
     const timer = window.setTimeout(() => setResendCooldown(value => Math.max(0, value - 1)), 1000);
     return () => window.clearTimeout(timer);
   }, [resendCooldown]);
+  useEffect(() => {
+    try {
+      const pending = JSON.parse(sessionStorage.getItem('tesla-markets-pending-verification') || 'null');
+      if (pending?.email && (pending.purpose === 'signup' || pending.purpose === 'recovery')) {
+        setPendingVerificationEmail(String(pending.email));
+        setVerificationPurpose(pending.purpose);
+        setVerificationPending(true);
+      }
+    } catch {}
+  }, []);
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
   const [tab, setTab] = useState('Overview');
@@ -1227,6 +1237,7 @@ function App() {
                   if (error) throw error;
                   setForm(current => ({ ...current, password: '' }));
                   setPasswordRecovery(false);
+                  setConfirmPassword('');
                   setAuthMessage('Your password has been updated. Sign in with your new password.');
                 } else if (signup) {
                   const redirectPage = localStorage.getItem('tesla-markets-enquiry-intent')
