@@ -1431,6 +1431,26 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     }).eq("message_id", messageId);
 
+    // Present the configured payment choices immediately after a vehicle pro forma.
+    // The customer selects a method; management still sends the verified account-details card.
+    if (intent === "proforma_invoice_created" && configuredPaymentMethods.length > 0) {
+      const { error: paymentCardError } = await admin.from("support_messages").insert({
+        conversation_id: conversationId,
+        sender_id: managementProfile.id,
+        sender_role: "management",
+        body: "Available payment methods",
+        automated_type: "ai_response",
+        message_type: "payment_methods",
+        structured_data: {
+          title: "Choose a payment method",
+          subtitle: "TESLA MARKETS · AVAILABLE PAYMENT OPTIONS",
+          payment_methods: configuredPaymentMethods,
+          note: "Choose one of the currently available methods. For PayPal, Zelle, Apple Pay or Chime, Tesla Markets Management will send a separate card containing the verified payment details. Gift-card proof must be uploaded securely and remains pending until reviewed."
+        }
+      });
+      if (paymentCardError) console.error("Could not send payment methods card:", paymentCardError.message);
+    }
+
     await admin.from("admin_notifications").insert({
       type: "ai_response",
       title: "AI responder sent a reply",
