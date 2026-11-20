@@ -1186,9 +1186,10 @@ function App() {
                   setAuthMessage('Your recovery code is verified. Choose a new password.');
                 } else {
                   setAuthMessage('Your email is verified. Welcome to Tesla Markets.');
-                  if (sessionStorage.getItem('tesla-markets-enquiry-intent')) go('chat');
+                  if (localStorage.getItem('tesla-markets-enquiry-intent')) go('chat');
                   else if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
                   else go('dashboard');
+                  try { localStorage.removeItem('tesla-markets-enquiry-intent'); sessionStorage.removeItem('tesla-markets-checkout-intent'); } catch {}
                 }
               } catch (error) { setAuthError(error instanceof Error ? error.message : 'That code could not be verified. Please try again.'); }
               finally { setAuthBusy(false); }
@@ -1273,8 +1274,10 @@ function App() {
                     }
                     throw error;
                   }
-                  if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
+                  if (localStorage.getItem('tesla-markets-enquiry-intent')) go('chat');
+                  else if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
                   else go('dashboard');
+                  try { localStorage.removeItem('tesla-markets-enquiry-intent'); sessionStorage.removeItem('tesla-markets-checkout-intent'); } catch {}
                 }
               } catch (error) {
                 setAuthError(error instanceof Error ? error.message : 'We could not complete that account request. Please try again.');
