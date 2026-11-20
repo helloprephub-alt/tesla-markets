@@ -41,7 +41,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
   loadingOverlay.id = 'tm-language-loading-overlay';
   loadingOverlay.setAttribute('role', 'status');
   loadingOverlay.setAttribute('aria-live', 'polite');
-  loadingOverlay.textContent = 'TESLA MARKETS\\nPreparing your selected language…';
+  loadingOverlay.textContent = 'TESLA MARKETS\nPreparing your selected language…';
   Object.assign(loadingOverlay.style, {
     position: 'fixed', inset: '0', zIndex: '2147483647', display: 'grid',
     placeItems: 'center', padding: '28px', whiteSpace: 'pre-line',
@@ -197,7 +197,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
     try {
       while (queue.length && !disposed && !failed) {
         const batches: string[][] = [];
-        for (let index = 0; index < 1 && queue.length; index += 1) {
+        for (let index = 0; index < 2 && queue.length; index += 1) {
           batches.push(queue.splice(0, 5));
         }
         const translatedBatches = await Promise.all(batches.map(async (batch) => {
