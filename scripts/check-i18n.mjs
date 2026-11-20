@@ -60,6 +60,9 @@ assert.match(aiSource, /escalated: true, responder_paused: true/, 'AI failure mu
 assert.match(emailHelper, /tesla-markets-translate/, 'Transactional email translator is not connected.');
 assert.match(emailOutbox, /translateTeslaEmailPayload/, 'Email outbox does not use the saved customer language.');
 assert.match(welcomeEmail, /translateTeslaEmailPayload/, 'Welcome email does not use the saved customer language.');
+assert.match(emailHelper, /holding delivery rather than sending an English fallback/, 'Non-English email translation failures must not silently send English.');
+assert.match(emailOutbox, /message\.startsWith\('Email translation'\)/, 'Repeated localized email failures must be escalated to administrators.');
+assert.match(welcomeEmail, /could not be prepared in your selected language/, 'Welcome-email translation failures must be reported instead of silently sending English.');
 
 console.log(JSON.stringify({
   status: 'passed',
