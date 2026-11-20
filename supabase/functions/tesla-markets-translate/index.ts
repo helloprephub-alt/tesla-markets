@@ -174,13 +174,18 @@ Deno.serve(async (req: Request) => {
           for (let offset = 0; offset < missing.length; offset += 5) {
             const batch = missing.slice(offset, offset + 5);
             const translatedBatch = await Promise.all(batch.map(async (item: any) => {
+              const sourceLetters = item.protectedText.replace(/ZXQTMX\\d+XQZ/g, "").replace(/[^A-Za-z]/g, "");
+              const preserveUppercase = sourceLetters.length >= 3 && sourceLetters === sourceLetters.toUpperCase() && /[A-Z]{3}/.test(sourceLetters);
+              const translationInput = preserveUppercase
+                ? item.protectedText.replace(/ZXQTMX\\d+XQZ|[A-Z]{2,}/g, (part: string) => part.startsWith("ZXQTMX") ? part : part.toLowerCase())
+                : item.protectedText;
               const response = await fetch(
                 "https://api.cloudflare.com/client/v4/accounts/" + encodeURIComponent(accountId) + "/ai/run/@cf/meta/m2m100-1.2b",
                 {
                   method: "POST",
                   headers: { "Authorization": "Bearer " + apiToken, "Content-Type": "application/json" },
                   body: JSON.stringify({
-                    text: item.protectedText,
+                    text: translationInput,
                     source_lang: sourceLanguage,
                     target_lang: target
                   }),
@@ -191,7 +196,7 @@ Deno.serve(async (req: Request) => {
               const payload = await response.json();
               const translated = clean(payload?.translated_text ?? payload?.result?.translated_text ?? payload?.result?.answer ?? payload?.answer, 4000);
               if (!translated) throw new Error("M2M100 returned an empty translation");
-              return { key: item.key, text: translated };
+              return { key: item.key, text: preserveUppercase ? translated.toUpperCase() : translated };
             }));
             for (const row of translatedBatch) byKey.set(row.key, row.text);
           }
