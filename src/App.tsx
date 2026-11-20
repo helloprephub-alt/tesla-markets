@@ -151,10 +151,10 @@ const plans = [
 const money = (n: string) => n;
 const supportedLanguages=supportedPublicLanguages;
 const translations:Record<string,Record<string,string>>={
-en:{home:'Home',vehicles:'Vehicles / Shop',investments:'Investments',about:'About',faqs:'FAQs',contact:'Contact',support:'Support / Chat',language:'Choose your language',languageHint:'Select your preferred website language.',heroEyebrow:'ELECTRIC MOBILITY & INVESTMENT ENQUIRIES',heroTitle:'Invest in the',heroItalic:'future in motion.',heroDescription:'Explore public market information about Tesla (NASDAQ: TSLA) and send an enquiry to Tesla Markets Management. Tesla Markets does not execute trades, hold customer funds or provide personalised investment advice; any transaction must be completed independently through a regulated brokerage.',explore:'Explore Tesla market information',chat:'Chat with us',independent:'Independent information',broker:'We do not execute trades; use a regulated brokerage of your choice.',intro:'TESLA MARKETS / INTRODUCTION',investNow:'Invest now',shop:'Explore the shop',collection:'VEHICLE COLLECTION',choose:'Choose your',next:'next Tesla.',viewAll:'View all models',search:'Search languages…'},
-fr:{home:'Accueil',vehicles:'Véhicules / Boutique',investments:'Investissements',about:'À propos',faqs:'FAQ',contact:'Contact',support:'Assistance / Chat',language:'Choisir votre langue',languageHint:'Choisissez la langue du site que vous préférez.',heroEyebrow:'MOBILITÉ ÉLECTRIQUE ET DEMANDES D’INVESTISSEMENT',heroTitle:'Investissez dans le',heroItalic:'mouvement de demain.',heroDescription:'Consultez les informations publiques sur le marché de Tesla (NASDAQ : TSLA) et adressez une demande à l’équipe de Tesla Markets. Tesla Markets n’exécute pas d’ordres, ne détient pas de fonds clients et ne fournit pas de conseils en investissement personnalisés ; toute transaction doit être effectuée directement auprès d’un courtier réglementé.',explore:'Consulter le marché Tesla',chat:'Discuter avec nous',independent:'Informations indépendantes',broker:'Nous n’exécutons pas de transactions ; utilisez le courtier réglementé de votre choix.',intro:'TESLA MARKETS / PRÉSENTATION',investNow:'Investir',shop:'Explorer la boutique',collection:'COLLECTION DE VÉHICULES',choose:'Choisissez votre',next:'prochaine Tesla.',viewAll:'Voir tous les modèles',search:'Rechercher une langue…'},
-de:{home:'Startseite',vehicles:'Fahrzeuge / Shop',investments:'Investitionen',about:'Über uns',faqs:'Häufige Fragen',contact:'Kontakt',support:'Support / Chat',language:'Sprache auswählen',languageHint:'Wählen Sie Ihre bevorzugte Website-Sprache.',heroEyebrow:'ELEKTROMOBILITÄT & INVESTITIONSANFRAGEN',heroTitle:'Investieren Sie in die',heroItalic:'Zukunft in Bewegung.',heroDescription:'Informieren Sie sich über den öffentlichen Markt für Tesla (NASDAQ: TSLA) und senden Sie eine Anfrage an das Tesla-Markets-Team. Tesla Markets führt keine Trades aus, verwahrt keine Kundengelder und bietet keine persönliche Anlageberatung; Transaktionen müssen direkt über einen regulierten Broker erfolgen.',explore:'Tesla-Marktinforma­tionen ansehen',chat:'Mit uns chatten',independent:'Unabhängige Informationen',broker:'Wir führen keine Trades aus; nutzen Sie einen regulierten Broker Ihrer Wahl.',intro:'TESLA MARKETS / EINFÜHRUNG',investNow:'Jetzt investieren',shop:'Shop entdecken',collection:'FAHRZEUGSAMMLUNG',choose:'Wählen Sie Ihren',next:'nächsten Tesla.',viewAll:'Alle Modelle ansehen',search:'Sprachen suchen…'},
-es:{home:'Inicio',vehicles:'Vehículos / Tienda',investments:'Inversiones',about:'Acerca de',faqs:'Preguntas frecuentes',contact:'Contacto',support:'Soporte / Chat',language:'Elige tu idioma',languageHint:'Selecciona el idioma que prefieres para el sitio.',heroEyebrow:'MOVILIDAD ELÉCTRICA Y CONSULTAS DE INVERSIÓN',heroTitle:'Invierte en el',heroItalic:'futuro en movimiento.',heroDescription:'Consulta información pública del mercado sobre Tesla (NASDAQ: TSLA) y envía una consulta al equipo de Tesla Markets. Tesla Markets no ejecuta operaciones, no custodia fondos de clientes ni ofrece asesoramiento de inversión personalizado; cualquier transacción debe realizarse directamente a través de una entidad de corretaje regulada.',explore:'Consultar información del mercado de Tesla',chat:'Chatea con nosotros',independent:'Información independiente',broker:'No ejecutamos operaciones; utiliza una entidad de corretaje regulada de tu elección.',intro:'TESLA MARKETS / INTRODUCCIÓN',investNow:'Invertir ahora',shop:'Explorar la tienda',collection:'COLECCIÓN DE VEHÍCULOS',choose:'Elige tu',next:'próximo Tesla.',viewAll:'Ver todos los modelos',search:'Buscar idiomas…'}
+en:{home:'Home',vehicles:'Vehicles / Shop',investments:'Investments',about:'About',faqs:'FAQs',contact:'Contact',support:'Support / Chat',language:'Choose your language',languageHint:'Select your preferred website language.',heroEyebrow:'ELECTRIC MOBILITY & INVESTMENT ENQUIRIES',heroTitle:'Invest in the',heroItalic:'future in motion.',heroDescription:'Explore public market information about Tesla (NASDAQ: TSLA) and send an enquiry to Tesla Markets Management.',explore:'Explore Tesla market information',chat:'Chat with us',independent:'Independent information',broker:'We do not execute trades; use a regulated brokerage of your choice.',intro:'TESLA MARKETS / INTRODUCTION',investNow:'Invest now',shop:'Explore the shop',collection:'VEHICLE COLLECTION',choose:'Choose your',next:'next Tesla.',viewAll:'View all models',search:'Search languages…'},
+fr:{home:'Accueil',vehicles:'Véhicules / Boutique',investments:'Investissements',about:'À propos',faqs:'FAQ',contact:'Contact',support:'Assistance / Chat',language:'Choisir votre langue',languageHint:'Choisissez la langue du site que vous préférez.',heroEyebrow:'MOBILITÉ ÉLECTRIQUE ET DEMANDES D’INVESTISSEMENT',heroTitle:'Investissez dans le',heroItalic:'mouvement de demain.',heroDescription:'Consultez les informations publiques sur le marché de Tesla (NASDAQ : TSLA) et adressez une demande à l’équipe de Tesla Markets.',explore:'Consulter le marché Tesla',chat:'Discuter avec nous',independent:'Informations indépendantes',broker:'Nous n’exécutons pas de transactions ; utilisez le courtier réglementé de votre choix.',intro:'TESLA MARKETS / PRÉSENTATION',investNow:'Investir',shop:'Explorer la boutique',collection:'COLLECTION DE VÉHICULES',choose:'Choisissez votre',next:'prochaine Tesla.',viewAll:'Voir tous les modèles',search:'Rechercher une langue…'},
+de:{home:'Startseite',vehicles:'Fahrzeuge / Shop',investments:'Investitionen',about:'Über uns',faqs:'Häufige Fragen',contact:'Kontakt',support:'Support / Chat',language:'Sprache auswählen',languageHint:'Wählen Sie Ihre bevorzugte Website-Sprache.',heroEyebrow:'ELEKTROMOBILITÄT & INVESTITIONSANFRAGEN',heroTitle:'Investieren Sie in die',heroItalic:'Zukunft in Bewegung.',heroDescription:'Informieren Sie sich über den öffentlichen Markt für Tesla (NASDAQ: TSLA) und senden Sie eine Anfrage an das Tesla-Markets-Team.',explore:'Tesla-Marktinforma­tionen ansehen',chat:'Mit uns chatten',independent:'Unabhängige Informationen',broker:'Wir führen keine Trades aus; nutzen Sie einen regulierten Broker Ihrer Wahl.',intro:'TESLA MARKETS / EINFÜHRUNG',investNow:'Jetzt investieren',shop:'Shop entdecken',collection:'FAHRZEUGSAMMLUNG',choose:'Wählen Sie Ihren',next:'nächsten Tesla.',viewAll:'Alle Modelle ansehen',search:'Sprachen suchen…'},
+es:{home:'Inicio',vehicles:'Vehículos / Tienda',investments:'Inversiones',about:'Acerca de',faqs:'Preguntas frecuentes',contact:'Contacto',support:'Soporte / Chat',language:'Elige tu idioma',languageHint:'Selecciona el idioma que prefieres para el sitio.',heroEyebrow:'MOVILIDAD ELÉCTRICA Y CONSULTAS DE INVERSIÓN',heroTitle:'Invierte en el',heroItalic:'futuro en movimiento.',heroDescription:'Consulta información pública del mercado sobre Tesla (NASDAQ: TSLA) y envía una consulta al equipo de Tesla Markets.',explore:'Consultar información del mercado de Tesla',chat:'Chatea con nosotros',independent:'Información independiente',broker:'No ejecutamos operaciones; utiliza una entidad de corretaje regulada de tu elección.',intro:'TESLA MARKETS / INTRODUCCIÓN',investNow:'Invertir ahora',shop:'Explorar la tienda',collection:'COLECCIÓN DE VEHÍCULOS',choose:'Elige tu',next:'próximo Tesla.',viewAll:'Ver todos los modelos',search:'Buscar idiomas…'}
 };
 
 
@@ -458,7 +458,7 @@ function App() {
     email: '',
     first: '',
     last: '',
-    country: 'Nigeria',
+    country: '',
     password: '',
   });
 
@@ -1228,23 +1228,17 @@ function App() {
                 placeholder="name@example.com" />
             </label>}
             {!passwordRecovery && signup && (
-              <div className="form-row">
-                <label>
-                  Country
-                  <select
-                    value={form.country}
-                    onChange={e =>
-                      setForm({ ...form, country: e.target.value })
-                    }
-                  >
-                    <option>Nigeria</option>
-                    <option>United States</option>
-                    <option>United Kingdom</option>
-                    <option>Canada</option>
-                    <option>Germany</option>
-                  </select>
-                </label>
-              </div>
+              <label>
+                Country
+                <input
+                  required
+                  type="text"
+                  autoComplete="country-name"
+                  value={form.country}
+                  onChange={e => setForm({ ...form, country: e.target.value })}
+                  placeholder="Enter your country"
+                />
+              </label>
             )}
             <label>
               {passwordRecovery ? 'New password' : 'Password'}
