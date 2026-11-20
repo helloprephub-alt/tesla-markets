@@ -77,7 +77,12 @@ export default async function handler(req: Request, res: ServerResponse) {
       });
     }
     return send(200, { ok: true, messageId: result.messageId || null });
-  } catch {
-    return send(502, { error: 'Could not connect to Brevo.' });
+  } catch (error) {
+    const translationFailed = error instanceof Error && /^Email translation/.test(error.message);
+    return send(502, {
+      error: translationFailed
+        ? 'Your welcome email could not be prepared in your selected language. Please retry shortly.'
+        : 'Could not connect to Brevo.'
+    });
   }
 }
