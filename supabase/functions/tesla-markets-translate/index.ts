@@ -255,7 +255,7 @@ Deno.serve(async (req: Request) => {
                     })
                   }
                 ],
-                max_completion_tokens: 1200,
+                max_completion_tokens: 3000,
                 chat_template_kwargs: { enable_thinking: false, clear_thinking: true },
                 response_format: { type: "json_object" },
                 temperature: 0.05,
