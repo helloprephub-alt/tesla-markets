@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './lib/supabase';
-import { publicText, supportedPublicLanguages, type PublicLanguage } from './public-i18n';
+import { getInitialPublicLanguage, getSavedPublicLanguage, normalizePublicLanguage, publicText, savePublicLanguage, supportedPublicLanguages, type PublicLanguage } from './public-i18n';
+import { startPublicDomTranslation } from './dom-translation';
 import { ChatWorkspace, GeneratedGallery, ThemeToggle } from './ChatWorkspace';
 import { AdminConsole } from './AdminConsole';
 import { VehicleExperience } from './VehicleExperience';
@@ -409,10 +410,57 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen,setLanguageOpen]=useState(false);
   const [languageSearch,setLanguageSearch]=useState('');
-  const [detectedLanguage,setDetectedLanguage] = useState(()=>{try{return localStorage.getItem('tesla-markets-language')||'en';}catch{return 'en';}});
+  const [detectedLanguage,setDetectedLanguage] = useState<PublicLanguage>(()=>getInitialPublicLanguage());
   const currentLanguageName=String(supportedLanguages.find(([code])=>code===detectedLanguage)?.[1]||'English');
   const t=(key:string)=>translations[detectedLanguage]?.[key]||publicText(translations.en[key]||key, detectedLanguage as PublicLanguage);
-  const translateSite = (lang:string) => {setDetectedLanguage(lang);try{localStorage.setItem('tesla-markets-language',lang);}catch{}setLanguageOpen(false);setLanguageSearch('');};
+  const translateSite = async (lang:string) => {
+    const normalized = normalizePublicLanguage(lang);
+    if (!normalized) return;
+    setDetectedLanguage(normalized);
+    savePublicLanguage(normalized);
+    setLanguageOpen(false);
+    setLanguageSearch('');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from('customer_profiles').update({ preferred_language: normalized }).eq('id', user.id);
+      if (error) console.error('Could not save customer language preference:', error.message);
+      const activeConversationId = localStorage.getItem('tesla-markets-enquiry-id');
+      if (activeConversationId) {
+        const { error: conversationError } = await supabase.from('support_conversations')
+          .update({ preferred_language: normalized })
+          .eq('id', activeConversationId)
+          .eq('customer_id', user.id);
+        if (conversationError) console.error('Could not update conversation language:', conversationError.message);
+      }
+    }
+  };
+  useEffect(() => {
+    let active = true;
+    const restoreAccountLanguage = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active || !user) return;
+      const localChoice = getSavedPublicLanguage();
+      if (localChoice) {
+        const { error } = await supabase.from('customer_profiles').update({ preferred_language: localChoice }).eq('id', user.id);
+        if (error) console.error('Could not sync saved customer language:', error.message);
+        return;
+      }
+      const { data, error } = await supabase.from('customer_profiles').select('preferred_language').eq('id', user.id).maybeSingle();
+      if (error || !active) return;
+      const saved = normalizePublicLanguage(data?.preferred_language);
+      if (saved) { savePublicLanguage(saved); setDetectedLanguage(saved); }
+    };
+    void restoreAccountLanguage();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') void restoreAccountLanguage();
+    });
+    return () => { active = false; subscription.unsubscribe(); };
+  }, []);
+  useEffect(() => {
+    document.documentElement.lang = detectedLanguage;
+    document.documentElement.dir = ['ar','he','fa','ur'].includes(detectedLanguage) ? 'rtl' : 'ltr';
+    return startPublicDomTranslation(detectedLanguage, () => setDetectedLanguage('en'));
+  }, [detectedLanguage]);
   const [videoMuted, setVideoMuted] = useState(true);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const toggleHeroVideoSound = () => {
