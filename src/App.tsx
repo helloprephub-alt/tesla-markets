@@ -178,8 +178,8 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
         return;
       }
       const [orderResult,proofResult]=await Promise.all([
-        supabase.from('store_orders').select('id,order_reference,items,subtotal,currency,status,delivery_carrier,tracking_number,tracking_url,created_at,updated_at').eq('customer_id',user.id).order('created_at',{ascending:false}).limit(100),
-        supabase.from('store_payment_submissions').select('id,order_id,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(300)
+        supabase.from('store_orders').select('id,order_reference,items,subtotal,currency,status,payment_method,payment_verified_at,delivery_carrier,tracking_number,tracking_url,created_at,updated_at').eq('customer_id',user.id).order('created_at',{ascending:false}).limit(100),
+        supabase.from('store_payment_submissions').select('id,order_id,payment_method,provider_reference,status,review_note,verified_at,reviewed_at,created_at').order('created_at',{ascending:false}).limit(300)
       ]);
       if(!active)return;
       if(orderResult.error){setError(orderResult.error.message);setLoading(false);setRefreshing(false);return;}
@@ -209,10 +209,11 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
     if(order.status==='completed'||order.status==='delivered')return {label:'Delivered',tone:'accepted',detail:'This order is marked as completed.'};
     if(order.status==='shipped')return {label:'Shipped',tone:'accepted',detail:'Your order has been marked as shipped.'};
     if(order.status==='processing')return {label:'Processing',tone:'accepted',detail:'Your order is being prepared.'};
-    if(proof?.status==='pending'||order.status==='proof_submitted')return {label:'Review pending',tone:'pending',detail:'Your submission has been received. Review may take up to 30 minutes. Check back here for the decision.'};
-    if(proof?.status==='approved_pending_settlement'||order.status==='proof_approved_pending_settlement')return {label:'Review accepted',tone:'accepted',detail:'Your submission has been reviewed and accepted. Any fulfilment updates will appear here.'};
+    if(order.status==='payment_verified'||order.payment_verified_at)return {label:'Payment verified',tone:'accepted',detail:'Tesla Markets Management has independently confirmed receipt. Your order may now proceed to fulfilment.'};
+    if(proof?.status==='pending'||order.status==='proof_submitted')return {label:'Review pending',tone:'pending',detail:'Your payment evidence has been received. Management must review it before confirming payment.'};
+    if(proof?.status==='approved_pending_settlement'||order.status==='proof_approved_pending_settlement')return {label:'Evidence accepted · awaiting settlement',tone:'accepted',detail:'Management accepted the evidence, but payment is not yet confirmed. Fulfilment will wait for settlement verification.'};
     if(order.status==='cancelled')return {label:'Cancelled',tone:'rejected',detail:'This order has been cancelled.'};
-    return {label:'Not submitted yet',tone:'not-submitted',detail:'This order has been created, but no submission has been received yet.'};
+    return {label:'Not submitted yet',tone:'not-submitted',detail:'This order has been created, but no payment evidence has been received yet.'};
   };
 
   return <main className="customer-orders-page">
@@ -234,16 +235,20 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
     :<div className="customer-orders-list">{visibleOrders.map(order=>{
       const proof=getLatestProof(order.id);
       const state=stateFor(order);
+      const paymentVerified=Boolean(order.payment_verified_at||['payment_verified','processing','shipped','delivered','completed'].includes(order.status));
       const stages=[
         {label:'Order created',done:true},
-        {label:'Submission received',done:Boolean(proof)},
-        {label:'Management review',done:Boolean(proof&&proof.status!=='pending')},
+        {label:'Evidence submitted',done:Boolean(proof)||['proof_submitted','proof_approved_pending_settlement','payment_verified','processing','shipped','delivered','completed'].includes(order.status)},
+        {label:'Management review',done:Boolean(proof&&proof.status!=='pending')||paymentVerified},
+        {label:'Payment verified',done:paymentVerified},
         {label:'Fulfilment',done:['processing','shipped','delivered','completed'].includes(order.status)}
       ];
       return <article className="customer-order-card" key={order.id}>
         <div className="customer-order-top"><div><span className="customer-order-reference">ORDER REFERENCE</span><b>{order.order_reference}</b><small>{new Date(order.created_at).toLocaleString()}</small></div><span className={'customer-order-badge '+state.tone}><i/>{state.label}</span></div>
         <div className="customer-order-items">{(order.items||[]).map((item:any,index:number)=><div key={item.product_id||index}><span>{item.name} <small>× {item.quantity}</small></span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:order.currency||'USD',maximumFractionDigits:0}).format(Number(item.unit_price||0)*Number(item.quantity||1))}</b></div>)}</div>
         <div className="customer-order-total"><span>Order total</span><b>{new Intl.NumberFormat('en-US',{style:'currency',currency:order.currency||'USD',maximumFractionDigits:0}).format(Number(order.subtotal||0))}</b></div>
+        {order.payment_method&&<div className="customer-order-review-note"><b>Selected payment method</b><p>{String(order.payment_method).replaceAll('_',' ')}</p></div>}
+        {order.payment_verified_at&&<div className="customer-order-review-note"><b>Payment verified</b><p>{new Date(order.payment_verified_at).toLocaleString()}</p></div>}
         <div className="customer-order-status-line"><span className={'customer-order-badge '+state.tone}><i/>{state.label}</span><p>{state.detail}</p></div>
         <div className="customer-order-progress">{stages.map((stage,index)=><div className={'customer-order-progress-step '+(stage.done?'done':'')} key={stage.label}><span className="customer-order-progress-dot">{stage.done?'✓':index+1}</span><small>{stage.label}</small></div>)}</div>
         {(order.delivery_carrier||order.tracking_number||order.tracking_url)&&<div className="customer-order-review-note"><b>Shipment tracking</b><p>{[order.delivery_carrier,order.tracking_number].filter(Boolean).join(' · ')||'Tracking details are being prepared.'}</p>{order.tracking_url&&<a href={order.tracking_url} target="_blank" rel="noopener noreferrer">Track package securely</a>}</div>}
