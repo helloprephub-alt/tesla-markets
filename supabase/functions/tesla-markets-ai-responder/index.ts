@@ -493,7 +493,9 @@ Deno.serve(async (req: Request) => {
           automated_type: "ai_response", message_type: "payment_receipt",
           structured_data: { title: "Gift-card proof received", subtitle: "PENDING MANAGEMENT VERIFICATION", status: "Under Review",
             fields: [{ label: "Payment reference", value: paymentReference }, { label: "Order reference", value: linkedOrder.order_reference }, { label: "Payment method", value: "Gift Card" }, { label: "Amount", value: String(linkedOrder.agreed_amount) + " " + (linkedOrder.currency || "USD") }],
-            note: "The uploaded image has been attached to the payment record. Payment is not confirmed until management verifies it." }
+            note: "The uploaded image has been attached to the payment record. Payment is not confirmed until management verifies it.",
+            source_message_id: messageId
+          }
         });
       }
       await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card payment proof submitted", body: "Order " + linkedOrder.order_reference + " · " + paymentReference + " · Review the uploaded image in the payment record and customer conversation.", entity_type: "conversation", entity_id: conversationId, is_read: false });
