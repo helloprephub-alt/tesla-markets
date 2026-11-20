@@ -480,6 +480,7 @@ function App() {
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState(() => { try { return sessionStorage.getItem('tesla-markets-pending-email') || ''; } catch { return ''; } });
   const [otpPurpose, setOtpPurpose] = useState<'signup' | 'recovery'>(() => { try { return sessionStorage.getItem('tesla-markets-otp-purpose') === 'recovery' ? 'recovery' : 'signup'; } catch { return 'signup'; } });
   const [verificationCode, setVerificationCode] = useState('');
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
   const [tab, setTab] = useState('Overview');
@@ -509,6 +510,7 @@ function App() {
     last: '',
     country: '',
     password: '',
+    confirmPassword: '',
   });
 
   const go = (next: Page) => {
@@ -1208,11 +1210,12 @@ function App() {
               if (authBusy) return;
               setAuthBusy(true); setAuthError(''); setAuthMessage('');
               try {
+                if ((signup || passwordRecovery) && form.password.length < 8) throw new Error('Use a password with at least 8 characters.');
+                if ((signup || passwordRecovery) && form.password !== form.confirmPassword) throw new Error('Your passwords do not match. Please confirm your password.');
                 if (passwordRecovery) {
-                  if (form.password.length < 8) throw new Error('Use a password with at least 8 characters.');
                   const { error } = await supabase.auth.updateUser({ password: form.password });
                   if (error) throw error;
-                  setForm(current => ({ ...current, password: '' }));
+                  setForm(current => ({ ...current, password: '', confirmPassword: '' }));
                   setPasswordRecovery(false);
                   setAuthMessage('Your password has been updated. Sign in with your new password.');
                 } else if (signup) {
@@ -1237,7 +1240,7 @@ function App() {
                     await supabase.auth.signOut();
                     throw new Error('Email verification is currently disabled in the authentication settings. Please contact support.');
                   }
-                  setForm(current => ({ ...current, password: '' }));
+                  setForm(current => ({ ...current, password: '', confirmPassword: '' }));
                   setPendingVerificationEmail(email);
                   setOtpPurpose('signup');
                   setVerificationPending(true);
@@ -1321,11 +1324,21 @@ function App() {
             )}
             <label>
               {passwordRecovery ? 'New password' : 'Password'}
-              <input required type="password" minLength={8}
+              <input required type={showAuthPassword ? 'text' : 'password'} minLength={8}
                 autoComplete={passwordRecovery || signup ? 'new-password' : 'current-password'}
                 value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
                 placeholder={passwordRecovery ? 'Enter your new password' : 'Enter password'} />
+              <button type="button" className="forgot" onClick={() => setShowAuthPassword(value => !value)}>{showAuthPassword ? 'Hide password' : 'Show password'}</button>
             </label>
+            {(signup || passwordRecovery) && (
+              <label>
+                {passwordRecovery ? 'Confirm new password' : 'Confirm password'}
+                <input required type={showAuthPassword ? 'text' : 'password'} minLength={8}
+                  autoComplete="new-password" value={form.confirmPassword}
+                  onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                  placeholder="Confirm your password" />
+              </label>
+            )}
             {signup && (
               <label className="checkline">
                 <input type="checkbox" required /> I agree to the terms and
