@@ -1,0 +1,56 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import ts from 'typescript';
+
+const read = (path) => fs.readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+const publicSource = read('src/public-i18n.ts');
+const translateSource = read('supabase/functions/tesla-markets-translate/index.ts');
+const aiSource = read('supabase/functions/tesla-markets-ai-responder/index.ts');
+
+const list = publicSource.match(/export const supportedPublicLanguages = \[([\s\S]*?)\] as const;/)?.[1] || '';
+const codes = [...list.matchAll(/\['([a-z]{2})','/g)].map((match) => match[1]);
+const aiSet = aiSource.match(/const SUPPORTED_RESPONSE_LANGUAGES = new Set\(\[([\s\S]*?)\]\);/)?.[1] || '';
+const aiCodes = [...aiSet.matchAll(/"([a-z]{2})"/g)].map((match) => match[1]);
+const translationSet = translateSource.match(/const ALLOWED_LANGUAGES = new Set\(\[([\s\S]*?)\]\);/)?.[1] || '';
+const translationCodes = [...translationSet.matchAll(/"([a-z]{2})"/g)].map((match) => match[1]);
+
+assert.equal(codes.length, 59);
+assert.deepEqual([...codes].sort(), [...aiCodes].sort());
+assert.deepEqual([...codes].sort(), [...translationCodes].sort());
+assert.match(aiSource, /function normalizeResponseLanguage/);
+assert.match(aiSource, /The language field must be an ISO 639-1 code/);
+assert.match(aiSource, /max_completion_tokens: 1000/);
+assert.match(aiSource, /chat_template_kwargs: \{ enable_thinking: false \}/);
+assert.match(translateSource, /max_completion_tokens: 900/);
+assert.match(translateSource, /chat_template_kwargs: \{ enable_thinking: false \}/);
+assert.match(translateSource, /protected_token_mismatch/);
+assert.match(translateSource, /untranslated_response/);
+assert.match(translateSource, /consume_translation_rate_limit/);
+
+const normalizeStart = aiSource.indexOf('const SUPPORTED_RESPONSE_LANGUAGES = new Set(');
+const languageFnStart = aiSource.indexOf('function normalizeResponseLanguage', normalizeStart);
+const languageFnEnd = aiSource.indexOf('\n}', languageFnStart) + 2;
+assert.ok(normalizeStart >= 0 && languageFnStart > normalizeStart && languageFnEnd > languageFnStart);
+const normalizationCode = aiSource.slice(normalizeStart, languageFnEnd) + '\nmodule.exports = normalizeResponseLanguage;';
+const testModule = ts.transpile(normalizationCode, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS });
+const sandbox = { module: { exports: {} }, exports: {} };
+vm.runInNewContext(testModule, sandbox);
+const normalizeLanguage = sandbox.module.exports;
+for (const code of codes) assert.equal(normalizeLanguage(code, 'en'), code, 'Language normalization failed for ' + code);
+assert.equal(normalizeLanguage('pt-BR','en'),'pt');
+assert.equal(normalizeLanguage('vietnamese','en'),'vi');
+assert.equal(normalizeLanguage('afrikaans','en'),'af');
+assert.equal(normalizeLanguage('unsupported','de'),'de');
+assert.equal(normalizeLanguage('ha','en'),'en');
+assert.equal(normalizeLanguage('yo','en'),'en');
+
+console.log(JSON.stringify({
+  status: 'passed',
+  checkedLanguageCodes: codes.length,
+  responderAllowlistMatchesSelector: true,
+  translationAllowlistMatchesSelector: true,
+  responseLanguageNormalizationSamples: codes.length + 6,
+  modelReasoningDisabledForTranslationAndReplies: true,
+  protectedTokenValidation: true
+}, null, 2));
