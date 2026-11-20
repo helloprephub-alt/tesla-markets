@@ -37,6 +37,18 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
     document.head.appendChild(style);
   }
   document.documentElement.classList.add('tm-language-pending');
+  const loadingOverlay = document.createElement('div');
+  loadingOverlay.id = 'tm-language-loading-overlay';
+  loadingOverlay.setAttribute('role', 'status');
+  loadingOverlay.setAttribute('aria-live', 'polite');
+  loadingOverlay.textContent = 'TESLA MARKETS\\nPreparing your selected language…';
+  Object.assign(loadingOverlay.style, {
+    position: 'fixed', inset: '0', zIndex: '2147483647', display: 'grid',
+    placeItems: 'center', padding: '28px', whiteSpace: 'pre-line',
+    background: '#f5f5f5', color: '#171717', fontFamily: 'Arial, sans-serif',
+    fontSize: '17px', fontWeight: '600', letterSpacing: '.02em', textAlign: 'center'
+  });
+  document.body.appendChild(loadingOverlay);
 
   const fallbackToEnglish = () => {
     if (failed || disposed) return;
@@ -56,6 +68,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
     document.documentElement.lang = 'en';
     document.documentElement.dir = 'ltr';
     document.documentElement.classList.remove('tm-language-pending');
+    loadingOverlay.remove();
     const notice = document.createElement('div');
     notice.className = 'tm-translation-fallback-notice';
     notice.setAttribute('role', 'status');
@@ -183,43 +196,49 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
     processing = true;
     try {
       while (queue.length && !disposed && !failed) {
-        const batch = queue.splice(0, 20);
-        const { data, error } = await supabase.functions.invoke('tesla-markets-translate', {
-          body: {
-            target_language: language,
-            source_language: 'en',
-            component: 'public-dom',
-            texts: batch.map((text, index) => ({ key: String(index), text })),
-          },
-        });
+        const batches: string[][] = [];
+        for (let index = 0; index < 4 && queue.length; index += 1) {
+          batches.push(queue.splice(0, 5));
+        }
+        const translatedBatches = await Promise.all(batches.map(async (batch) => {
+          const { data, error } = await supabase.functions.invoke('tesla-markets-translate', {
+            body: {
+              target_language: language,
+              source_language: 'en',
+              component: 'public-dom',
+              texts: batch.map((text, index) => ({ key: String(index), text })),
+            },
+          });
+          if (error || !Array.isArray(data?.translations) || data.translations.length !== batch.length) {
+            throw new Error(error?.message || data?.error || 'Incomplete translation response');
+          }
+          const entries: Array<{ source: string; translated: string }> = [];
+          for (const row of data.translations) {
+            const index = Number(row?.key);
+            const source = Number.isInteger(index) ? batch[index] : undefined;
+            const translated = typeof row?.text === 'string' ? row.text.trim() : '';
+            if (source && translated) entries.push({ source, translated });
+          }
+          if (entries.length !== batch.length) throw new Error('Translation response did not include every requested item');
+          return entries;
+        }));
         if (disposed || failed) return;
-        if (error || !Array.isArray(data?.translations) || data.translations.length !== batch.length) {
-          console.error('Tesla Markets UI translation failed:', error?.message || data?.error || 'Incomplete translation response');
-          fallbackToEnglish();
-          return;
-        }
-        const translatedEntries: Array<{ source: string; translated: string }> = [];
-        for (const row of data.translations) {
-          const index = Number(row?.key);
-          const source = Number.isInteger(index) ? batch[index] : undefined;
-          const translated = typeof row?.text === 'string' ? row.text.trim() : '';
-          if (source && translated) translatedEntries.push({ source, translated });
-        }
-        if (translatedEntries.length !== batch.length) {
-          fallbackToEnglish();
-          return;
-        }
+        const translatedEntries = translatedBatches.flat();
         setPublicTranslations(language, translatedEntries);
         for (const entry of translatedEntries) {
           for (const apply of pending.get(entry.source) || []) apply();
           pending.delete(entry.source);
         }
       }
+    } catch (error) {
+      console.error('Tesla Markets UI translation failed:', error instanceof Error ? error.message : error);
+      fallbackToEnglish();
     } finally {
       processing = false;
-      if (initialPass && !failed) {
+      if (initialPass && !failed && !queue.length) {
         initialPass = false;
         document.documentElement.classList.remove('tm-language-pending');
+        loadingOverlay.remove();
       }
       if (queue.length && !disposed && !failed) void flush();
     }
@@ -229,6 +248,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
   if (!queue.length) {
     initialPass = false;
     document.documentElement.classList.remove('tm-language-pending');
+    loadingOverlay.remove();
   }
   observer = new MutationObserver((records) => {
     for (const record of records) {
@@ -243,12 +263,13 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
   });
   observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: TRANSLATABLE_ATTRIBUTES });
 
-  const fallback = window.setTimeout(() => { if (initialPass) fallbackToEnglish(); }, 20000);
+  const fallback = window.setTimeout(() => { if (initialPass) fallbackToEnglish(); }, 90000);
   return () => {
     disposed = true;
     observer?.disconnect();
     window.clearTimeout(fallback);
     document.documentElement.classList.remove('tm-language-pending');
+    loadingOverlay.remove();
     for (const [node, original] of originals) {
       if (node.isConnected && node.nodeValue === original.translated) node.nodeValue = original.value;
     }
