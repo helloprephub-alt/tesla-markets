@@ -279,32 +279,51 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      try {
-        for (const item of missing) {
-          const translated = byKey.get(item.key);
+      const shortTermTranslations: Record<string, Record<string, string>> = {
+        compliance: {
+          af: "Nakoming", sq: "Pajtueshmëria", hy: "Համապատասխանություն", az: "Uyğunluq", eu: "Betetzea",
+          be: "Адпаведнасць", bn: "অনুবর্তিতা", bs: "Usklađenost", bg: "Съответствие", ca: "Compliment normatiu",
+          hr: "Usklađenost", cs: "Soulad", da: "Overholdelse", de: "Einhaltung", el: "Συμμόρφωση",
+          es: "Cumplimiento", et: "Vastavus", fa: "انطباق", fi: "Vaatimustenmukaisuus", fr: "Conformité",
+          ga: "Comhlíonadh", gl: "Cumprimento", he: "ציות", hi: "अनुपालन", hu: "Megfelelőség",
+          id: "Kepatuhan", is: "Fylgni", it: "Conformità", ja: "コンプライアンス", kk: "Сәйкестік",
+          ko: "규정 준수", lt: "Atitiktis", lv: "Atbilstība", mk: "Усогласеност", ms: "Pematuhan",
+          mt: "Konformità", mr: "अनुपालन", ne: "अनुपालन", nl: "Naleving", no: "Etterlevelse",
+          pl: "Zgodność", pt: "Conformidade", ro: "Conformitate", ru: "Соответствие", sk: "Súlad",
+          sl: "Skladnost", sr: "Усклађеност", sv: "Efterlevnad", sw: "Uzingatiaji", ta: "இணக்கம்",
+          te: "అనుసరణ", th: "การปฏิบัติตามข้อกำหนด", tr: "Uyumluluk", uk: "Відповідність",
+          ur: "تعمیل", vi: "Tuân thủ", zh: "合规", ar: "الامتثال"
+        }
+      };
+      for (const item of missing) {
+        try {
+          let translated = byKey.get(item.key);
           if (!translated) throw new Error("missing_translation");
           const sourceLetters = item.protectedText.replace(/ZXQTMX\d+XQZ/g, "").replace(/[^A-Za-z]/g, "").toLowerCase();
           const outputWithoutProtectedTokens = translated.replace(/ZXQTMX\d+XQZ/g, "");
-          const outputLetters = outputWithoutProtectedTokens.replace(/ZXQTMX\d+XQZ/g, "").replace(/[^A-Za-z]/g, "").toLowerCase();
-          if (target === "sw" && /\b(order|your|please|payment|delivery|tracking|details|available|request|team|contact|support|received|will|when)\b/i.test(outputWithoutProtectedTokens)) {
+          const outputLetters = outputWithoutProtectedTokens.replace(/[^A-Za-z]/g, "").toLowerCase();
+          if (sourceLanguage === "en" && target !== "en" && sourceLetters.length >= 3 && sourceLetters === outputLetters) {
+            const fallbackTerm = shortTermTranslations[item.text.trim().toLowerCase()]?.[target];
+            if (fallbackTerm) translated = fallbackTerm;
+            else throw new Error("untranslated_response");
+          }
+          if (target === "sw" && /\b(order|your|please|payment|delivery|tracking|details|available|request|team|contact|support|received|will|when)\b/i.test(translated.replace(/ZXQTMX\d+XQZ/g, ""))) {
             throw new Error("untranslated_response");
           }
-          if (sourceLanguage === "en" && target !== "en" && sourceLetters.length >= 8 && sourceLetters === outputLetters) {
-            throw new Error("untranslated_response");
-          }
+          const finalText = translated.replace(/ZXQTMX\d+XQZ/g, "");
           const requiredScript = NATIVE_SCRIPT_PATTERNS[target];
-          if (requiredScript && !requiredScript.test(outputWithoutProtectedTokens)) {
-            throw new Error("untranslated_response");
-          }
+          if (requiredScript && !requiredScript.test(finalText)) throw new Error("untranslated_response");
           const restored = restoreTokens(translated, item.tokens);
           generated.set(item.cacheKey, restored);
+        } catch (error) {
+          const issue = error instanceof Error && error.message === "protected_token_mismatch"
+            ? "protected_token_mismatch" : error instanceof Error && error.message === "untranslated_response"
+              ? "invalid_response" : "missing_translation";
+          await recordIssue(admin, target, issue, item.sourceHash, component);
+          const safeFallback = shortTermTranslations[item.text.trim().toLowerCase()]?.[target] || item.text;
+          generated.set(item.cacheKey, safeFallback);
+          console.warn("Translation item used a safe fallback:", { target, issue, component, sourceHash: item.sourceHash });
         }
-      } catch (error) {
-        const issue = error instanceof Error && error.message === "protected_token_mismatch"
-          ? "protected_token_mismatch" : error instanceof Error && error.message === "untranslated_response"
-            ? "invalid_response" : "missing_translation";
-        await recordIssue(admin, target, issue, undefined, component);
-        return json({ error: "Translation validation failed." }, 502, headers);
       }
 
       const cacheRows = missing.map((item: any) => ({
