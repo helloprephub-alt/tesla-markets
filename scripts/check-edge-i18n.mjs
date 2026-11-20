@@ -25,6 +25,7 @@ assert.match(aiSource, /chat_template_kwargs: \{ enable_thinking: false \}/);
 assert.match(translateSource, /max_completion_tokens: 3000/);
 assert.match(translateSource, /chat_template_kwargs: \{ enable_thinking: false, clear_thinking: true \}/);
 assert.match(translateSource, /protected_token_mismatch/);
+assert.match(translateSource, /const pattern = new RegExp\(brandPattern\.source \+ "\\|" \+ commonPattern\.source, "gi"\)/, 'Brand and model names must be protected in every target language.');
 assert.match(translateSource, /untranslated_response/);
 assert.match(translateSource, /consume_translation_rate_limit/);
 assert.match(translateSource, /const failedItems: string\[\] = \[\]/, 'Unvalidated translations must be rejected instead of cached as English.');
