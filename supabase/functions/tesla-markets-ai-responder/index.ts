@@ -588,14 +588,32 @@ Deno.serve(async (req: Request) => {
       };
       const { error: lockError } = await admin.from("support_conversations").update({ delivery_details: { ...currentDetails, payment_lock: paymentLockNext }, updated_at: new Date().toISOString() }).eq("id", conversationId);
       if (lockError) throw lockError;
+      const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
+      const { data: selectionMessage, error: selectionMessageError } = await admin.from("support_messages").insert({
+        conversation_id: conversationId,
+        sender_id: managementProfile.id,
+        sender_role: "management",
+        body: "Thanks — I’ve recorded your selection of " + selectedPaymentMethod + " for " + paymentLockNext.vehicle + ". Tesla Markets Management has been notified. The matching recipient instructions will be sent here after review. Never share passwords, one-time passcodes, full card numbers, CVV/security codes or gift-card PINs/codes.",
+        automated_type: "ai_response",
+        message_type: "payment_selection_received",
+        structured_data: {
+          title: "Payment method selected",
+          subtitle: "AWAITING MANAGEMENT INSTRUCTIONS",
+          method: selectedPaymentMethod,
+          amount: paymentLockNext.amount,
+          source_message_id: messageId
+        }
+      }).select("id").single();
+      if (selectionMessageError) throw selectionMessageError;
       const { error: notificationError } = await admin.from("admin_notifications").insert({
         type: "payment_method_selected", title: "Customer selected a payment method",
         body: [conversation.visitor_email || "Website visitor", paymentLockNext.vehicle, paymentLockNext.amount, selectedPaymentMethod].filter(Boolean).join(" · ").slice(0,240),
         entity_type: "conversation", entity_id: conversationId, is_read: false
       });
       if (notificationError) throw notificationError;
-      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      return json({ ok: true, management_handoff: true, payment_method: selectedPaymentMethod, payment_status: "pending" }, 200, headers);
+      await admin.from("ai_responder_runs").update({ status: "completed", response_message_id: selectionMessage.id, updated_at: new Date().toISOString() }).eq("message_id", messageId);
+      return json({ ok: true, response_message_id: selectionMessage.id, management_handoff: true, payment_method: selectedPaymentMethod, payment_status: "pending" }, 200, headers);
     }
 
     const savedPaymentLock = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
