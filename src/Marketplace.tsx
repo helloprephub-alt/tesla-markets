@@ -286,7 +286,25 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
       window.setTimeout(()=>{void restoreCustomerCart(session?.user.id);},0);
     });
     const savedIntent=readCheckoutIntent();
-    if(savedIntent){if(savedIntent.checkoutDetails)setCheckoutDetails(current=>({...current,...savedIntent.checkoutDetails}));setCheckoutOpen(true);setCartOpen(false);setCheckoutStage('details');localStorage.removeItem(CHECKOUT_INTENT_KEY);}
+    if(savedIntent){
+      if(savedIntent.checkoutDetails){
+        const savedDetails=savedIntent.checkoutDetails;
+        setCheckoutDetails(current=>({
+          fullName:savedDetails.fullName ?? current.fullName,
+          email:savedDetails.email ?? current.email,
+          phone:savedDetails.phone ?? current.phone,
+          address:savedDetails.address ?? current.address,
+          city:savedDetails.city ?? current.city,
+          region:savedDetails.region ?? current.region,
+          postalCode:savedDetails.postalCode ?? current.postalCode,
+          country:savedDetails.country ?? current.country
+        }));
+      }
+      setCheckoutOpen(true);
+      setCartOpen(false);
+      setCheckoutStage('details');
+      localStorage.removeItem(CHECKOUT_INTENT_KEY);
+    }
     return()=>{active=false;subscription.unsubscribe();};
   }, []);
 
