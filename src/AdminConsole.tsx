@@ -16,11 +16,11 @@ type ShopOrderReview = {
   address:string; city:string; region:string|null; postalCode:string|null; country:string;
   deliveryCarrier:string|null; trackingNumber:string|null; trackingUrl:string|null;
   items:Array<{product_id?:string;name:string;quantity:number;selected_size?:string|null;unit_price:number;original_unit_price?:number;discount_percent?:number}>;
-  subtotal:number; discountTotal:number; currency:string; status:string; paymentMethod:string|null; createdAt:number;
+  subtotal:number; discountTotal:number; currency:string; status:string; paymentMethod:string|null; paymentVerifiedAt:string|null; createdAt:number;
 };
 type ShopProofReview = {
   id:string; orderId:string; method:string; providerReference:string|null; storagePath:string; signedUrl:string;
-  status:string; reviewNote:string|null; createdAt:number; reviewedAt:string|null;
+  status:string; reviewNote:string|null; verifiedAt:string|null; createdAt:number; reviewedAt:string|null;
 };
 type Overview = { conversations: number; messages: number; generatedImages: number; visits: number; clicks: number; onlineNow: number; updatedAt: number };
 type AdminTask = {id:string;title:string;description:string;status:string;priority:string;due_at:string|null;created_at:string};
@@ -340,8 +340,8 @@ export function AdminConsole() {
         supabase.from('vehicle_catalog').select('id,name,model,slug,price_usd,availability,is_published,verification_status,source_type,source_url,last_verified_at,images').order('name'),
         supabase.from('business_orders').select('id,order_reference,item_description,status,agreed_amount,currency,customer_id,conversation_id,payment_url,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('business_payments').select('id,payment_reference,order_id,amount,currency,method,provider_reference,status,created_at').order('created_at',{ascending:false}).limit(200),
-        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_region,delivery_postal_code,delivery_country,delivery_carrier,tracking_number,tracking_url,items,subtotal,discount_total,currency,status,payment_method,payment_method_selected_at,created_at').order('created_at',{ascending:false}).limit(200),
-        supabase.from('store_payment_submissions').select('id,order_id,payment_method,provider_reference,proof_storage_path,status,review_note,reviewed_at,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('store_orders').select('id,order_reference,customer_name,customer_email,customer_phone,delivery_address,delivery_city,delivery_region,delivery_postal_code,delivery_country,delivery_carrier,tracking_number,tracking_url,items,subtotal,discount_total,currency,status,payment_method,payment_method_selected_at,payment_verified_at,created_at').order('created_at',{ascending:false}).limit(200),
+        supabase.from('store_payment_submissions').select('id,order_id,payment_method,provider_reference,proof_storage_path,status,review_note,verified_at,reviewed_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_tasks').select('id,title,description,status,priority,due_at,created_at').order('created_at',{ascending:false}).limit(200),
         supabase.from('admin_notifications').select('id,title,body,type,is_read,created_at').order('created_at',{ascending:false}).limit(100),
         supabase.from('admin_audit_logs').select('id,action,entity_type,entity_id,details,created_at').order('created_at',{ascending:false}).limit(100),
@@ -374,7 +374,7 @@ export function AdminConsole() {
         address:row.delivery_address,city:row.delivery_city,region:row.delivery_region||null,postalCode:row.delivery_postal_code||null,country:row.delivery_country,
         deliveryCarrier:row.delivery_carrier||null,trackingNumber:row.tracking_number||null,trackingUrl:row.tracking_url||null,
         items:Array.isArray(row.items)?row.items:[],subtotal:Number(row.subtotal||0),discountTotal:Number(row.discount_total||0),
-        currency:row.currency||'USD',status:row.status||'awaiting_payment',paymentMethod:row.payment_method||null,createdAt:new Date(row.created_at).getTime()
+        currency:row.currency||'USD',status:row.status||'awaiting_payment',paymentMethod:row.payment_method||null,paymentVerifiedAt:row.payment_verified_at||null,createdAt:new Date(row.created_at).getTime()
       }));
       setShopOrders(mappedShopOrders);
       setShopTrackingDrafts(Object.fromEntries(mappedShopOrders.map(order=>[order.id,{carrier:order.deliveryCarrier||'',number:order.trackingNumber||'',url:order.trackingUrl||''}])));
@@ -382,7 +382,7 @@ export function AdminConsole() {
         const {data:signed,error:signedError}=await supabase.storage.from('shop-payment-proofs').createSignedUrl(row.proof_storage_path,900);
         if(signedError) throw signedError;
         return {id:row.id,orderId:row.order_id,method:row.payment_method,providerReference:row.provider_reference||null,storagePath:row.proof_storage_path,
-          signedUrl:signed?.signedUrl||'',status:row.status||'pending',reviewNote:row.review_note||null,
+          signedUrl:signed?.signedUrl||'',status:row.status||'pending',reviewNote:row.review_note||null,verifiedAt:row.verified_at||null,
           createdAt:new Date(row.created_at).getTime(),reviewedAt:row.reviewed_at||null};
       }));
       setShopProofs(signedShopProofs);
@@ -491,31 +491,38 @@ export function AdminConsole() {
     }
   };
 
-  const reviewShopPaymentProof = async (proofId:string, decision:'approve'|'reject', reason = '') => {
+  const reviewShopPaymentProof = async (proofId:string, decision:'approve'|'reject'|'verify', reason = '') => {
     const proof=shopProofs.find(item=>item.id===proofId);
     const order=proof?shopOrders.find(item=>item.id===proof.orderId):null;
     if(!proof||!order){setError('The shop payment proof or order could not be found.');return;}
+    if(decision==='approve'&&proof.status!=='pending'){setError('Only pending evidence can be accepted.');return;}
     if(decision==='reject'&&!reason.trim()){setError('Enter a rejection reason for the customer.');return;}
+    if(decision==='verify'&&(proof.status!=='approved_pending_settlement'||order.status!=='proof_approved_pending_settlement')){setError('Accept the evidence first, then independently confirm the payment in the recipient account before marking it verified.');return;}
+    if(decision==='reject'&&!['pending','approved_pending_settlement'].includes(proof.status)){setError('Only unverified evidence can be rejected.');return;}
     setReviewingShopProof(proofId);
     try {
       const {user:current,isAdmin}=await isCurrentUserAdmin();
       if(!current||!isAdmin) throw new Error('Administrator session expired.');
       const now=new Date().toISOString();
-      const proofStatus=decision==='approve'?'approved_pending_settlement':'rejected';
-      const orderStatus=decision==='approve'?'proof_approved_pending_settlement':'payment_proof_rejected';
+      const proofStatus=decision==='approve'?'approved_pending_settlement':decision==='verify'?'verified':'rejected';
+      const orderStatus=decision==='approve'?'proof_approved_pending_settlement':decision==='verify'?'payment_verified':'payment_proof_rejected';
       const note=decision==='approve'
-        ? 'Your evidence has been reviewed and accepted. Payment remains pending final settlement confirmation; fulfilment must wait until management confirms receipt.'
-        : reason.trim();
-      const {error:proofError}=await supabase.from('store_payment_submissions').update({
-        status:proofStatus,review_note:note,reviewed_by:current.id,reviewed_at:now
-      }).eq('id',proofId);
+        ? 'Evidence accepted by management. Payment is not yet confirmed; fulfilment must wait for independent settlement verification.'
+        : decision==='verify'
+          ? 'Payment was independently matched against the recipient account or provider record and confirmed by management.'
+          : reason.trim();
+      const proofPatch:any={status:proofStatus,review_note:note,reviewed_by:current.id,reviewed_at:now};
+      if(decision==='verify')proofPatch.verified_at=now;
+      if(decision==='reject')proofPatch.verified_at=null;
+      const {error:proofError}=await supabase.from('store_payment_submissions').update(proofPatch).eq('id',proofId);
       if(proofError) throw proofError;
-      const {error:orderError}=await supabase.from('store_orders').update({
-        status:orderStatus,updated_at:now
-      }).eq('id',order.id);
+      const orderPatch:any={status:orderStatus,updated_at:now};
+      if(decision==='verify')orderPatch.payment_verified_at=now;
+      if(decision==='reject')orderPatch.payment_verified_at=null;
+      const {error:orderError}=await supabase.from('store_orders').update(orderPatch).eq('id',order.id);
       if(orderError) throw orderError;
-      setShopProofs(currentProofs=>currentProofs.map(item=>item.id===proofId?{...item,status:proofStatus,reviewNote:note,reviewedAt:now}:item));
-      setShopOrders(currentOrders=>currentOrders.map(item=>item.id===order.id?{...item,status:orderStatus}:item));
+      setShopProofs(currentProofs=>currentProofs.map(item=>item.id===proofId?{...item,status:proofStatus,reviewNote:note,reviewedAt:now,verifiedAt:decision==='verify'?now:decision==='reject'?null:item.verifiedAt}:item));
+      setShopOrders(currentOrders=>currentOrders.map(item=>item.id===order.id?{...item,status:orderStatus,paymentVerifiedAt:decision==='verify'?now:decision==='reject'?null:item.paymentVerifiedAt}:item));
       setShopProofRejectionReasons(currentReasons=>({...currentReasons,[proofId]:''}));
       setError('');
     } catch(e) {
@@ -526,8 +533,12 @@ export function AdminConsole() {
   };
 
   const updateShopOrderProgress = async (orderId:string,status:string) => {
-    const allowed=['saved_for_later','awaiting_payment','proof_submitted','payment_proof_rejected','proof_approved_pending_settlement','processing','shipped','delivered','completed','cancelled'];
+    const allowed=['saved_for_later','awaiting_payment','processing','shipped','delivered','completed','cancelled'];
     if(!allowed.includes(status))return;
+    const order=shopOrders.find(item=>item.id===orderId);
+    const fulfillmentStatuses=['processing','shipped','delivered','completed'];
+    const paymentConfirmedStatuses=['payment_verified','processing','shipped','delivered','completed'];
+    if(fulfillmentStatuses.includes(status)&&!paymentConfirmedStatuses.includes(order?.status||'')){setError('Confirm receipt of the payment from the recipient account before moving this order into fulfilment.');return;}
     setUpdatingShopOrder(orderId);
     try {
       const {user:current,isAdmin}=await isCurrentUserAdmin();
@@ -965,8 +976,10 @@ export function AdminConsole() {
                     {proof.providerReference && <p className="tm-shop-review-method">Transaction reference: <b>{proof.providerReference}</b></p>}
                     {proof.signedUrl ? <a className="tm-shop-review-proof" href={proof.signedUrl} target="_blank" rel="noreferrer"><img src={proof.signedUrl} alt={'Payment proof for '+(order?.reference||'shop order')}/><span>Open full image</span></a> : <p className="admin-empty-note">Proof image unavailable. Refresh to request a new secure link.</p>}
                     {proof.reviewNote && <small className="tm-shop-review-note">{proof.reviewNote}</small>}
+                    {proof.status==='approved_pending_settlement' && <div className="tm-shop-review-actions tm-shop-review-actions-expanded"><p>Evidence has been accepted, but the payment is not yet confirmed. Check the recipient account or provider record before continuing.</p><button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'verify')}>{reviewingShopProof===proof.id?'Verifying…':'Confirm funds received'}</button></div>}
+                    {proof.status==='verified' && <small className="tm-shop-review-note">Payment independently verified {proof.verifiedAt?'on '+new Date(proof.verifiedAt).toLocaleString():''}. This order may proceed to fulfilment.</small>}
                     {proof.status==='pending' && <div className="tm-shop-review-actions tm-shop-review-actions-expanded">
-                      <button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'approve')}>Accept evidence</button>
+                      <button className="btn btn-dark" disabled={reviewingShopProof===proof.id} onClick={()=>void reviewShopPaymentProof(proof.id,'approve')}>Accept evidence · pending settlement</button>
                       <label className="tm-shop-rejection-field">Reason for rejection
                         <textarea rows={3} value={shopProofRejectionReasons[proof.id]||''} onChange={event=>setShopProofRejectionReasons(current=>({...current,[proof.id]:event.target.value}))} placeholder="Write the reason the customer should see…"/>
                       </label>
@@ -980,7 +993,7 @@ export function AdminConsole() {
             <section className="admin-console-panel">
               <div className="admin-console-panel-head"><div><div className="eyebrow dark">SHOP ORDERS</div><h2>{shopOrders.length} customer orders</h2><p>Orders saved for later, awaiting proof and reviewed orders are listed here.</p></div></div>
               {shopOrders.length ? <div className="tm-shop-orders-list">{shopOrders.map(order=><article key={order.id}>
-                <div><b>{order.reference}</b><small>{order.customerName} · {order.email}</small><small>{order.items.map(item=>item.name+' × '+item.quantity).join(' · ')}</small><small>Selected payment: {order.paymentMethod?order.paymentMethod.replaceAll('_',' '):'Not selected'}</small></div>
+                <div><b>{order.reference}</b><small>{order.customerName} · {order.email}</small><small>{order.items.map(item=>item.name+' × '+item.quantity).join(' · ')}</small><small>Selected payment: {order.paymentMethod?order.paymentMethod.replaceAll('_',' '):'Not selected'}</small>{order.paymentVerifiedAt&&<small>Payment verified: {new Date(order.paymentVerifiedAt).toLocaleString()}</small>}</div>
                 <b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(order.subtotal)}</b>
                 <span className={'tm-shop-review-status '+order.status}>{order.status.replaceAll('_',' ')}</span>
                 <label className="tm-shop-order-progress-control">Order progress
@@ -989,8 +1002,9 @@ export function AdminConsole() {
                     <option value="awaiting_payment">Not submitted yet</option>
                     <option value="proof_submitted">Submission received · pending review</option>
                     <option value="payment_proof_rejected">Submission rejected</option>
-                    <option value="proof_approved_pending_settlement">Review accepted · awaiting fulfilment</option>
-                    <option value="processing">Processing</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+                    <option value="proof_approved_pending_settlement" disabled>Evidence accepted · awaiting settlement</option>
+                    <option value="payment_verified" disabled>Payment verified</option>
+                    <option value="processing" disabled={!['payment_verified','processing','shipped','delivered','completed'].includes(order.status)}>Processing</option><option value="shipped" disabled={!['payment_verified','processing','shipped','delivered','completed'].includes(order.status)}>Shipped</option><option value="delivered" disabled={!['payment_verified','processing','shipped','delivered','completed'].includes(order.status)}>Delivered</option><option value="completed" disabled={!['payment_verified','processing','shipped','delivered','completed'].includes(order.status)}>Completed</option><option value="cancelled">Cancelled</option>
                   </select>
                 </label>
                 <div className="tm-shop-order-tracking-fields">
