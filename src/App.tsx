@@ -476,8 +476,9 @@ function App() {
   const [authMessage, setAuthMessage] = useState('');
   const [authError, setAuthError] = useState('');
   const [passwordRecovery, setPasswordRecovery] = useState(false);
-  const [verificationPending, setVerificationPending] = useState(false);
-  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [verificationPending, setVerificationPending] = useState(() => { try { return sessionStorage.getItem('tesla-markets-pending-verification') === '1'; } catch { return false; } });
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState(() => { try { return sessionStorage.getItem('tesla-markets-pending-email') || ''; } catch { return ''; } });
+  const [otpPurpose, setOtpPurpose] = useState<'signup' | 'recovery'>(() => { try { return sessionStorage.getItem('tesla-markets-otp-purpose') === 'recovery' ? 'recovery' : 'signup'; } catch { return 'signup'; } });
   const [verificationCode, setVerificationCode] = useState('');
   const [query, setQuery] = useState('');
   const [faq, setFaq] = useState<number | null>(0);
@@ -1168,17 +1169,21 @@ function App() {
           </p>
 
 
-          {false ? (
+          {verificationPending ? (
             <form onSubmit={async e => {
               e.preventDefault(); if (authBusy) return;
               setAuthBusy(true); setAuthError(''); setAuthMessage('');
               try {
-                const result = await supabase.auth.verifyOtp({ email: pendingVerificationEmail, token: verificationCode.trim(), type: 'signup' });
+                const result = await supabase.auth.verifyOtp({ email: pendingVerificationEmail, token: verificationCode.trim(), type: otpPurpose === 'recovery' ? 'recovery' : 'email' });
                 if (result.error) throw result.error;
-                try { sessionStorage.removeItem('tesla-markets-pending-verification'); } catch {}
+                if (!result.data.session) throw new Error('Verification succeeded but a secure session was not created. Please sign in.');
+                try { sessionStorage.removeItem('tesla-markets-pending-verification'); sessionStorage.removeItem('tesla-markets-pending-email'); sessionStorage.removeItem('tesla-markets-otp-purpose'); } catch {}
                 setVerificationPending(false); setVerificationCode('');
-                setAuthMessage('Your email is verified. Welcome to Tesla Markets.');
-                if (result.data.session) {
+                if (otpPurpose === 'recovery') {
+                  setPasswordRecovery(true);
+                  setAuthMessage('Your recovery code is verified. Choose a new password.');
+                } else {
+                  setAuthMessage('Your email is verified. Welcome to Tesla Markets.');
                   if (sessionStorage.getItem('tesla-markets-enquiry-intent')) go('chat');
                   else if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
                   else go('dashboard');
@@ -1187,14 +1192,14 @@ function App() {
               finally { setAuthBusy(false); }
             }}>
               <div className="eyebrow dark">EMAIL VERIFICATION</div>
-              <h1>Check your inbox.</h1>
-              <p className="muted">Enter the six-digit code for <strong>{pendingVerificationEmail}</strong>. You can leave this page to check your email and return without losing your progress. Check Spam and Promotions if it is not in your inbox.</p>
+              <h1>{otpPurpose === 'recovery' ? 'Verify your recovery code.' : 'Check your inbox.'}</h1>
+              <p className="muted">Enter the six-digit code sent to <strong>{pendingVerificationEmail}</strong>. You can return here after checking your email. Check Spam and Promotions if it is not in your inbox.</p>
               <label className="tm-otp-label">6-DIGIT SECURITY CODE<input className="tm-otp-input" required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={verificationCode} onChange={e=>setVerificationCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="• • • • • •" /></label>
               {authError && <p className="auth-feedback error" role="alert">{authError}</p>}
               {authMessage && <p className="auth-feedback success" role="status">{authMessage}</p>}
               <button className="btn btn-red full" disabled={authBusy || verificationCode.length!==6}>{authBusy ? 'Verifying…' : 'Verify email'} <ArrowUpRight size={16}/></button>
-              <button type="button" className="forgot" disabled={authBusy} onClick={async()=>{setAuthBusy(true);setAuthError('');setAuthMessage('');try{const {error}=await supabase.auth.resend({type:'signup',email:pendingVerificationEmail});if(error)throw error;setAuthMessage('A resend request was accepted. Check Inbox, Spam and Promotions; if nothing arrives, contact support.');}catch(error){setAuthError(error instanceof Error?error.message:'Could not resend the code.');}finally{setAuthBusy(false);}}}>Resend verification code</button>
-              <button type="button" className="forgot" onClick={()=>{setVerificationPending(false);setVerificationCode('');try{sessionStorage.removeItem('tesla-markets-pending-verification');}catch{}setAuthError('');setAuthMessage('');}}>Use a different email address</button>
+              <button type="button" className="forgot" disabled={authBusy} onClick={async()=>{setAuthBusy(true);setAuthError('');setAuthMessage('');try{if(otpPurpose==='recovery'){const {error}=await supabase.auth.resetPasswordForEmail(pendingVerificationEmail);if(error)throw error;}else{const {error}=await supabase.auth.resend({type:'signup',email:pendingVerificationEmail});if(error)throw error;}setAuthMessage('If this address is eligible, a new six-digit code has been requested. Check Inbox, Spam and Promotions.');}catch(error){setAuthError(error instanceof Error?error.message:'Could not resend the code. Please try again.');}finally{setAuthBusy(false);}}}>Resend {otpPurpose === 'recovery' ? 'recovery' : 'verification'} code</button>
+              <button type="button" className="forgot" onClick={()=>{setVerificationPending(false);setVerificationCode('');setOtpPurpose('signup');try{sessionStorage.removeItem('tesla-markets-pending-verification');sessionStorage.removeItem('tesla-markets-pending-email');sessionStorage.removeItem('tesla-markets-otp-purpose');}catch{}setAuthError('');setAuthMessage('');}}>Use a different email address</button>
             </form>
           ) : (
           <form
@@ -1211,34 +1216,60 @@ function App() {
                   setPasswordRecovery(false);
                   setAuthMessage('Your password has been updated. Sign in with your new password.');
                 } else if (signup) {
-                  const redirectPage = localStorage.getItem('tesla-markets-enquiry-intent')
-                    ? 'chat'
-                    : sessionStorage.getItem('tesla-markets-checkout-intent')
-                      ? 'shop'
-                      : 'dashboard';
-                  const { data, error } = await supabase.functions.invoke('tesla-customer-signup', {
-                    body: {
-                      email: form.email.trim().toLowerCase(),
-                      password: form.password,
-                      firstName: form.first.trim(),
-                      lastName: form.last.trim(),
-                      country: form.country,
-                      redirectPage,
+                  const email = form.email.trim().toLowerCase();
+                  const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password: form.password,
+                    options: {
+                      data: {
+                        name: (form.first.trim() + ' ' + form.last.trim()).trim(),
+                        first_name: form.first.trim(),
+                        last_name: form.last.trim(),
+                        country: form.country.trim(),
+                      },
                     },
                   });
                   if (error) throw error;
-                  if (data?.error) throw new Error(String(data.error));
+                  if (data.user?.identities?.length === 0) {
+                    throw new Error('An account may already exist with this email. Please sign in or use Forgot Password.');
+                  }
+                  if (data.session && data.user?.email_confirmed_at) {
+                    await supabase.auth.signOut();
+                    throw new Error('Email verification is currently disabled in the authentication settings. Please contact support.');
+                  }
                   setForm(current => ({ ...current, password: '' }));
-                  setVerificationPending(false);
+                  setPendingVerificationEmail(email);
+                  setOtpPurpose('signup');
+                  setVerificationPending(true);
                   setVerificationCode('');
-                  try { sessionStorage.removeItem('tesla-markets-pending-verification'); } catch {}
-                  setAuthMessage(data?.message || 'A secure verification link has been sent. Open the email to continue.');
+                  try {
+                    sessionStorage.setItem('tesla-markets-pending-verification', '1');
+                    sessionStorage.setItem('tesla-markets-pending-email', email);
+                    sessionStorage.setItem('tesla-markets-otp-purpose', 'signup');
+                  } catch {}
+                  setAuthMessage('A six-digit verification code has been requested. Check your email, including Spam and Promotions.');
                   return;
                 } else {
-                  const { error } = await supabase.auth.signInWithPassword({
-                    email: form.email.trim().toLowerCase(), password: form.password
-                  });
-                  if (error) throw error;
+                  const email = form.email.trim().toLowerCase();
+                  const { error } = await supabase.auth.signInWithPassword({ email, password: form.password });
+                  if (error) {
+                    if (error.code === 'email_not_confirmed' || /email not confirmed/i.test(error.message || '')) {
+                      setPendingVerificationEmail(email);
+                      setOtpPurpose('signup');
+                      setVerificationPending(true);
+                      setVerificationCode('');
+                      try {
+                        sessionStorage.setItem('tesla-markets-pending-verification', '1');
+                        sessionStorage.setItem('tesla-markets-pending-email', email);
+                        sessionStorage.setItem('tesla-markets-otp-purpose', 'signup');
+                      } catch {}
+                      const { error: resendError } = await supabase.auth.resend({ type: 'signup', email });
+                      if (resendError) setAuthError('Your account needs email verification, but a new code could not be sent. Please try Resend Code.');
+                      else setAuthMessage('Your account needs email verification. We have requested a new six-digit code.');
+                      return;
+                    }
+                    throw error;
+                  }
                   if (sessionStorage.getItem('tesla-markets-checkout-intent')) go('shop');
                   else go('dashboard');
                 }
@@ -1306,12 +1337,19 @@ function App() {
               onClick={async () => {
                 setAuthBusy(true); setAuthError(''); setAuthMessage('');
                 try {
-                  const { data, error } = await supabase.functions.invoke('tesla-customer-signup', {
-                    body: { action: 'recovery', email: form.email.trim().toLowerCase() },
-                  });
+                  const email = form.email.trim().toLowerCase();
+                  const { error } = await supabase.auth.resetPasswordForEmail(email);
                   if (error) throw error;
-                  if (data?.error) throw new Error(String(data.error));
-                  setAuthMessage(data?.message || 'If the address is registered, a secure password reset link has been sent.');
+                  setPendingVerificationEmail(email);
+                  setOtpPurpose('recovery');
+                  setVerificationPending(true);
+                  setVerificationCode('');
+                  try {
+                    sessionStorage.setItem('tesla-markets-pending-verification', '1');
+                    sessionStorage.setItem('tesla-markets-pending-email', email);
+                    sessionStorage.setItem('tesla-markets-otp-purpose', 'recovery');
+                  } catch {}
+                  setAuthMessage('If this email is registered, a six-digit password recovery code will be sent.');
                 } catch (error) {
                   setAuthError(error instanceof Error ? error.message : 'Password recovery could not be started.');
                 } finally { setAuthBusy(false); }
