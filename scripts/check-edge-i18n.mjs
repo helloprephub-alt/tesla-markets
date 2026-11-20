@@ -27,6 +27,9 @@ assert.match(translateSource, /chat_template_kwargs: \{ enable_thinking: false \
 assert.match(translateSource, /protected_token_mismatch/);
 assert.match(translateSource, /untranslated_response/);
 assert.match(translateSource, /consume_translation_rate_limit/);
+assert.match(translateSource, /const failedItems: string\[\] = \[\]/, 'Unvalidated translations must be rejected instead of cached as English.');
+assert.match(translateSource, /Translation batch rejected to prevent mixed-language output/, 'Translation failures must fail closed rather than return a mixed-language batch.');
+assert.match(translateSource, /const safeFallback = shortTermTranslations\[item\.text\.trim\(\)\.toLowerCase\(\)\]\?\.\[target\]/, 'Only an explicit verified term fallback may be cached.');
 
 const normalizeStart = aiSource.indexOf('const SUPPORTED_RESPONSE_LANGUAGES = new Set(');
 const languageFnStart = aiSource.indexOf('function normalizeResponseLanguage', normalizeStart);
