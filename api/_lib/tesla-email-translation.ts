@@ -47,8 +47,8 @@ export async function translateTeslaEmailPayload(
       ...(authorization ? { headers: { Authorization: authorization } } : {}),
     });
     if (error || !Array.isArray(data?.translations)) {
-      console.error('Tesla Markets email translation unavailable; sending the approved English template.', error?.message || data?.error || 'Invalid translation response');
-      return null;
+      console.error('Tesla Markets email translation unavailable; holding delivery rather than sending an English fallback.', error?.message || data?.error || 'Invalid translation response');
+      throw new Error('Email translation unavailable for ' + target + '.');
     }
     const translated = new Map<string, string>();
     for (const row of data.translations) {
@@ -59,7 +59,7 @@ export async function translateTeslaEmailPayload(
     for (const item of sources) {
       if (!translated.has(item.key)) {
         console.error('Tesla Markets email translation incomplete:', { language: target, kind, missingKey: item.key });
-        return null;
+        throw new Error('Email translation incomplete for ' + target + '.');
       }
     }
     return {
@@ -80,7 +80,7 @@ export async function translateTeslaEmailPayload(
       ...(dynamic.detail ? { localizedDetail: translated.get('dynamic_detail')! } : {}),
     };
   } catch (error) {
-    console.error('Tesla Markets email translation error; sending the approved English template.', error);
-    return null;
+    console.error('Tesla Markets email translation error; holding delivery rather than sending an English fallback.', error);
+    throw new Error('Email translation failed for ' + target + '.');
   }
 }
