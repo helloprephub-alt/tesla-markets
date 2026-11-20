@@ -314,6 +314,7 @@ Deno.serve(async (req: Request) => {
           ur: "تعمیل", vi: "Tuân thủ", zh: "合规", ar: "الامتثال"
         }
       };
+      const failedItems: string[] = [];
       for (const item of missing) {
         try {
           let translated = byKey.get(item.key);
@@ -339,10 +340,21 @@ Deno.serve(async (req: Request) => {
             ? "protected_token_mismatch" : error instanceof Error && error.message === "untranslated_response"
               ? "invalid_response" : "missing_translation";
           await recordIssue(admin, target, issue, item.sourceHash, component);
-          const safeFallback = shortTermTranslations[item.text.trim().toLowerCase()]?.[target] || item.text;
-          generated.set(item.cacheKey, safeFallback);
-          console.warn("Translation item used a safe fallback:", { target, issue, component, sourceHash: item.sourceHash });
+          const safeFallback = shortTermTranslations[item.text.trim().toLowerCase()]?.[target];
+          if (safeFallback) {
+            generated.set(item.cacheKey, safeFallback);
+          } else {
+            failedItems.push(item.key);
+          }
+          console.warn("Translation item rejected or used a verified term fallback:", { target, issue, component, sourceHash: item.sourceHash });
         }
+      }
+
+      if (failedItems.length) {
+        console.error("Translation batch rejected to prevent mixed-language output:", {
+          target, component, failedCount: failedItems.length
+        });
+        return json({ error: "One or more translations could not be validated. Please retry." }, 502, headers);
       }
 
       const cacheRows = missing.map((item: any) => ({
