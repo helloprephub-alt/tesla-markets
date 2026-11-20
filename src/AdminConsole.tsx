@@ -723,6 +723,17 @@ export function AdminConsole() {
         setOrders(currentOrders=>currentOrders.map(item=>item.id===order.id?{...item,status:nextOrderStatus}:item));
       }
       if(order?.conversationId&&(status==='verified'||status==='rejected')){
+        const {data:conversation,error:conversationError}=await supabase.from('support_conversations').select('delivery_details').eq('id',order.conversationId).maybeSingle();
+        if(conversationError)throw conversationError;
+        const details=conversation?.delivery_details&&typeof conversation.delivery_details==='object'?conversation.delivery_details:{};
+        const lock=details.payment_lock&&typeof details.payment_lock==='object'?details.payment_lock:null;
+        if(lock&&(lock.payment_record_id===payment.id||lock.payment_reference===payment.reference)){
+          const nextLock={...lock,status:status==='rejected'?'rejected':nextOrderStatus==='paid'?'verified':'partially_paid',...(status==='verified'?{verified_at:new Date().toISOString()}:{rejected_at:new Date().toISOString()})};
+          const {error:lockError}=await supabase.from('support_conversations').update({delivery_details:{...details,payment_lock:nextLock},updated_at:new Date().toISOString()}).eq('id',order.conversationId);
+          if(lockError)throw lockError;
+        }
+      }
+      if(order?.conversationId&&(status==='verified'||status==='rejected')){
         const verified=status==='verified';
         const body=verified
           ? 'Tesla Markets Management has verified payment '+payment.reference+' for order '+order.reference+'. The verified amount is '+new Intl.NumberFormat('en-US',{style:'currency',currency:payment.currency||'USD'}).format(payment.amount)+'. Current order status: '+nextOrderStatus.replaceAll('_',' ')+'.'
