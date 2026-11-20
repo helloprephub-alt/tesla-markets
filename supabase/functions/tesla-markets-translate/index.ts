@@ -41,10 +41,10 @@ async function sha256(value: string) {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function protectTokens(source: string, target: string) {
+function protectTokens(source: string) {
   const commonPattern = /https?:\/\/[^\s<>"']+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\{\{?[\w.:-]+\}?\}|\b[A-Z]{2,10}-\d{3,}(?:-[A-Z0-9]+)*\b|(?:\$|USD\s*|EUR\s*|GBP\s*|NGN\s*|₦|€|£)\s*\d[\d,]*(?:\.\d{1,2})?|\b\d[\d,]*(?:\.\d+)?\s?(?:%|km\/h|mph|kWh|kW|mi|miles|km|mm|cm|m|kg|lbs?|sec(?:onds)?|hours?|years?)\b|\b\d[\d,]*(?:\.\d+)?\b/gi;
   const brandPattern = /\b(?:Tesla Markets|Tesla Semi|Solar Roof|Supercharger|Cybertruck|Roadster|Powerwall|Megapack|Optimus|SpaceX|NASDAQ|TSLA|Tesla|Model\s*[3YSX])\b/gi;
-  const pattern = target === "ar" ? commonPattern : new RegExp(commonPattern.source + "|" + brandPattern.source, "gi");
+  const pattern = new RegExp(brandPattern.source + "|" + commonPattern.source, "gi");
   const tokens: string[] = [];
   const protectedText = source.replace(pattern, (match) => {
     if (tokens.length >= 20) return match;
@@ -149,7 +149,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const prepared = await Promise.all(normalized.map(async (item: any) => {
-      const protectedData = protectTokens(item.text, target);
+      const protectedData = protectTokens(item.text);
       const sourceHash = await sha256(item.text);
       const cacheKey = await sha256(sourceLanguage + "|" + target + "|" + sourceHash);
       return { ...item, ...protectedData, sourceHash, cacheKey };
