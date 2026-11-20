@@ -54,7 +54,7 @@ assert.match(translateSource, /untranslated_response/, 'Untranslated English res
 assert.match(aiSource, /preferred_language: cloudflareReply\.language/, 'AI language preference is not saved.');
 assert.match(aiSource, /chat_template_kwargs: \{ enable_thinking: false \}/, 'Cloudflare model should disable reasoning for response generation.');
 assert.doesNotMatch(aiSource, /responder_paused: true/, 'A model formatting failure must not permanently pause an otherwise active customer conversation.');
-assert.match(aiSource, /status: "failed"/, 'Unexpected responder execution failures must still be recorded as failed runs.');
+assert.match(aiSource, /status: hasPriorResponse \? "completed" : "failed"/, 'Responder failures must be recorded as failed unless a response was already saved.');
 assert.match(aiSource, /AI used safe fallback response/, 'Model formatting failures must notify management when a safe fallback is sent.');
 assert.match(aiSource, /Some model responses are valid plain text/, 'The responder must accept valid plain-text model responses as well as JSON.');
 assert.match(aiSource, /I don't have enough verified information to answer that accurately yet/, 'Unknown questions must receive a contextual, honest fallback rather than silence.');
