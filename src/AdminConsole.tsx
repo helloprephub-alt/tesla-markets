@@ -980,7 +980,7 @@ export function AdminConsole() {
             <section className="admin-console-panel">
               <div className="admin-console-panel-head"><div><div className="eyebrow dark">SHOP ORDERS</div><h2>{shopOrders.length} customer orders</h2><p>Orders saved for later, awaiting proof and reviewed orders are listed here.</p></div></div>
               {shopOrders.length ? <div className="tm-shop-orders-list">{shopOrders.map(order=><article key={order.id}>
-                <div><b>{order.reference}</b><small>{order.customerName} · {order.email}</small><small>{order.items.map(item=>item.name+' × '+item.quantity).join(' · ')}</small></div>
+                <div><b>{order.reference}</b><small>{order.customerName} · {order.email}</small><small>{order.items.map(item=>item.name+' × '+item.quantity).join(' · ')}</small><small>Selected payment: {order.paymentMethod?order.paymentMethod.replaceAll('_',' '):'Not selected'}</small></div>
                 <b>{new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(order.subtotal)}</b>
                 <span className={'tm-shop-review-status '+order.status}>{order.status.replaceAll('_',' ')}</span>
                 <label className="tm-shop-order-progress-control">Order progress
