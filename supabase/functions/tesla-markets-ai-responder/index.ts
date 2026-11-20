@@ -467,11 +467,6 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (conversationError) throw conversationError;
     if (!conversation || conversation.customer_id !== user.id) return json({ error: "Conversation not found." }, 404, headers);
-    // Preserve the explicit human-takeover state: a paused conversation remains under management ownership.
-    if (conversation.responder_paused || conversation.status === "closed") {
-      return json({ ok: true, skipped: true, reason: "management_takeover_or_closed" }, 200, headers);
-    }
-
     const { data: customerMessage, error: messageError } = await admin
       .from("support_messages")
       .select("id,conversation_id,sender_id,sender_role,body,created_at,attachment_path,attachment_name,attachment_mime")
@@ -483,6 +478,15 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Customer message not found." }, 404, headers);
     }
     const savedPaymentLockAtMessage = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
+    const hasPendingPaymentEvidence = Boolean(
+      customerMessage.attachment_path &&
+      savedPaymentLockAtMessage &&
+      ["pending", "awaiting_proof"].includes(String(savedPaymentLockAtMessage.status || ""))
+    );
+    // Human takeover pauses automated replies, not secure evidence submission for an active order.
+    if (conversation.status === "closed" || (conversation.responder_paused && !hasPendingPaymentEvidence)) {
+      return json({ ok: true, skipped: true, reason: "management_takeover_or_closed" }, 200, headers);
+    }
     const { data: paymentSettingsRow, error: paymentSettingsError } = await admin
       .from("site_settings").select("value").eq("key", "payment_account_details").maybeSingle();
     if (paymentSettingsError) throw paymentSettingsError;
