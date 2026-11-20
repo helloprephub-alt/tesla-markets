@@ -131,6 +131,17 @@ export default async function handler(req: Request, res: ServerResponse) {
       await db.from('email_notification_events').insert({
         outbox_id: row.id, event_type: 'send_failed', event_data: { message: message.slice(0, 500) }
       });
+      if (message.startsWith('Email translation') && row.attempts + 1 >= 5) {
+        const { error: noticeError } = await db.from('admin_notifications').insert({
+          type: 'email_translation_failure',
+          title: 'Multilingual email held after repeated translation failures',
+          body: ('The ' + row.event_type + ' email could not be prepared in the customer\'s saved language after five attempts. Review the translation service and retry the email.').slice(0, 240),
+          entity_type: 'email_outbox',
+          entity_id: row.id,
+          is_read: false
+        });
+        if (noticeError) console.error('Could not create email translation failure notification:', noticeError.message);
+      }
       failed++;
     }
   }
