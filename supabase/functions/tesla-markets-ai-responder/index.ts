@@ -135,14 +135,32 @@ async function generateCloudflareCustomerReply(input: {
     return { reply: input.approvedDraft, language: input.previousLanguage || "en", used: false, error: "Cloudflare inference returned HTTP " + response.status };
   }
 
-  const payload = await response.json();
-  const content = cleanString(payload?.choices?.[0]?.message?.content, 5000);
+  let payload: any;
+  try {
+    payload = await response.json();
+  } catch {
+    return { reply: input.approvedDraft, language: input.previousLanguage || "en", used: false, error: "Cloudflare returned a non-JSON HTTP response" };
+  }
+  const rawContent = payload?.choices?.[0]?.message?.content;
+  const content = cleanString(typeof rawContent === "string" ? rawContent : "", 5000);
   if (!content) return { reply: input.approvedDraft, language: input.previousLanguage || "en", used: false, error: "Cloudflare returned an empty assistant response" };
 
   let parsed: any;
+  const normalizedContent = content.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
   try {
-    parsed = JSON.parse(content.trim());
+    parsed = JSON.parse(normalizedContent);
   } catch {
+    const embeddedJson = normalizedContent.match(/\{[\s\S]*\}/);
+    if (embeddedJson) {
+      try { parsed = JSON.parse(embeddedJson[0]); } catch { parsed = null; }
+    }
+    // Some model responses are valid plain text despite the JSON instruction.
+    // Accept that content as the reply instead of failing and pausing the customer's conversation.
+    if (!parsed && normalizedContent && !normalizedContent.startsWith("{")) {
+      parsed = { reply: normalizedContent, language: input.previousLanguage || "en" };
+    }
+  }
+  if (!parsed || typeof parsed !== "object") {
     return { reply: input.approvedDraft, language: input.previousLanguage || "en", used: false, error: "Cloudflare returned an invalid response format" };
   }
 
@@ -1380,31 +1398,31 @@ Deno.serve(async (req: Request) => {
       }
     } else {
       const failureReason = cleanString(cloudflareReply.error || "Unknown Cloudflare inference failure", 200);
-      console.error("Tesla Markets AI responder paused for human review:", failureReason);
+      console.error("Tesla Markets AI model fallback used:", failureReason);
+      // Preserve the deterministic business draft when available. If the model
+      // fails on an open-ended question, send a contextual, honest response
+      // instead of silently pausing the entire customer conversation.
+      if (cleanString(cloudflareReply.reply, 3000)) {
+        reply = cleanString(cloudflareReply.reply, 3000);
+      } else if (selectedVehicle) {
+        reply = "Certainly. I can help with the " + cleanString(selectedVehicle.name, 100) +
+          ". I've included the available catalogue details below. Would you like to know about its performance, driving range, available versions or pricing?";
+      } else if (intent === "greeting") {
+        reply = "Hello and welcome to Tesla Markets. How can I help you today? You can ask me about our vehicles, products, prices or purchasing process.";
+      } else {
+        reply = "I understand your question about “" + cleanString(customerMessage.body, 180) +
+          "”. I don't have enough verified information to answer that accurately yet, so I'll refer it to Tesla Markets Management rather than guess.";
+        requiresManagement = true;
+      }
       const { error: notificationError } = await admin.from("admin_notifications").insert({
-        type: "ai_model_unavailable",
-        title: "AI paused — human response required",
-        body: ("Cloudflare AI could not safely generate a customer reply. Automated replies have been paused for this conversation. Reason: " + failureReason).slice(0, 240),
+        type: "ai_model_fallback",
+        title: "AI used safe fallback response",
+        body: ("The AI model response could not be parsed. A safe customer reply was sent and the conversation remains available. Reason: " + failureReason).slice(0, 240),
         entity_type: "conversation",
         entity_id: conversationId,
         is_read: false
       });
-      if (notificationError) console.error("Could not create AI escalation notification:", notificationError.message);
-      const { error: pauseError } = await admin.from("support_conversations")
-        .update({ responder_paused: true, updated_at: new Date().toISOString() })
-        .eq("id", conversationId);
-      if (pauseError) console.error("Could not pause AI after model failure:", pauseError.message);
-      const { error: runError } = await admin.from("ai_responder_runs")
-        .update({
-          status: "failed",
-          error_code: "cloudflare_ai_unavailable",
-          error_message: failureReason,
-          updated_at: new Date().toISOString(),
-          completed_at: new Date().toISOString()
-        })
-        .eq("message_id", messageId);
-      if (runError) console.error("Could not mark AI responder run as failed:", runError.message);
-      return json({ ok: true, escalated: true, responder_paused: true, reason: "ai_model_unavailable" }, 200, headers);
+      if (notificationError) console.error("Could not create AI fallback notification:", notificationError.message);
     }
 
     const { data: responseMessage, error: responseInsertError } = await admin
