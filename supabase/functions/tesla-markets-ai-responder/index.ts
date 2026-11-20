@@ -568,7 +568,7 @@ Deno.serve(async (req: Request) => {
       const { data: unavailableMessage, error: unavailableError } = await admin.from("support_messages").insert({
         conversation_id: conversationId, sender_id: managementProfile.id, sender_role: "management",
         body: "That payment method is not currently enabled. Please choose one of the available options shown or contact Tesla Markets Management.",
-        automated_type: "ai_response", message_type: "payment_unavailable",
+        automated_type: "ai_response", message_type: "text",
         structured_data: { title: "Payment method unavailable", requested_method: selectedPaymentMethod, source_message_id: messageId }
       }).select("id").single();
       if (unavailableError) throw unavailableError;
