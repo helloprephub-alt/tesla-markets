@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && vite build",
+    "build": "npm run typecheck && npm run check:i18n && npm run check:edge-i18n && vite build",
     "preview": "vite preview",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:edge-i18n": "node scripts/check-edge-i18n.mjs"
