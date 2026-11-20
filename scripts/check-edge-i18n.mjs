@@ -22,7 +22,7 @@ assert.match(aiSource, /function normalizeResponseLanguage/);
 assert.match(aiSource, /The language field must be an ISO 639-1 code/);
 assert.match(aiSource, /max_completion_tokens: 1000/);
 assert.match(aiSource, /chat_template_kwargs: \{ enable_thinking: false \}/);
-assert.match(translateSource, /max_completion_tokens: 900/);
+assert.match(translateSource, /max_completion_tokens: 3000/);
 assert.match(translateSource, /chat_template_kwargs: \{ enable_thinking: false \}/);
 assert.match(translateSource, /protected_token_mismatch/);
 assert.match(translateSource, /untranslated_response/);
