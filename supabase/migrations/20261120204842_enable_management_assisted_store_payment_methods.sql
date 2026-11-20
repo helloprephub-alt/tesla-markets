@@ -3,7 +3,9 @@ begin;
 -- Additive fields: existing customer orders and proof records remain intact.
 alter table public.store_orders
   add column if not exists payment_method text,
-  add column if not exists payment_method_selected_at timestamptz;
+  add column if not exists payment_method_selected_at timestamptz,
+  add column if not exists payment_verified_at timestamptz,
+  add column if not exists payment_verified_by uuid;
 
 alter table public.store_orders
   drop constraint if exists store_orders_payment_method_check;
@@ -17,8 +19,21 @@ alter table public.store_orders
     ]::text[])
   );
 
+alter table public.store_orders
+  drop constraint if exists store_orders_status_check;
+
+alter table public.store_orders
+  add constraint store_orders_status_check
+  check (status = any (array[
+    'saved_for_later','awaiting_payment','proof_submitted',
+    'payment_proof_rejected','proof_approved_pending_settlement',
+    'payment_verified','processing','shipped','delivered','completed','cancelled'
+  ]::text[]));
+
 alter table public.store_payment_submissions
-  add column if not exists provider_reference text;
+  add column if not exists provider_reference text,
+  add column if not exists verified_at timestamptz,
+  add column if not exists verified_by uuid;
 
 alter table public.store_payment_submissions
   drop constraint if exists store_payment_submissions_provider_reference_length_check;
@@ -35,6 +50,15 @@ alter table public.store_payment_submissions
   check (payment_method = any (array[
     'paypal','zelle','apple_pay','chime',
     'amazon_gift_card','apple_gift_card','google_play_gift_card','razor_gold_gift_card'
+  ]::text[]));
+
+alter table public.store_payment_submissions
+  drop constraint if exists store_payment_submissions_status_check;
+
+alter table public.store_payment_submissions
+  add constraint store_payment_submissions_status_check
+  check (status = any (array[
+    'pending','approved_pending_settlement','verified','rejected'
   ]::text[]));
 
 -- This function exposes only an enabled/disabled boolean to the caller.
@@ -116,5 +140,12 @@ with check (
       ]::text[])
   )
 );
+
+comment on column public.store_orders.payment_method is
+  'Customer-selected shop payment method, set by the owner-scoped payment instructions function.';
+comment on column public.store_orders.payment_verified_at is
+  'Timestamp when management independently confirmed the received payment.';
+comment on column public.store_orders.payment_verified_by is
+  'Administrator user ID that independently confirmed the received payment.';
 
 commit;
