@@ -28,6 +28,8 @@ assert.match(translateSource, /protected_token_mismatch/);
 assert.match(translateSource, /const pattern = new RegExp\(brandPattern\.source \+ "\\|" \+ commonPattern\.source, "gi"\)/, 'Brand and model names must be protected in every target language.');
 assert.match(translateSource, /untranslated_response/);
 assert.match(translateSource, /consume_translation_rate_limit/);
+assert.match(translateSource, /useM2M100 = false/, 'The multilingual LLM fallback must be used when the dedicated translation model fails.');
+assert.match(translateSource, /if \(!useM2M100\)/, 'Translation must fall back rather than fail immediately when M2M100 is unavailable.');
 assert.match(translateSource, /const failedItems: string\[\] = \[\]/, 'Unvalidated translations must be rejected instead of cached as English.');
 assert.match(translateSource, /Translation batch rejected to prevent mixed-language output/, 'Translation failures must fail closed rather than return a mixed-language batch.');
 assert.match(translateSource, /const safeFallback = shortTermTranslations\[item\.text\.trim\(\)\.toLowerCase\(\)\]\?\.\[target\]/, 'Only an explicit verified term fallback may be cached.');
