@@ -1275,8 +1275,8 @@ function App() {
                       : sessionStorage.getItem('tesla-markets-checkout-intent')
                         ? 'shop'
                         : redirectPage;
-                    if (destination === 'chat') localStorage.removeItem('tesla-markets-enquiry-intent');
-                    if (destination === 'shop') sessionStorage.removeItem('tesla-markets-checkout-intent');
+                    // Keep the intent available to ChatWorkspace/Marketplace.
+                    // Those destination components consume and clear it after initialization.
                     go(destination as Page);
                     return;
                   }
