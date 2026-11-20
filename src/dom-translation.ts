@@ -198,7 +198,7 @@ export function startPublicDomTranslation(language: PublicLanguage, onFailure?: 
       while (queue.length && !disposed && !failed) {
         const batches: string[][] = [];
         for (let index = 0; index < 2 && queue.length; index += 1) {
-          batches.push(queue.splice(0, 10));
+          batches.push(queue.splice(0, 20));
         }
         const translatedBatches = await Promise.all(batches.map(async (batch) => {
           const { data, error } = await supabase.functions.invoke('tesla-markets-translate', {
