@@ -470,7 +470,7 @@ export function AdminInbox() {
       const {data:order,error:orderError}=await supabase.from('business_orders').select('id,order_reference,agreed_amount,currency,status,customer_id,conversation_id').eq('id',orderId).eq('conversation_id',selected).eq('customer_id',conversation.customer_id).maybeSingle();
       if(orderError)throw orderError;
       if(!order)throw new Error('The selected payment method could not be matched to this customer’s order.');
-      if(!['draft','awaiting_payment','partially_paid'].includes(String(order.status||'')))throw new Error('This order is not awaiting payment. Review its status in the Orders section before sending instructions.');
+      if(!['draft','awaiting_payment'].includes(String(order.status||'')))throw new Error('This order is not awaiting payment. Review its status in the Orders section before sending instructions.');
       const amount=Number(order.agreed_amount);
       if(!Number.isFinite(amount)||amount<=0)throw new Error('The order does not have a valid approved amount.');
       const formattedAmount=new Intl.NumberFormat('en-US',{style:'currency',currency:order.currency||'USD'}).format(amount);
@@ -530,7 +530,7 @@ export function AdminInbox() {
         const hasRecipient=[details.accountName,details.email,details.phone,details.username].some(value=>typeof value==='string'&&value.trim().length>0);
         return hasRecipient&&(details.enabled===true||(details.enabled!==false&&hasRecipient));
       });
-      if(saved.giftCardEnabled===true)methods.push('Gift Card');
+      if(methods.length===0&&saved.giftCardEnabled===true)methods.push('Gift Card');
       if(!methods.length)throw new Error('No payment methods are enabled. Configure the verified recipient details in Admin Console Settings first.');
       const {error}=await supabase.from('support_messages').insert({
         conversation_id:selected,sender_id:user.id,sender_role:'management',
