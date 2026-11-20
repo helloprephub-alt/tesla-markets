@@ -1245,27 +1245,42 @@ function App() {
                     : sessionStorage.getItem('tesla-markets-checkout-intent')
                       ? 'shop'
                       : 'dashboard';
-                  const { data, error } = await supabase.functions.invoke('tesla-customer-signup', {
-                    body: {
-                      email: form.email.trim().toLowerCase(),
-                      password: form.password,
-                      firstName: form.first.trim(),
-                      lastName: form.last.trim(),
-                      country: form.country,
-                      redirectPage,
+                  const email = form.email.trim().toLowerCase();
+                  const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password: form.password,
+                    options: {
+                      data: {
+                        name: (form.first.trim() + ' ' + form.last.trim()).trim(),
+                        first_name: form.first.trim(),
+                        last_name: form.last.trim(),
+                        country: form.country.trim(),
+                      },
                     },
                   });
                   if (error) throw error;
-                  if (data?.error) throw new Error(String(data.error));
+                  if (data.user?.identities?.length === 0) {
+                    throw new Error('An account already exists for this email address. Please sign in or use Forgot Password.');
+                  }
                   setForm(current => ({ ...current, password: '' }));
-                  setPendingVerificationEmail(form.email.trim().toLowerCase());
-                  setVerificationPurpose('signup');
-                  setVerificationPending(true);
-                  setResendCooldown(30);
-                  setVerificationCode('');
-                  try { sessionStorage.setItem('tesla-markets-pending-verification', JSON.stringify({email:form.email.trim().toLowerCase(),purpose:'signup'})); } catch {}
-                  setAuthMessage(data?.message || 'A six-digit verification code has been sent. Enter it below to activate your account.');
-                  return;
+                  setConfirmPassword('');
+                  if (data.session && data.user) {
+                    setVerificationPending(false);
+                    setPendingVerificationEmail('');
+                    setVerificationCode('');
+                    setAuthMessage('Your Tesla Markets account has been created. You are now signed in.');
+                    try { sessionStorage.removeItem('tesla-markets-pending-verification'); } catch {}
+                    const destination = localStorage.getItem('tesla-markets-enquiry-intent')
+                      ? 'chat'
+                      : sessionStorage.getItem('tesla-markets-checkout-intent')
+                        ? 'shop'
+                        : redirectPage;
+                    if (destination === 'chat') localStorage.removeItem('tesla-markets-enquiry-intent');
+                    if (destination === 'shop') sessionStorage.removeItem('tesla-markets-checkout-intent');
+                    go(destination as Page);
+                    return;
+                  }
+                  setAuthMessage('Your account request was received, but Supabase did not return an active session. Please check the email-confirmation setting or try signing in.');
                 } else {
                   const { error } = await supabase.auth.signInWithPassword({
                     email: form.email.trim().toLowerCase(), password: form.password
