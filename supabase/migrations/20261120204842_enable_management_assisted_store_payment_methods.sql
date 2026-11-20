@@ -187,6 +187,139 @@ grant execute on function public.is_store_payment_method_enabled(text) to authen
 comment on function public.is_store_payment_method_enabled(text) is
   'Returns whether a shop payment method is enabled and has a recipient identifier; never returns recipient details.';
 
+-- Review, reject and verify evidence atomically so an order cannot be left
+-- with a verified proof but an unverified order (or the reverse).
+create or replace function public.review_store_payment_proof(
+  p_proof_id uuid,
+  p_decision text,
+  p_reason text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path to ''
+as $function$
+declare
+  v_admin_id uuid := auth.uid();
+  v_order_id uuid;
+  v_proof_status text;
+  v_order_status text;
+  v_new_proof_status text;
+  v_new_order_status text;
+  v_note text;
+  v_now timestamptz := now();
+  v_verified_at timestamptz := null;
+  v_has_accepted boolean := false;
+begin
+  if v_admin_id is null or not public.is_tesla_admin() then
+    raise exception 'Administrator access required.';
+  end if;
+
+  if p_decision not in ('approve','reject','verify') then
+    raise exception 'Unsupported payment proof decision.';
+  end if;
+
+  select s.order_id, s.status
+    into v_order_id, v_proof_status
+  from public.store_payment_submissions s
+  where s.id = p_proof_id
+  for update;
+
+  if not found then
+    raise exception 'Payment evidence was not found.';
+  end if;
+
+  select o.status
+    into v_order_status
+  from public.store_orders o
+  where o.id = v_order_id
+  for update;
+
+  if not found then
+    raise exception 'The linked shop order was not found.';
+  end if;
+
+  if v_order_status not in (
+    'awaiting_payment','payment_proof_rejected',
+    'proof_submitted','proof_approved_pending_settlement'
+  ) then
+    raise exception 'This order is no longer available for payment-proof review.';
+  end if;
+
+  if p_decision = 'approve' then
+    if v_proof_status <> 'pending' then
+      raise exception 'Only pending evidence can be accepted.';
+    end if;
+    v_new_proof_status := 'approved_pending_settlement';
+    v_new_order_status := 'proof_approved_pending_settlement';
+    v_note := 'Evidence accepted by management. Payment is not yet confirmed; fulfilment must wait for independent settlement verification.';
+  elsif p_decision = 'reject' then
+    if v_proof_status not in ('pending','approved_pending_settlement') then
+      raise exception 'Only unverified evidence can be rejected.';
+    end if;
+    if nullif(btrim(coalesce(p_reason,'')), '') is null then
+      raise exception 'A rejection reason is required.';
+    end if;
+    v_new_proof_status := 'rejected';
+    v_note := left(btrim(p_reason), 500);
+
+    select exists (
+      select 1
+      from public.store_payment_submissions other_proof
+      where other_proof.order_id = v_order_id
+        and other_proof.id <> p_proof_id
+        and other_proof.status = 'approved_pending_settlement'
+    ) into v_has_accepted;
+
+    v_new_order_status := case
+      when v_has_accepted then 'proof_approved_pending_settlement'
+      else 'payment_proof_rejected'
+    end;
+  else
+    if v_proof_status <> 'approved_pending_settlement'
+       or v_order_status <> 'proof_approved_pending_settlement' then
+      raise exception 'Accept the evidence first, then independently confirm receipt in the recipient account.';
+    end if;
+    v_new_proof_status := 'verified';
+    v_new_order_status := 'payment_verified';
+    v_verified_at := v_now;
+    v_note := 'Payment was independently matched against the recipient account or provider record and confirmed by management.';
+  end if;
+
+  update public.store_payment_submissions
+  set status = v_new_proof_status,
+      review_note = v_note,
+      reviewed_by = v_admin_id,
+      reviewed_at = v_now,
+      verified_at = v_verified_at
+  where id = p_proof_id;
+
+  update public.store_orders
+  set status = v_new_order_status,
+      payment_verified_at = case
+        when p_decision = 'verify' then v_now
+        when p_decision = 'reject' then null
+        else payment_verified_at
+      end,
+      updated_at = v_now
+  where id = v_order_id;
+
+  return jsonb_build_object(
+    'proof_id', p_proof_id,
+    'order_id', v_order_id,
+    'proof_status', v_new_proof_status,
+    'order_status', v_new_order_status,
+    'review_note', v_note,
+    'reviewed_at', v_now,
+    'verified_at', v_verified_at
+  );
+end;
+$function$;
+
+revoke all on function public.review_store_payment_proof(uuid,text,text) from public;
+revoke all on function public.review_store_payment_proof(uuid,text,text) from anon;
+grant execute on function public.review_store_payment_proof(uuid,text,text) to authenticated;
+
 drop policy if exists "Customers submit proof for their own shop orders"
   on public.store_payment_submissions;
 
