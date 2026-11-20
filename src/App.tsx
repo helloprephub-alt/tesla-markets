@@ -205,14 +205,14 @@ function CustomerOrders({onShop,onLogin}:{onShop:()=>void;onLogin:()=>void}) {
   const stateFor=(order:any)=>{
     const proof=getLatestProof(order.id);
     if(order.status==='saved_for_later')return {label:'Saved for later',tone:'saved',detail:'This order is saved and has not been submitted.'};
-    if(order.status==='payment_proof_rejected'||proof?.status==='rejected')return {label:'Needs attention',tone:'rejected',detail:'Management has reviewed this submission. See the review note below.'};
     if(order.status==='completed'||order.status==='delivered')return {label:'Delivered',tone:'accepted',detail:'This order is marked as completed.'};
     if(order.status==='shipped')return {label:'Shipped',tone:'accepted',detail:'Your order has been marked as shipped.'};
     if(order.status==='processing')return {label:'Processing',tone:'accepted',detail:'Your order is being prepared.'};
     if(order.status==='payment_verified'||order.payment_verified_at)return {label:'Payment verified',tone:'accepted',detail:'Tesla Markets Management has independently confirmed receipt. Your order may now proceed to fulfilment.'};
-    if(proof?.status==='pending'||order.status==='proof_submitted')return {label:'Review pending',tone:'pending',detail:'Your payment evidence has been received. Management must review it before confirming payment.'};
-    if(proof?.status==='approved_pending_settlement'||order.status==='proof_approved_pending_settlement')return {label:'Evidence accepted · awaiting settlement',tone:'accepted',detail:'Management accepted the evidence, but payment is not yet confirmed. Fulfilment will wait for settlement verification.'};
     if(order.status==='cancelled')return {label:'Cancelled',tone:'rejected',detail:'This order has been cancelled.'};
+    if(order.status==='proof_approved_pending_settlement'||proof?.status==='approved_pending_settlement')return {label:'Evidence accepted · awaiting settlement',tone:'accepted',detail:'Management accepted the evidence, but payment is not yet confirmed. Fulfilment will wait for settlement verification.'};
+    if(order.status==='proof_submitted'||proof?.status==='pending')return {label:'Review pending',tone:'pending',detail:'Your payment evidence has been received. Management must review it before confirming payment.'};
+    if(order.status==='payment_proof_rejected'||proof?.status==='rejected')return {label:'Needs attention',tone:'rejected',detail:'Management has reviewed this submission. See the review note below.'};
     return {label:'Not submitted yet',tone:'not-submitted',detail:'This order has been created, but no payment evidence has been received yet.'};
   };
 
