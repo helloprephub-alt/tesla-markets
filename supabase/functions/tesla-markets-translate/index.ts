@@ -171,7 +171,8 @@ Deno.serve(async (req: Request) => {
     if (missing.length) {
       const supportedM2M100 = new Set(["af","sq","hy","az","eu","be","bn","bs","bg","ca","hr","cs","da","de","el","en","es","et","fa","fi","fr","gl","ga","gd","he","hi","hr","hu","hy","id","is","it","ja","jv","ka","kk","km","kn","ko","lt","lv","mk","ml","mr","ms","my","ne","nl","no","oc","pa","pl","pt","ro","ru","si","sk","sl","sq","sr","sv","sw","ta","te","th","tl","tr","uk","ur","uz","vi","zh"]);
       const byKey = new Map<string, string>();
-      if (sourceLanguage !== "auto" && supportedM2M100.has(sourceLanguage) && supportedM2M100.has(target)) {
+      let useM2M100 = sourceLanguage !== "auto" && supportedM2M100.has(sourceLanguage) && supportedM2M100.has(target);
+      if (useM2M100) {
         try {
           for (let offset = 0; offset < missing.length; offset += 5) {
             const batch = missing.slice(offset, offset + 5);
@@ -218,11 +219,13 @@ Deno.serve(async (req: Request) => {
             for (const row of translatedBatch) byKey.set(row.key, row.text);
           }
         } catch (error) {
-          console.error("Cloudflare dedicated translation model failed:", error);
+          console.error("Cloudflare dedicated translation model failed; falling back to the multilingual chat model:", error);
           await recordIssue(admin, target, "provider_unavailable", undefined, component);
-          return json({ error: "Translation provider timed out or could not be reached." }, 504, headers);
+          useM2M100 = false;
+          byKey.clear();
         }
-      } else {
+      }
+      if (!useM2M100) {
         let response: Response;
         try {
           response = await fetch(
