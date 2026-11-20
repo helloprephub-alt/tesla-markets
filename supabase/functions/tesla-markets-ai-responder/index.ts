@@ -561,7 +561,7 @@ Deno.serve(async (req: Request) => {
       "apple pay": "Apple Pay", "chime": "Chime", "zelle": "Zelle",
       "paypal": "PayPal", "gift card": "Gift Card",
       "verified broker onboarding": "Verified broker onboarding"
-    } as Record<string,string>)[selectedPaymentMethod.toLowerCase()] || selectedPaymentMethod : null;
+    } as Record<string,string>)[paymentChoice[1].toLowerCase()] || paymentChoice[1] : null;
     if (selectedPaymentMethod && !configuredPaymentMethods.includes(selectedPaymentMethod)) {
       const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
