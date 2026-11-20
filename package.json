@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && npm run check:i18n && npm run check:edge-i18n && npm run check:marketplace && vite build",
+    "build": "npm run typecheck && npm run check:i18n && npm run check:edge-i18n && npm run check:marketplace && npm run check:payment-workflow && vite build",
     "preview": "vite preview",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:edge-i18n": "node scripts/check-edge-i18n.mjs",
-    "check:marketplace": "node scripts/check-marketplace-rules.mjs"
+    "check:marketplace": "node scripts/check-marketplace-rules.mjs",
+    "check:payment-workflow": "node scripts/check-payment-workflow.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.469.0",
