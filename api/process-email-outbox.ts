@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { renderTeslaEmail, type EmailTemplateKind } from './_lib/tesla-email-templates';
+import { translateTeslaEmailPayload } from './_lib/tesla-email-translation';
 
 type Request = IncomingMessage & { body?: unknown };
 type OutboxRow = {
@@ -87,9 +88,18 @@ export default async function handler(req: Request, res: ServerResponse) {
         p.tracking_number ? 'Tracking number: ' + safeString(p.tracking_number) : '',
         p.tracking_url ? 'Tracking: ' + safeString(p.tracking_url) : ''
       ].filter(Boolean);
+      const detail = detailParts.join(' | ');
+      const { data: languageProfile } = row.customer_id
+        ? await db.from('customer_profiles').select('preferred_language').eq('id', row.customer_id).maybeSingle()
+        : { data: null };
+      const preferredLanguage = safeString(languageProfile?.preferred_language, 'en');
+      const localized = await translateTeslaEmailPayload(db, preferredLanguage, kind, { status, detail });
       const message = renderTeslaEmail({
         kind, customerName: row.recipient_name || 'there', reference, status, amount,
-        detail: detailParts.join(' | '),
+        detail,
+        localizedCopy: localized?.localizedCopy,
+        localizedDetail: localized?.localizedDetail,
+        localizedStatus: localized?.localizedStatus,
         actionUrl: process.env.TESLA_MARKETS_SITE_URL || 'https://teslamarketsofficial.com'
       });
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
