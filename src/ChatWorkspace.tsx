@@ -168,8 +168,12 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     setIsTyping(true);
     const started=Date.now();
     try{
-      const {error}=await supabase.functions.invoke('tesla-markets-ai-responder',{body:{conversation_id:threadId,message_id:messageId}});
+      const {data,error}=await supabase.functions.invoke('tesla-markets-ai-responder',{body:{conversation_id:threadId,message_id:messageId}});
       if(error)throw error;
+      if(data?.error)throw new Error(String(data.error));
+      if(data?.enabled===false)throw new Error('Automated customer replies are currently disabled. Please contact Tesla Markets Management.');
+      if(data?.skipped && data?.reason==='management_takeover_or_closed')throw new Error('This conversation is currently being handled by management.');
+      if(data?.ok===false)throw new Error('The automated reply could not be completed. Please try again or contact management.');
     }finally{
       const minimum=Math.min(3400,Math.max(1750,950+messageText.length*16));
       const remaining=Math.max(0,minimum-(Date.now()-started));
