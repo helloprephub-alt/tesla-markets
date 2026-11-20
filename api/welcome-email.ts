@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { renderTeslaEmail } from './_lib/tesla-email-templates.js';
+import { translateTeslaEmailPayload } from './_lib/tesla-email-translation.js';
 
 type Request = IncomingMessage & { body?: unknown };
 
@@ -38,9 +39,22 @@ export default async function handler(req: Request, res: ServerResponse) {
   const name = String(metadata.name || metadata.full_name || 'there').trim().slice(0, 100);
 
   try {
+    const { data: profile } = await supabase.from('customer_profiles')
+      .select('preferred_language').eq('id', data.user.id).maybeSingle();
+    const preferredLanguage = String(profile?.preferred_language || 'en');
+    const localized = await translateTeslaEmailPayload(
+      supabase,
+      preferredLanguage,
+      'welcome',
+      {},
+      'Bearer ' + token
+    );
     const message = renderTeslaEmail({
       kind: 'welcome',
       customerName: name,
+      localizedCopy: localized?.localizedCopy,
+      localizedDetail: localized?.localizedDetail,
+      localizedStatus: localized?.localizedStatus,
       actionUrl: process.env.TESLA_MARKETS_SITE_URL || 'https://teslamarketsofficial.com'
     });
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
