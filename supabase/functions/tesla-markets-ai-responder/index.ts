@@ -591,6 +591,21 @@ Deno.serve(async (req: Request) => {
     const {data:activeProducts,error:productsError}=await admin.from("store_products")
       .select("product_id,name,original_price,discount_percent,is_active").eq("is_active",true);
     if(productsError)throw productsError;
+    const { data: paymentSettingsRow, error: paymentSettingsError } = await admin
+      .from("site_settings").select("value").eq("key", "payment_account_details").maybeSingle();
+    if (paymentSettingsError) throw paymentSettingsError;
+    const paymentAccountSettings = paymentSettingsRow?.value && typeof paymentSettingsRow.value === "object" ? paymentSettingsRow.value : {};
+    const configuredPaymentMethods = [
+      { key: "PayPal", label: "PayPal" },
+      { key: "Zelle", label: "Zelle" },
+      { key: "Apple Pay", label: "Apple Pay" },
+      { key: "Chime", label: "Chime" }
+    ].filter((method:any) => {
+      const details = paymentAccountSettings[method.key];
+      return !!details && typeof details === "object" &&
+        Object.values(details).some((value:any) => typeof value === "string" && value.trim().length > 0);
+    }).map((method:any) => method.label);
+
     const customerTextNormalized=normalized(customerMessage.body);
     const matchedStoreProduct=(activeProducts||[]).filter((p:any)=>cleanString(p.name,180).length>=4)
       .sort((a:any,b:any)=>cleanString(b.name,180).length-cleanString(a.name,180).length)
@@ -1026,7 +1041,17 @@ Deno.serve(async (req: Request) => {
 
     let messageType = "text";
     let structuredData: Record<string, any> | null = null;
-    if(matchedStoreProduct&&intent==="store_product_price"){
+    if (intent === "payment_method_confirmation" && configuredPaymentMethods.length > 0) {
+      messageType = "payment_methods";
+      structuredData = {
+        title: "Choose a payment method",
+        subtitle: "TESLA MARKETS · AVAILABLE PAYMENT OPTIONS",
+        amount_label: "AMOUNT",
+        amount: cleanString((mergedDetails as any).checkout_amount, 100) || "As confirmed in your order summary",
+        payment_methods: configuredPaymentMethods,
+        note: "Select one of the currently configured payment methods. Tesla Markets Management will provide or confirm the payment instructions for your order. Payment remains pending until receipt is verified."
+      };
+    } else if(matchedStoreProduct&&intent==="store_product_price"){
       const original=Number(matchedStoreProduct.original_price),percent=Number(matchedStoreProduct.discount_percent),sale=discountedUsd(original,percent);
       messageType="store_product_card";
       structuredData={title:cleanString(matchedStoreProduct.name,180),subtitle:"CHRISTMAS SHOP OFFER",amount_label:"PROMOTIONAL PRICE",amount:formatUsd(sale),
