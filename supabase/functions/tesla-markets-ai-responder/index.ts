@@ -97,6 +97,7 @@ async function generateCloudflareCustomerReply(input: {
               "Use the live catalogue and approved knowledge_context as the authority for Tesla Markets products, vehicle trims, prices, discounts, payment methods, delivery policies, order statuses and company procedures. Never invent those business facts.",
               "For general educational questions outside Tesla Markets, provide a concise answer from general knowledge when reliable. Make clear when something is general information rather than an official Tesla Markets policy.",
               "If required business information is missing, ask one specific useful clarification or explain that management must confirm it. Do not guess.",
+              "Tesla Markets is not a brokerage and does not execute TSLA trades. For questions about buying TSLA shares, explain that the customer must use a regulated brokerage. Never describe an investment enquiry as an order, invoice, payment due or pending payment; never direct the customer to pay Tesla Markets for TSLA shares.",
               "Recognise misspellings and likely aliases such as 'Cube truck' for Cybertruck, but ask a brief clarification if more than one interpretation is plausible.",
               "Preserve names, model names, product names, numbers, amounts, percentages, URLs, order references and factual qualifiers exactly.",
               "Use recent_messages to understand follow-ups and avoid asking for information already supplied.",
@@ -808,7 +809,8 @@ Deno.serve(async (req: Request) => {
     }
     const priorInvestmentStage = cleanString(aiMemory.conversation_stage, 80);
     const investmentStages = ["investment_awaiting_amount","investment_collecting_details","investment_confirming_details"];
-    const investmentFlow = intent === "investment" || investmentStages.includes(priorInvestmentStage);
+    const investmentSubmittedFollowUp = priorInvestmentStage === "investment_submitted" && (hasPaymentIntent || /\b(how do i proceed|how can i proceed|what next|next step|what should i do|proceed|continue|okay|ok|thanks|thank you)\b/i.test(customerMessage.body));
+    const investmentFlow = intent === "investment" || investmentStages.includes(priorInvestmentStage) || investmentSubmittedFollowUp;
     const investmentAmountMatch = customerMessage.body.match(/(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)|\b([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?:usd|dollars?)\b/i) || (priorInvestmentStage === "investment_awaiting_amount" && /^\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?\s*$/.test(customerMessage.body) ? [customerMessage.body.trim(), customerMessage.body.trim().replace(/,/g,""), undefined] as any : null);
     const startingNewInvestment = intent === "investment" && priorInvestmentStage === "investment_submitted";
     const investmentAmount = investmentAmountMatch ? Number((investmentAmountMatch[1] || investmentAmountMatch[2]).replace(/,/g,"")) : startingNewInvestment ? 0 : Number(aiMemory.investment_amount_usd || 0);
@@ -818,7 +820,7 @@ Deno.serve(async (req: Request) => {
     const investmentCountry = cleanString(mergedDetails.country,80);
     const investmentCity = cleanString(mergedDetails.city,80);
     const investmentAddress = cleanString(mergedDetails.address,240);
-    const investmentDetailsComplete = !!(investmentName && investmentEmail && investmentPhone && investmentCountry && investmentAddress);
+    const investmentDetailsComplete = !!(investmentName && investmentEmail && investmentPhone && investmentCountry);
     const saysConfirm = /^(yes|yeah|yep|sure|okay|ok|please do|go ahead|confirm|confirmed|proceed|submit|send it|that's correct|that is correct)[.!\s]*$/i.test(customerMessage.body.trim());
     const saysCorrectDetails = /\b(correct|update|change|new email|new phone|wrong|not correct)\b/i.test(customerMessage.body);
     let investmentEnquiryCreated = false;
@@ -834,12 +836,18 @@ Deno.serve(async (req: Request) => {
       reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";
     } else if (investmentFlow) {
       requiresManagement = true;
-      if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
+      if (investmentSubmittedFollowUp && hasPaymentIntent) {
+        intent = "investment_purchase_guidance";
+        reply = "Your investment enquiry has already been recorded for management review. Tesla Markets does not sell TSLA shares, execute trades or collect payment for a share purchase. If you want to buy TSLA, you will need to use a regulated brokerage account and follow that broker’s payment process. No payment is due to Tesla Markets for this enquiry. Please do not transfer money to an account shared in chat as a way to buy TSLA shares.";
+      } else if (investmentSubmittedFollowUp && /\b(how do i proceed|how can i proceed|what next|next step|what should i do|proceed|continue|okay|ok|thanks|thank you)\b/i.test(customerMessage.body)) {
+        intent = "investment_status_followup";
+        reply = "You’re welcome. Your investment enquiry is saved and awaiting management review. You do not need to repeat the details already provided. If your goal is to purchase TSLA shares, that transaction must be completed through a regulated brokerage; Tesla Markets does not execute trades or take payment for TSLA shares.";
+      } else if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
         intent = "investment_awaiting_amount";
         reply = "I can explain how Tesla shares work and show you the latest available TSLA market information. How much would you like to invest in USD? For example, you can enter $1,000.";
       } else if (!investmentDetailsComplete) {
         intent = "investment_collecting_details";
-        const missingInvestment = !investmentName ? "your full legal name" : !investmentEmail ? "your email address" : !investmentPhone ? "your phone number" : !investmentCountry ? "your country of residence" : "your full residential address";
+        const missingInvestment = !investmentName ? "your full legal name" : !investmentEmail ? "your email address" : !investmentPhone ? "your phone number" : "your country of residence";
         reply = "Thank you. I have noted your intended investment amount of $" + investmentAmount.toLocaleString("en-US") + " USD. To prepare your investment enquiry record, please provide " + missingInvestment + ".";
       } else {
         try {
@@ -862,12 +870,11 @@ Deno.serve(async (req: Request) => {
           phone: investmentPhone,
           country: investmentCountry,
           city: investmentCity,
-          residential_address: investmentAddress,
           amount_usd: investmentAmount,
           estimated_shares: investmentShareEstimate,
           share_price_usd: investmentSharePrice,
           quote_timestamp: investmentQuoteTime || null,
-          status: "Payment pending"
+          status: "Management review"
         };
         const { error: profileError } = await admin.from("customer_profiles").upsert({
           id: user.id, display_name: investmentName, email: investmentEmail, phone: investmentPhone, is_admin: false, updated_at: new Date().toISOString()
@@ -887,7 +894,7 @@ Deno.serve(async (req: Request) => {
         if (investmentInsertError) throw investmentInsertError;
         investmentEnquiryCreated = true;
         intent = "investment_submitted";
-        reply = "Your investment enquiry has been recorded and sent to Tesla Markets Management. The summary card below is your enquiry record, not an invoice or payment receipt. Its status is PAYMENT PENDING. Management will review your details and contact you with the approved next steps. No payment has been requested or confirmed.";
+        reply = "Your investment enquiry has been recorded and sent to Tesla Markets Management for review. The summary card is an enquiry record only, not an order, invoice or payment request. Tesla Markets does not execute TSLA trades or collect payment for TSLA shares. If you decide to buy TSLA, use a regulated brokerage. No payment is due to Tesla Markets for this enquiry.";
       }
     } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
@@ -971,7 +978,7 @@ Deno.serve(async (req: Request) => {
       vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
       selected_variant: mergedDetails.selected_variant || null,
       last_intent: intent,
-      pending_slot: investmentFlow ? (!(investmentAmount > 0) ? "investment_amount" : !investmentName ? "full_name" : !investmentEmail ? "email" : !investmentPhone ? "phone" : !investmentCountry ? "country" : !investmentAddress ? "address" : "") : nextPendingSlot,
+      pending_slot: investmentFlow ? (!(investmentAmount > 0) ? "investment_amount" : !investmentName ? "full_name" : !investmentEmail ? "email" : !investmentPhone ? "phone" : !investmentCountry ? "country" : "") : nextPendingSlot,
       investment_amount_usd: investmentAmount > 0 && Number.isFinite(investmentAmount) ? investmentAmount : aiMemory.investment_amount_usd || null,
       last_customer_message: cleanString(customerMessage.body,500),
       last_customer_message_at: customerMessage.created_at,
@@ -986,7 +993,7 @@ Deno.serve(async (req: Request) => {
         address: !!cleanString(mergedDetails.address,240),
         selected_variant: !!cleanString(mergedDetails.selected_variant,100)
       },
-      conversation_stage: investmentFlow ? (investmentEnquiryCreated ? "investment_submitted" : intent === "investment_awaiting_amount" ? "investment_awaiting_amount" : "investment_collecting_details") : requestedVehicleChanged && !explicitVehiclePurchase ? "vehicle_browsing" : intent === "proforma_invoice_created" ? "vehicle_order_submitted" : ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage) || ["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && priorPurchaseStage === "purchase_collecting_details") ? (priorPurchaseStage === "vehicle_order_submitted" ? "vehicle_order_submitted" : "purchase_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent
+      conversation_stage: investmentFlow ? (investmentEnquiryCreated || investmentSubmittedFollowUp ? "investment_submitted" : intent === "investment_awaiting_amount" ? "investment_awaiting_amount" : "investment_collecting_details") : requestedVehicleChanged && !explicitVehiclePurchase ? "vehicle_browsing" : intent === "proforma_invoice_created" ? "vehicle_order_submitted" : ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage) || ["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && priorPurchaseStage === "purchase_collecting_details") ? (priorPurchaseStage === "vehicle_order_submitted" ? "vehicle_order_submitted" : "purchase_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent
     };
     const { error: memoryWriteError } = await admin.from("ai_conversation_memory").upsert({
       conversation_id: conversationId,
@@ -1198,7 +1205,7 @@ Deno.serve(async (req: Request) => {
       structuredData = {
         title: "Investment enquiry summary",
         subtitle: "CUSTOMER ENQUIRY · NOT AN INVOICE",
-        status: "Payment pending",
+        status: "Under management review",
         amount_label: "INTENDED INVESTMENT AMOUNT",
         amount: "$" + investmentAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USD",
         fields_title: "Customer information",
@@ -1207,20 +1214,19 @@ Deno.serve(async (req: Request) => {
           { label: "Email address", value: investmentEmail },
           { label: "Phone number", value: investmentPhone },
           { label: "Country of residence", value: investmentCountry },
-          { label: "City", value: investmentCity || "Not provided" },
-          { label: "Residential address", value: investmentAddress }
         ],
         sections: [{
           title: "Investment details",
           rows: [
             { label: "Intended amount", value: "$" + investmentAmount.toLocaleString("en-US") + " USD" },
-            { label: "Estimated shares", value: investmentShareEstimate !== null ? investmentShareEstimate.toFixed(4) : "Unavailable — current quote could not be verified" },
+            { label: "Indicative share equivalent (before fees)", value: investmentShareEstimate !== null ? investmentShareEstimate.toFixed(4) : "Unavailable — current quote could not be verified" },
             { label: "Share price", value: investmentSharePrice !== null ? "$" + investmentSharePrice.toFixed(2) + " USD" : "Not available" },
             { label: "Quote timestamp", value: investmentQuoteTime || "Not available" },
-            { label: "Enquiry status", value: "Payment pending" }
+            { label: "Enquiry status", value: "Under management review — no payment due to Tesla Markets" },
+            { label: "Calculation basis", value: "Illustrative only, based on the displayed quote and before any broker fees or taxes" }
           ]
         }],
-        disclaimer: "This record confirms an enquiry only. It is not a share purchase, payment request, payment receipt or guaranteed investment return."
+        disclaimer: "This is an enquiry only, not a share purchase, order, invoice, payment request, receipt or guaranteed return. Tesla Markets does not execute trades. To buy TSLA, use a regulated brokerage. Actual execution price, fees, eligibility and fractional-share availability are determined by the broker."
       };
     } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && !proformaInvoice) {
       const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
@@ -1353,11 +1359,10 @@ Deno.serve(async (req: Request) => {
           { label: "Email address", value: investmentEmail },
           { label: "Phone number", value: investmentPhone },
           { label: "Country of residence", value: investmentCountry },
-          { label: "Residential address", value: investmentAddress }
         ],
         amount_label: "INTENDED INVESTMENT AMOUNT",
         amount: "$" + investmentAmount.toLocaleString("en-US") + " USD",
-        disclaimer: "Review the details before submission. This is not an invoice or proof of payment."
+        disclaimer: "Only the information needed to register this enquiry is shown. This is not an invoice, share purchase or payment request. Tesla Markets does not execute trades."
       };
     }
 
