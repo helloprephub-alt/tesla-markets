@@ -838,10 +838,10 @@ Deno.serve(async (req: Request) => {
       requiresManagement = true;
       if (investmentSubmittedFollowUp && hasPaymentIntent) {
         intent = "investment_purchase_guidance";
-        reply = "Your investment enquiry has already been recorded for management review. Tesla Markets does not sell TSLA shares, execute trades or collect payment for a share purchase. If you want to buy TSLA, you will need to use a regulated brokerage account and follow that broker’s payment process. No payment is due to Tesla Markets for this enquiry. Please do not transfer money to an account shared in chat as a way to buy TSLA shares.";
+        reply = "Your investment enquiry has already been recorded for management review.";
       } else if (investmentSubmittedFollowUp && /\b(how do i proceed|how can i proceed|what next|next step|what should i do|proceed|continue|okay|ok|thanks|thank you)\b/i.test(customerMessage.body)) {
         intent = "investment_status_followup";
-        reply = "You’re welcome. Your investment enquiry is saved and awaiting management review. You do not need to repeat the details already provided. If your goal is to purchase TSLA shares, that transaction must be completed through a regulated brokerage; Tesla Markets does not execute trades or take payment for TSLA shares.";
+        reply = "You’re welcome. Your investment enquiry is saved and awaiting management review. You do not need to repeat the details already provided.";
       } else if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
         intent = "investment_awaiting_amount";
         reply = "I can explain how Tesla shares work and show you the latest available TSLA market information. How much would you like to invest in USD? For example, you can enter $1,000.";
@@ -894,7 +894,7 @@ Deno.serve(async (req: Request) => {
         if (investmentInsertError) throw investmentInsertError;
         investmentEnquiryCreated = true;
         intent = "investment_submitted";
-        reply = "Your investment enquiry has been recorded and sent to Tesla Markets Management for review. The summary card is an enquiry record only, not an order, invoice or payment request. Tesla Markets does not execute TSLA trades or collect payment for TSLA shares. If you decide to buy TSLA, use a regulated brokerage. No payment is due to Tesla Markets for this enquiry.";
+        reply = "Your investment enquiry has been recorded and sent to Tesla Markets Management for review.";
       }
     } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
@@ -1145,8 +1145,7 @@ Deno.serve(async (req: Request) => {
       const original=Number(matchedStoreProduct.original_price),percent=Number(matchedStoreProduct.discount_percent),sale=discountedUsd(original,percent);
       messageType="store_product_card";
       structuredData={title:cleanString(matchedStoreProduct.name,180),subtitle:"CHRISTMAS SHOP OFFER",amount_label:"PROMOTIONAL PRICE",amount:formatUsd(sale),
-        sections:[{title:"Your Christmas price",rows:[{label:"Original price",value:formatUsd(original)},{label:"Christmas discount",value:percent+"% OFF"},{label:"You save",value:formatUsd(original-sale)},{label:"Promotional price",value:formatUsd(sale)}]}],
-        disclaimer:"Price is taken from the active Tesla Markets Shop catalogue. Stock, product options, shipping and final checkout total are confirmed at checkout."};
+        sections:[{title:"Your Christmas price",rows:[{label:"Original price",value:formatUsd(original)},{label:"Christmas discount",value:percent+"% OFF"},{label:"You save",value:formatUsd(original-sale)},{label:"Promotional price",value:formatUsd(sale)}]}]};
     } else if (proformaInvoice) {
       messageType = "proforma_invoice";
       const invoiceAmount = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(proformaInvoice.amount) + " USD";
@@ -1177,8 +1176,7 @@ Deno.serve(async (req: Request) => {
             {label:"Taxes and delivery",value:"Final charges to be confirmed"}
           ]}
         ],
-        note:"Your vehicle enquiry has been saved. Tesla Markets Management will confirm availability, the final quotation and approved payment instructions before you pay.",
-        disclaimer:"This is a draft pro forma, not a payment receipt or confirmed order. No payment is due until management approves the final amount and provides verified payment instructions."
+        note:"Your vehicle enquiry has been saved. Tesla Markets Management will confirm availability, the final quotation and approved payment instructions before you pay."
       };
     } else if (cartSummary) {
       messageType = "cart_summary";
@@ -1197,8 +1195,7 @@ Deno.serve(async (req: Request) => {
           {label:"Models selected",value:String(cartSummary.length)},
           {label:"Next step",value:"Management will confirm configuration, availability, delivery and final pricing"}
         ]}],
-        note:"You can add more vehicles to this cart during the same conversation. Your saved customer details are retained.",
-        disclaimer:"This is a cart estimate only. It is not an invoice, confirmed order or payment receipt."
+        note:"You can add more vehicles to this cart during the same conversation. Your saved customer details are retained."
       };
     } else if (investmentEnquiryCreated) {
       messageType = "investment_summary";
@@ -1225,8 +1222,7 @@ Deno.serve(async (req: Request) => {
             { label: "Enquiry status", value: "Under management review — no payment due to Tesla Markets" },
             { label: "Calculation basis", value: "Illustrative only, based on the displayed quote and before any broker fees or taxes" }
           ]
-        }],
-        disclaimer: "This is an enquiry only, not a share purchase, order, invoice, payment request, receipt or guaranteed return. Tesla Markets does not execute trades. To buy TSLA, use a regulated brokerage. Actual execution price, fees, eligibility and fractional-share availability are determined by the broker."
+        }]
       };
     } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && !proformaInvoice) {
       const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
@@ -1275,8 +1271,7 @@ Deno.serve(async (req: Request) => {
           ]},
           { title:"Still required", rows:missing.map((item:string)=>({label:item,value:"Please provide"}))}
         ],
-        note:"Send all outstanding information together in one message. Details already saved do not need to be repeated.",
-        disclaimer:"This creates a vehicle enquiry and draft pro forma only. Payment remains pending until management confirms availability, final charges and approved payment instructions."
+        note:"Send all outstanding information together in one message. Details already saved do not need to be repeated."
       };
     } else if (Object.keys(extractedDelivery).length > 0 && !investmentEnquiryCreated) {
       messageType = "customer_details";
@@ -1346,8 +1341,7 @@ Deno.serve(async (req: Request) => {
             { label: "Availability note", value: cleanString(specs.availability_note,220) || "Management must confirm current market availability and delivery" },
             { label: "Image credit", value: cleanString(specs.image_credit,180) || "Image credit not available" }
           ]}
-        ],
-        disclaimer: "Specifications, prices, colours and availability depend on model year, trim and market. Items marked as preferences or management-supplied listings are not represented as confirmed factory specifications."
+        ]
       };
     } else if (investmentFlow && investmentDetailsComplete && !investmentEnquiryCreated) {
       messageType = "customer_details";
@@ -1361,8 +1355,7 @@ Deno.serve(async (req: Request) => {
           { label: "Country of residence", value: investmentCountry },
         ],
         amount_label: "INTENDED INVESTMENT AMOUNT",
-        amount: "$" + investmentAmount.toLocaleString("en-US") + " USD",
-        disclaimer: "Only the information needed to register this enquiry is shown. This is not an invoice, share purchase or payment request. Tesla Markets does not execute trades."
+        amount: "$" + investmentAmount.toLocaleString("en-US") + " USD"
       };
     }
 
