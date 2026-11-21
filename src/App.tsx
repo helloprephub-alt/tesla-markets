@@ -1067,10 +1067,6 @@ function App() {
         {kind === 'faq' ? (
           <div className="faq-list">
             {[
-              'Can I buy Tesla shares here?',
-              'Can I buy SpaceX shares here?',
-              'Are the prices live?',
-              'Is this website affiliated with Tesla or SpaceX?',
               'How do I contact the team?',
             ].map((q, i) => (
               <div className="faq-item" key={q}>
@@ -1081,13 +1077,7 @@ function App() {
                 {faq === i && (
                   <p>
                     {
-                      [
-                        'You can enquire here, but share purchases must be completed through an authorised brokerage. This website does not execute trades.',
-                        'SpaceX is a privately held company, not a publicly listed stock. Any private-market opportunity requires independent verification and eligibility checks.',
-                        'No. The figures shown are dated reference prices. Use the linked market pages for current quotes.',
-                        'No. This is an independent information and enquiry website, not affiliated with either company.',
-                        'Open the Enquiries tab to start a conversation.',
-                      ][i]
+                      'Open the Enquiries tab to start a conversation.'
                     }
                   </p>
                 )}
