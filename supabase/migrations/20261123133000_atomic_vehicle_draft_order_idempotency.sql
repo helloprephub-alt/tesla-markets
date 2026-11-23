@@ -101,8 +101,8 @@ BEGIN
         phone = coalesce(excluded.phone, public.customer_profiles.phone),
         updated_at = now();
 
-  -- First reuse the exact model/version. Never change a submitted order that is
-  -- already awaiting payment; its approved terms remain unchanged.
+  -- First reuse the exact model/version. Never change an order already approved
+  -- for payment; management must amend that order instead.
   SELECT *
     INTO v_order
     FROM public.business_orders
@@ -160,8 +160,7 @@ BEGIN
       END IF;
     END IF;
   ELSE
-    -- If the customer changes the version of the same model, update that model's
-    -- existing draft. A different model always receives its own order.
+    -- If a different version of this model is requested, reuse its draft.
     SELECT *
       INTO v_order
       FROM public.business_orders
@@ -208,14 +207,28 @@ BEGIN
            AND customer_id = p_customer_id;
       END IF;
 
-      UPDATE public.business_orders
-         SET item_description = v_item_description,
-             vehicle_enquiry_id = v_enquiry_id,
-             agreed_amount = p_amount,
-             updated_at = now()
-       WHERE id = v_order.id
-       RETURNING * INTO v_order;
+      IF v_updated_draft OR v_order.vehicle_enquiry_id IS NULL THEN
+        UPDATE public.business_orders
+           SET item_description = v_item_description,
+               vehicle_enquiry_id = v_enquiry_id,
+               agreed_amount = p_amount,
+               updated_at = now()
+         WHERE id = v_order.id
+         RETURNING * INTO v_order;
+      END IF;
     ELSE
+      IF EXISTS (
+        SELECT 1
+          FROM public.business_orders
+         WHERE customer_id = p_customer_id
+           AND conversation_id = p_conversation_id
+           AND item_type = 'vehicle'
+           AND status = 'awaiting_payment'
+           AND split_part(item_description, ' · ', 1) = trim(p_vehicle_model)
+      ) THEN
+        RAISE EXCEPTION 'A vehicle order for this model is already awaiting payment. Please ask management to amend that order before changing its version.';
+      END IF;
+
       INSERT INTO public.vehicle_enquiries (
         customer_id, vehicle_model, configuration, customer_note, status
       ) VALUES (
