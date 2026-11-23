@@ -464,8 +464,6 @@ export function AdminInbox() {
       });
       if(settings.giftCardEnabled===true)methods.push('Gift Card');
       if(!methods.length)throw new Error('No payment methods are enabled with verified details in Settings.');
-      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
-      if(pauseError)throw pauseError;
       const {error}=await supabase.from('support_messages').insert({
         conversation_id:selected,sender_id:user.id,sender_role:'management',
         body:'Available payment methods for order '+order.order_reference,message_type:'payment_methods',
