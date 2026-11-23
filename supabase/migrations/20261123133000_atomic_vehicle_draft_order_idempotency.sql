@@ -150,7 +150,7 @@ BEGIN
            AND customer_id = p_customer_id;
       END IF;
 
-      IF v_order.vehicle_enquiry_id IS NULL OR v_order.agreed_amount IS DISTINCT FROM p_amount THEN
+      IF v_updated_draft OR v_order.vehicle_enquiry_id IS NULL THEN
         UPDATE public.business_orders
            SET vehicle_enquiry_id = v_enquiry_id,
                agreed_amount = p_amount,
