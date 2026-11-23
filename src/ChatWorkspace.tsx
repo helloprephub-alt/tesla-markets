@@ -398,7 +398,7 @@ export function AdminInbox() {
       if(saved.enabled===false||!savedValues.length)throw new Error('This payment method is not enabled with verified recipient details in Settings.');
       const supplied=paymentAccountDetails.trim().toLowerCase();
       if(!savedValues.some((value:string)=>value.trim().toLowerCase()===supplied))throw new Error('The recipient detail must exactly match a verified value saved in Settings.');
-      if(saved.accountName&&saved.accountName.trim().toLowerCase()!==paymentAccountName.trim().toLowerCase())throw new Error('The account name does not match the verified name saved in Settings.');
+      if(!saved.accountName||saved.accountName.trim().toLowerCase()!==paymentAccountName.trim().toLowerCase())throw new Error('Enter the exact account name saved in Settings before sending payment instructions.');
       const amount=Number(order.agreed_amount);
       const formattedAmount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2}).format(amount)+' USD';
       const previousDetails=conversation?.delivery_details&&typeof conversation.delivery_details==='object'?conversation.delivery_details:{};
