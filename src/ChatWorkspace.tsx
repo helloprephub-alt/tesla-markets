@@ -381,32 +381,54 @@ export function AdminInbox() {
     }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
   };
   const sendPaymentAccountCard=async()=>{
-    if(!selected||!user||busy||!paymentAccountName.trim()||!paymentAccountDetails.trim()||!paymentAccountAmount.trim())return;
+    if(!selected||!user||busy||!paymentAccountName.trim()||!paymentAccountDetails.trim())return;
     setBusy(true);setProblem('');
     try{
+      const [{data:order,error:orderError},{data:settingsRow,error:settingsError},{data:conversation,error:conversationError}]=await Promise.all([
+        supabase.from('business_orders').select('id,order_reference,agreed_amount,item_description,status').eq('conversation_id',selected).eq('status','awaiting_payment').order('created_at',{ascending:false}).limit(1).maybeSingle(),
+        supabase.from('site_settings').select('value').eq('key','payment_account_details').maybeSingle(),
+        supabase.from('support_conversations').select('delivery_details').eq('id',selected).maybeSingle()
+      ]);
+      if(orderError)throw orderError;
+      if(settingsError)throw settingsError;
+      if(conversationError)throw conversationError;
+      if(!order||!Number.isFinite(Number(order.agreed_amount))||Number(order.agreed_amount)<=0)throw new Error('No management-approved vehicle order is awaiting payment in this conversation.');
+      const settings=settingsRow?.value&&typeof settingsRow.value==='object'?settingsRow.value:{};
+      const saved=settings[paymentAccountMethod]&&typeof settings[paymentAccountMethod]==='object'?settings[paymentAccountMethod]:{};
+      const savedValues=[saved.email,saved.phone,saved.username].filter((value:any)=>typeof value==='string'&&value.trim());
+      if(saved.enabled===false||!savedValues.length)throw new Error('This payment method is not enabled with verified recipient details in Settings.');
+      const supplied=paymentAccountDetails.trim().toLowerCase();
+      if(!savedValues.some((value:string)=>value.trim().toLowerCase()===supplied))throw new Error('The recipient detail must exactly match a verified value saved in Settings.');
+      if(saved.accountName&&saved.accountName.trim().toLowerCase()!==paymentAccountName.trim().toLowerCase())throw new Error('The account name does not match the verified name saved in Settings.');
+      const amount=Number(order.agreed_amount);
+      const formattedAmount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2}).format(amount)+' USD';
+      const previousDetails=conversation?.delivery_details&&typeof conversation.delivery_details==='object'?conversation.delivery_details:{};
+      const paymentLock={status:'pending',method:paymentAccountMethod,amount:formattedAmount,vehicle:String(order.item_description||'Vehicle order'),kind:'vehicle',order_id:order.id,order_reference:order.order_reference,created_at:new Date().toISOString()};
+      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,delivery_details:{...previousDetails,payment_lock:paymentLock},updated_at:new Date().toISOString()}).eq('id',selected);
+      if(pauseError)throw pauseError;
       const {error}=await supabase.from('support_messages').insert({
         conversation_id:selected,sender_id:user.id,sender_role:'management',
-        body:'Verified '+paymentAccountMethod+' payment details',
+        body:'Verified '+paymentAccountMethod+' payment details for order '+order.order_reference,
         message_type:'payment_account_card',
         structured_data:{
           title:paymentAccountMethod+' payment details',
           subtitle:'VERIFIED PAYMENT INSTRUCTIONS',
-          amount:paymentAccountAmount.trim(),amount_label:'AMOUNT TO SEND',
+          amount:formattedAmount,amount_label:'AMOUNT TO SEND',
           fields_title:'Payment account',
           fields:[
+            {label:'Order reference',value:order.order_reference},
             {label:'Payment method',value:paymentAccountMethod},
             {label:'Account name',value:paymentAccountName.trim()},
             {label:'Account details',value:paymentAccountDetails.trim()},
-            ...(paymentAccountInstructions.trim()?[{label:'Instructions',value:paymentAccountInstructions.trim()}]:[])
+            ...(paymentAccountInstructions.trim()?[{label:'Instructions',value:paymentAccountInstructions.trim()}]:[]),
+            ...(typeof saved.instructions==='string'&&saved.instructions.trim()?[{label:'Saved instructions',value:saved.instructions.trim()}]:[])
           ],
           status:'Awaiting payment verification',
-          note:'Send only the exact amount shown. Tesla Markets Management will verify the transfer before confirming payment.'
+          note:'Send only the exact amount shown for this order. Tesla Markets Management will verify the transaction before confirming payment.'
         },
         attachment_path:null,attachment_name:null,attachment_mime:null
       });
       if(error)throw error;
-      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
-      if(pauseError)throw pauseError;
       setPaymentAccountAmount('');setPaymentAccountName('');setPaymentAccountDetails('');setPaymentAccountInstructions('');setPaymentAccountMode(false);
       await loadMessages();await loadThreads();
     }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
@@ -415,15 +437,27 @@ export function AdminInbox() {
     if(!selected||!user||busy)return;
     setBusy(true);setProblem('');
     try{
+      const [{data:order,error:orderError},{data:settingsRow,error:settingsError}]=await Promise.all([
+        supabase.from('business_orders').select('id,order_reference,agreed_amount,item_description,status').eq('conversation_id',selected).eq('status','awaiting_payment').order('created_at',{ascending:false}).limit(1).maybeSingle(),
+        supabase.from('site_settings').select('value').eq('key','payment_account_details').maybeSingle()
+      ]);
+      if(orderError)throw orderError;
+      if(settingsError)throw settingsError;
+      if(!order)throw new Error('Approve the final quotation and set the order to awaiting payment before sending payment methods.');
+      const settings=settingsRow?.value&&typeof settingsRow.value==='object'?settingsRow.value:{};
+      const methods=['PayPal','Zelle','Chime','Apple Pay'].filter(method=>{
+        const details=settings[method]&&typeof settings[method]==='object'?settings[method]:{};
+        return details.enabled!==false&&[details.email,details.phone,details.username].some((value:any)=>typeof value==='string'&&value.trim().length>0);
+      });
+      if(settings.giftCardEnabled===true)methods.push('Gift Card');
+      if(!methods.length)throw new Error('No payment methods are enabled with verified details in Settings.');
       const {error}=await supabase.from('support_messages').insert({
         conversation_id:selected,sender_id:user.id,sender_role:'management',
-        body:'Available payment methods',message_type:'payment_methods',
-        structured_data:{title:'Choose a payment method',subtitle:'SELECT A PAYMENT OPTION',payment_methods:['Apple Pay','Chime','Zelle','PayPal']},
+        body:'Available payment methods for order '+order.order_reference,message_type:'payment_methods',
+        structured_data:{title:'Choose a payment method',subtitle:'APPROVED ORDER · '+order.order_reference,amount_label:'APPROVED ORDER AMOUNT',amount:new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2}).format(Number(order.agreed_amount))+' USD',payment_methods:methods,note:'Choose a method for this approved order. Management will provide the verified recipient instructions. Do not send payment until you receive them.'},
         attachment_path:null,attachment_name:null,attachment_mime:null
       });
       if(error)throw error;
-      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
-      if(pauseError)throw pauseError;
       await loadMessages();await loadThreads();
     }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
   };
