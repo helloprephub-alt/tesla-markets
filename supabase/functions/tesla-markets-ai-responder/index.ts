@@ -889,11 +889,14 @@ Deno.serve(async (req: Request) => {
       const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
       reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";
     } else if (investmentFlow) {
-      intent = hasPaymentIntent || paymentChoice ? "investment_payment_restricted" : "investment_information";
       requiresManagement = true;
-      reply = hasPaymentIntent || paymentChoice
-        ? "Tesla Markets does not accept or process payments for TSLA shares. To purchase TSLA shares, use a regulated brokerage. I can refer any further questions to management."
-        : "I can help with general information about Tesla, Inc. and TSLA shares. Tesla Markets does not accept investment funds, execute trades, open brokerage accounts or guarantee returns. Share your question and I can explain verified general information or refer it to management. To buy shares, use a regulated brokerage.";
+      if (hasPaymentIntent || paymentChoice) {
+        intent = "investment_payment_restricted";
+        reply = "Tesla Markets does not accept or process payments for TSLA shares. To purchase TSLA shares, use a regulated brokerage. I can refer any further questions to Tesla Markets Management.";
+      } else if (intent !== "investment_explanation") {
+        intent = "investment_information";
+        reply = "I can help with general information about Tesla, Inc. and TSLA shares. Tesla Markets does not accept investment funds, execute trades, open brokerage accounts or guarantee returns. Share your question and I can explain verified general information or refer it to management. To buy shares, use a regulated brokerage.";
+      }
     } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
