@@ -240,7 +240,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   const phone=text.match(/(?:\+?\d[\d ()-]{7,}\d)/);
   if(email)out.email=email[0].slice(0,200);
   if(phone)out.phone=phone[0].trim().slice(0,60);
-  const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|this is|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
+  const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
   if(nameMatch?.[1] && looksLikePersonName(nameMatch[1]))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+?)(?=(?:[,;\n]\s*)?(?:e-?mail|phone|telephone|country|delivery country|city|delivery city|preferred version|vehicle version|full name|name)\s*[:=-]|[\n]|$)/i);
   if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
@@ -280,13 +280,15 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const asksIdentity=has(/\b(who are you|what are you|are you (a )?(bot|ai|human)|are you real)\b/);
   const asksAddAnother=has(/\b(add another|another car|one more car|also order|also buy|add (a )?car|include another|second car)\b/);
   const asksGeneralKnowledge=has(/\b(what is|who is|where is|when is|why is|how does|how do|can you explain|tell me about)\b/);
-  const asksVehicleView=has(/\b(show me|can i see|let me see|may i see|view|display|show|see the|see a|photos of|pictures of|images of)\b/);\n  const smallTalk = /^(?:how are you(?: doing)?|how is it going|how's it going|what's up|whats up|thank you|thanks|thanks a lot|i am fine|i'm fine|i am good|i'm good|i am doing well|i'm doing well|doing well|doing great|not bad|all good)[.!?\\s]*$/i.test(text.trim());
+  const asksVehicleView=has(/\b(show me|can i see|let me see|may i see|view|display|show|see the|see a|photos of|pictures of|images of)\b/);
+  const smallTalk = /^(?:how are you(?: doing)?|how is it going|how's it going|what's up|whats up|thank you|thanks|thanks a lot|i am fine|i'm fine|i am good|i'm good|i am doing well|i'm doing well|doing well|doing great|not bad|all good)[.!?\s]*$/i.test(text.trim());
 
 
   const modelPattern=/\b(model\s*yl|model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
   const explicitModel=text.match(modelPattern)?.[0];
   const priorModel=[...history].reverse().filter((row:any)=>row.sender_role==="customer").map((row:any)=>String(row.body||"").match(modelPattern)?.[0]).find(Boolean);
-  const vehicleFollowUp = /\b(price|prices|pricing|cost|how much|colou?rs?|colors?|range|performance|specifications?|features|wheels?|versions?|availability|available|delivery|charging|battery|it|that one|this one)\b/i.test(t);\n  const rawModel=explicitModel||(!smallTalk&&vehicleFollowUp?(conversation.vehicle_model||priorModel):null)||null;
+  const vehicleFollowUp = /\b(price|prices|pricing|cost|how much|colou?rs?|colors?|range|performance|specifications?|features|wheels?|versions?|availability|available|delivery|charging|battery|it|that one|this one)\b/i.test(t);
+  const rawModel=explicitModel||(!smallTalk&&vehicleFollowUp?(conversation.vehicle_model||priorModel):null)||null;
   const mentionedModel=rawModel ? (/cyber\s*truck/i.test(rawModel)?"Cybertruck":/roadster/i.test(rawModel)?"Roadster":/semi/i.test(rawModel)?"Tesla Semi":rawModel.replace(/\s+/g," ").replace(/\bmodel\s*([3ysx])\b/i,(_,v)=>"Model "+String(v).toUpperCase())) : undefined;
   const name=vehicle?.name||vehicle?.model||mentionedModel||"your selected vehicle";
   const specsForVariant = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
@@ -674,7 +676,7 @@ Deno.serve(async (req: Request) => {
       row.sender_role === "customer" && canonicalVehicle(cleanString(row.body, 500))
     );
     const currentText = normalized(customerMessage.body);
-    const isSmallTalk = /^(?:hi|hello|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo|how are you(?: doing)?|how is it going|how's it going|what's up|thanks|thank you|i am fine|i'm fine|i am good|i'm good|i am doing well|i'm doing well|doing well|not bad|all good)[.!?\\s]*$/i.test(customerMessage.body.trim());
+    const isSmallTalk = /^(?:hi|hello|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo|how are you(?: doing)?|how is it going|how's it going|what's up|thanks|thank you|i am fine|i'm fine|i am good|i'm good|i am doing well|i'm doing well|doing well|not bad|all good)[.!?\s]*$/i.test(customerMessage.body.trim());
     const isVehicleFollowUp = /\b(price|prices|pricing|cost|how much|colou?rs?|colors?|range|performance|specifications?|features|wheels?|versions?|availability|available|delivery|charging|battery|it|that one|this one)\b/i.test(currentText);
     const contextualVehicle = canonicalVehicle(customerMessage.body) ||
       (!isSmallTalk && isVehicleFollowUp ? canonicalVehicle(cleanString(conversation.vehicle_model || aiMemory.selected_vehicle || priorCustomerVehicle?.body || "", 100)) : "");
@@ -987,7 +989,7 @@ Deno.serve(async (req: Request) => {
     // against the question just asked, selected car, chosen trim and collected facts.
     const memoryNext = {
       ...aiMemory,
-      selected_vehicle: selectedVehicle?.name || local.vehicleModel || conversation.vehicle_model || null,
+      selected_vehicle: selectedVehicle?.name || local.vehicleModel || null,
       vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
       selected_variant: mergedDetails.selected_variant || null,
       last_intent: intent,
