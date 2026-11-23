@@ -49,6 +49,9 @@ assert.match(responder, /isSmallTalkMessage\(customerMessage\.body\) \|\| isGree
 assert.match(responder, /"investment_payment_restricted"/, "Investment payment requests must be rejected as payment workflows.");
 assert.match(responder, /const investmentFlow = intent\.startsWith\("investment"\) \|\| incomingInvestmentTopic;/, "Investment intent must be based on the current message, not stale vehicle or identity context.");
 assert.doesNotMatch(responder, /investment_enquiries|investmentAmountMatch|investmentDetailsComplete|investment_summary/, "Investment conversations must not collect personal details or create payment-like enquiry records.");
+assert.doesNotMatch(responder, /query1\.finance\.yahoo\.com\/v8\/finance\/chart\/TSLA/, "The customer chat must not estimate TSLA share purchases from a requested investment amount.");
+assert.doesNotMatch(responder, /tell me the amount you are considering|Tesla Markets collects investment enquiries/i, "The customer chat must not solicit investment amounts or imply investment lead collection.");
+assert.match(responder, /Tesla Markets does not accept or process payments for TSLA shares/, "TSLA payment requests must be explicitly refused.");
 assert.match(responder, /investment_information_only/, "Investment context must remain informational.");
 assert.match(responder, /order_id: activeOrder\.id/, "Payment locks must reference the exact approved order.");
 assert.match(responder, /create_or_update_vehicle_draft_order/, "Vehicle draft creation must use the atomic order RPC.");
