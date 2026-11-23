@@ -231,8 +231,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
       localStorage.setItem('tesla-markets-customer-details',JSON.stringify(saved));
       sessionStorage.setItem('tesla-markets-customer-details',JSON.stringify(saved));
       const message=[
-        vehicleCheckout.mode==='cart'?'Add '+vehicleCheckout.title+' to my cart.':'',
-        'I want to buy '+vehicleCheckout.title+'.',
+        vehicleCheckout.mode==='cart'?'Add '+vehicleCheckout.title+' to my cart.':'I want to buy '+vehicleCheckout.title+'.',
         form.variant?'Vehicle version: '+form.variant:'',
         form.color?'Preferred exterior colour: '+form.color:'',
         form.wheels?'Preferred wheels: '+form.wheels:'',
@@ -294,9 +293,9 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
           <div className="tm-checkout-grid tm-checkout-grid-two"><label>Country<input required autoComplete="country-name" value={vehicleCheckoutForm.country} onChange={event=>setVehicleCheckoutForm(current=>({...current,country:event.target.value}))} placeholder="Delivery country"/></label><label>City<input required autoComplete="address-level2" value={vehicleCheckoutForm.city} onChange={event=>setVehicleCheckoutForm(current=>({...current,city:event.target.value}))} placeholder="Delivery city"/></label></div>
           <label>Full delivery address<textarea required rows={3} autoComplete="street-address" value={vehicleCheckoutForm.address} onChange={event=>setVehicleCheckoutForm(current=>({...current,address:event.target.value}))} placeholder="Street, house/building number and postal code"/></label>
           <label>Additional delivery instructions <span>(optional)</span><textarea rows={2} value={vehicleCheckoutForm.instructions} onChange={event=>setVehicleCheckoutForm(current=>({...current,instructions:event.target.value}))} placeholder="Anything management should know?"/></label>
-          <p className="tm-checkout-security-note">{vehicleCheckout.mode==='purchase'?'Continue to payment submits your vehicle and delivery details, then displays the available payment methods. No payment is taken until management provides verified account details.':'Your details will be saved to your Tesla Markets enquiry and sent to management. No payment is taken here.'} Management must confirm availability, final quotation and approved payment instructions.</p>
+          <p className="tm-checkout-security-note">{vehicleCheckout.mode==='purchase'?'Submits your vehicle and delivery details for management review. Management must approve the final quotation before payment methods or verified recipient instructions are provided.':'Your details will be saved to your Tesla Markets enquiry and sent to management. No payment is taken here.'} Management must confirm availability, final quotation and approved payment instructions.</p>
           {problem&&<p className="tm-checkout-error" role="alert">{problem}</p>}
-          <div className="tm-checkout-actions"><button type="button" className="tm-checkout-cancel" onClick={()=>setVehicleCheckout(null)} disabled={checkoutSubmitting||busy}>Cancel</button><button type="submit" className="tm-checkout-submit" disabled={checkoutSubmitting||busy||booting||!threadId||!viewerId}>{checkoutSubmitting||busy?'Submitting securely…':vehicleCheckout.mode==='cart'?'Add to cart & continue':'Continue to payment'}</button></div>
+          <div className="tm-checkout-actions"><button type="button" className="tm-checkout-cancel" onClick={()=>setVehicleCheckout(null)} disabled={checkoutSubmitting||busy}>Cancel</button><button type="submit" className="tm-checkout-submit" disabled={checkoutSubmitting||busy||booting||!threadId||!viewerId}>{checkoutSubmitting||busy?'Submitting securely…':vehicleCheckout.mode==='cart'?'Add to cart':'Submit purchase enquiry'}</button></div>
         </form>
       </section>
     </div>}
