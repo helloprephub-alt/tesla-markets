@@ -216,7 +216,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
             if(initialError)throw initialError;
             initialMessageId=initial.id;
           }
-          if(active)setIsTyping(true);
+          if(active){setIsTyping(true);setBusy(true);}
           try{
             // The edge function's message-id claim makes retries safe: completed
             // opening messages are ignored; failed or interrupted runs can retry.
@@ -228,6 +228,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
               try{setMessages(await fetchMessages(id,user.id));}
               catch(error){setProblem(errorText(error));}
               setIsTyping(false);
+              setBusy(false);
             }
           }
         }
