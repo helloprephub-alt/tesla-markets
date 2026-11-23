@@ -51,6 +51,9 @@ assert.match(responder, /const investmentFlow = intent\.startsWith\("investment"
 assert.doesNotMatch(responder, /investment_enquiries|investmentAmountMatch|investmentDetailsComplete|investment_summary/, "Investment conversations must not collect personal details or create payment-like enquiry records.");
 assert.doesNotMatch(responder, /query1\.finance\.yahoo\.com\/v8\/finance\/chart\/TSLA/, "The customer chat must not estimate TSLA share purchases from a requested investment amount.");
 assert.doesNotMatch(responder, /tell me the amount you are considering|Tesla Markets collects investment enquiries/i, "The customer chat must not solicit investment amounts or imply investment lead collection.");
+assert.match(responder, /const safeKnowledgeForModel = verifiedKnowledge\.filter/, "The model must use a filtered, current knowledge set.");
+assert.match(responder, /approved_documents: safeKnowledgeForModel\.map/, "Deprecated investment FAQ content must not reach the AI model.");
+assert.match(responder, /Tesla Markets Investment Information & Customer FAQ/, "The legacy investment FAQ must be explicitly identified for exclusion.");
 assert.match(responder, /Tesla Markets does not accept or process payments for TSLA shares/, "TSLA payment requests must be explicitly refused.");
 assert.match(responder, /investment_information_only/, "Investment context must remain informational.");
 assert.match(responder, /order_id: activeOrder\.id/, "Payment locks must reference the exact approved order.");
