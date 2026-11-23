@@ -760,6 +760,10 @@ Deno.serve(async (req: Request) => {
     if (mergedDetails.city && !looksLikeCity(String(mergedDetails.city))) delete mergedDetails.city;
     if (mergedDetails.address && !looksLikeAddress(String(mergedDetails.address))) delete mergedDetails.address;
     const selectedVehicle = vehicle;
+    const previousSelectedVehicle = canonicalVehicle(cleanString(aiMemory.selected_vehicle || conversation.vehicle_model,100));
+    const currentSelectedVehicle = canonicalVehicle(cleanString(selectedVehicle?.name || "",100));
+    const requestedVehicleChanged = !!currentSelectedVehicle && !!previousSelectedVehicle && currentSelectedVehicle !== previousSelectedVehicle;
+    if (requestedVehicleChanged) delete mergedDetails.selected_variant;
     const selectedSpecs = selectedVehicle?.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
     const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); });
@@ -787,9 +791,6 @@ Deno.serve(async (req: Request) => {
     if (!hasAddress) missing.push("full delivery address");
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
-    const previousSelectedVehicle = canonicalVehicle(cleanString(aiMemory.selected_vehicle || conversation.vehicle_model,100));
-    const currentSelectedVehicle = canonicalVehicle(cleanString(selectedVehicle?.name || "",100));
-    const requestedVehicleChanged = !!currentSelectedVehicle && !!previousSelectedVehicle && currentSelectedVehicle !== previousSelectedVehicle;
     const explicitVehiclePurchase = /\b(i want to buy|i would like to buy|i'd like to buy|i want to purchase|i'd like to purchase|buy now|place an order|reserve|book this)\b/i.test(customerMessage.body) || ["purchase_ready","vehicle_purchase"].includes(intent);
     const priorPurchaseStage = requestedVehicleChanged && !explicitVehiclePurchase ? "" : cleanString(aiMemory.conversation_stage,80);
     const purchaseFlowActive = explicitVehiclePurchase || ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage);
