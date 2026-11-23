@@ -40,6 +40,10 @@ assert.equal(isValidPhoneNumber("+234 803 925 4732"), true);
 assert.equal(isValidPhoneNumber("How are you doing"), false);
 
 assert.doesNotMatch(chat, /investmentCheckout|submitInvestmentCheckout/, "Investment enquiries must not open a checkout form.");
+assert.match(chat, /createdNewConversation&&context\.trim\(\)/, "A new pre-filled enquiry must save its opening message.");
+assert.match(chat, /await invokeCustomerResponder\(id,initial\.id\)/, "A pre-filled opening message must trigger the AI responder.");
+assert.match(chat, /initializedIntentRef\.current/, "Re-renders must not create duplicate enquiry conversations.");
+assert.match(chat, /await invokeCustomerResponder\(threadId,messageId\)/, "Typed customer messages must use the same responder invocation helper.");
 assert.match(responder, /looksLikePersonName\(nameMatch\[1\],true\)/, "Explicit name candidates must pass name validation.");
 assert.match(responder, /looksLikePersonName\(plain,true\)/, "Unlabelled names must pass strict pending-slot validation.");
 assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : vehicle;/, "Unrelated and investment messages must not inherit a previous vehicle.");
