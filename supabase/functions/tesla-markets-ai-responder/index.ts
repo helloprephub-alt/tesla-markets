@@ -930,20 +930,27 @@ Deno.serve(async (req: Request) => {
         requiresManagement = true;
         reply = "That payment method is not currently enabled by Tesla Markets Management. I will refer your request to management so they can confirm the available options for your order.";
       } else {
-        const { data: activeOrder, error: activeOrderError } = await admin.from("business_orders")
+        const { data: activeOrders, error: activeOrderError } = await admin.from("business_orders")
           .select("id,order_reference,agreed_amount,item_description,status")
           .eq("conversation_id", conversationId)
           .eq("customer_id", user.id)
           .eq("status", "awaiting_payment")
           .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(2);
         if (activeOrderError) throw activeOrderError;
-        if (!activeOrder || !Number.isFinite(Number(activeOrder.agreed_amount)) || Number(activeOrder.agreed_amount) <= 0) {
-          intent = "payment_requires_approved_order";
+        if ((activeOrders || []).length !== 1) {
+          intent = (activeOrders || []).length === 0 ? "payment_requires_approved_order" : "payment_order_ambiguous";
           requiresManagement = true;
-          reply = "Payment options are available only after Tesla Markets Management approves a final quotation for a specific order. Your request has been referred to management; please do not send money yet.";
+          reply = (activeOrders || []).length === 0
+            ? "Payment options are available only after Tesla Markets Management approves a final quotation for a specific order. Your request has been referred to management; please do not send money yet."
+            : "More than one vehicle order is awaiting payment. I have referred this to management so they can confirm the exact order before recording a payment preference. Please do not send money yet.";
         } else {
+          const activeOrder = activeOrders[0];
+          if (!Number.isFinite(Number(activeOrder.agreed_amount)) || Number(activeOrder.agreed_amount) <= 0) {
+            intent = "payment_requires_approved_order";
+            requiresManagement = true;
+            reply = "The approved order does not have a valid payment amount. Management must review it before you send money.";
+          } else {
           const currentDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
           const previousLock = currentDetails.payment_lock && typeof currentDetails.payment_lock === "object" ? currentDetails.payment_lock : {};
           const paymentLockNext = {
@@ -973,6 +980,7 @@ Deno.serve(async (req: Request) => {
           intent = "payment_method_selected";
           requiresManagement = true;
           reply = "Thank you. Your " + selectedMethod + " preference has been recorded for order " + activeOrder.order_reference + ". Tesla Markets Management will provide the verified instructions. Do not send payment until you receive them.";
+          }
         }
       }
     }
