@@ -64,8 +64,8 @@ export function looksLikePersonName(value, requireFullName = false) {
 }
 
 export function isSmallTalkMessage(value) {
-  const text = normalize(value).trim().replace(/[.!?]+$/g, "");
-  return /^(?:how are you(?: doing)?|how is it going|how's it going|what's up|whats up|thank you|thanks|thanks a lot|i am fine|im fine|i am good|im good|i am doing well|im doing well|doing well|doing great|not bad|all good)$/i.test(text);
+  const text = normalize(value).trim().replace(/[.!?]+$/g, "").replace(/['’]/g, "");
+  return /^(?:how are you(?: doing)?|how is it going|hows it going|whats up|thank you|thanks|thanks a lot|i am fine|im fine|i am good|im good|i am doing well|im doing well|doing well|doing great|not bad|all good)$/i.test(text);
 }
 
 export function isGreetingMessage(value) {
