@@ -1399,7 +1399,19 @@ Deno.serve(async (req: Request) => {
       })
     });
     if (cloudflareReply.used) {
-      reply = cloudflareReply.reply;
+      const protectedBusinessIntents = new Set([
+        "investment", "investment_explanation", "investment_information", "investment_payment_restricted",
+        "payment_method_selected", "payment_requires_approved_order", "payment_method_unavailable",
+        "payment_method_confirmation", "purchase_ready", "purchase_collecting_details",
+        "customer_details_progress", "vehicle_order_submitted", "proforma_invoice_created",
+        "vehicle_price", "vehicle_information", "vehicle_specs", "unverified_vehicle_information",
+        "cart_updated", "store_product_price"
+      ]);
+      // The model may help with open-ended language, but it must not rewrite
+      // deterministic money, order, payment, investment or verified price text.
+      if (!protectedBusinessIntents.has(intent) || !cleanString(reply, 3000)) {
+        reply = cloudflareReply.reply;
+      }
       const nextMemory = {
         ...memoryNext,
         preferred_language: cloudflareReply.language,
