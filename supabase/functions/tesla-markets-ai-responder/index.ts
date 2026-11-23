@@ -474,9 +474,10 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     if (conversationError) throw conversationError;
     if (!conversation || conversation.customer_id !== user.id) return json({ error: "Conversation not found." }, 404, headers);
-    // Preserve the explicit human-takeover state: a paused conversation remains under management ownership.
-    if (conversation.responder_paused || conversation.status === "closed") {
-      return json({ ok: true, skipped: true, reason: "management_takeover_or_closed" }, 200, headers);
+    // Closed conversations remain closed. Payment-proof processing is checked
+    // separately below because it is a secure order action, not an AI reply.
+    if (conversation.status === "closed") {
+      return json({ ok: true, skipped: true, reason: "conversation_closed" }, 200, headers);
     }
 
     const { data: customerMessage, error: messageError } = await admin
@@ -534,6 +535,11 @@ Deno.serve(async (req: Request) => {
       }
       await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card payment proof submitted", body: "Order " + linkedOrder.order_reference + " · " + paymentReference + " · Review the uploaded image in the payment record and customer conversation.", entity_type: "conversation", entity_id: conversationId, is_read: false });
       return json({ ok: true, payment_reference: paymentReference, status: "pending_verification" }, 200, headers);
+    }
+    // Human takeover blocks AI text replies, but the dedicated payment-proof
+    // handler above remains available for an already-authorized vehicle order.
+    if (conversation.responder_paused) {
+      return json({ ok: true, skipped: true, reason: "management_takeover_or_closed" }, 200, headers);
     }
     if (!cleanString(customerMessage.body, 4000)) return json({ ok: true, skipped: true, reason: "attachment_only" }, 200, headers);
 
