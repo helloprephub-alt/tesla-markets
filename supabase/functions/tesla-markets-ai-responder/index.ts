@@ -499,6 +499,12 @@ Deno.serve(async (req: Request) => {
     }
     const savedPaymentLockAtMessage = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
     if (customerMessage.attachment_path && savedPaymentLockAtMessage?.kind === "vehicle" && savedPaymentLockAtMessage?.order_id && savedPaymentLockAtMessage?.method === "Gift Card" && ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockAtMessage.status || "pending"))) {
+      const { data: giftCardSettingsRow, error: giftCardSettingsError } = await admin.from("site_settings").select("value").eq("key", "payment_account_details").maybeSingle();
+      if (giftCardSettingsError) throw giftCardSettingsError;
+      if (giftCardSettingsRow?.value?.giftCardEnabled !== true) {
+        await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card proof received while disabled", body: "A gift-card image was uploaded after the gift-card option was disabled. Review manually; do not treat it as a payment.", entity_type: "conversation", entity_id: conversationId, is_read: false });
+        return json({ ok: true, escalated: true, reason: "gift_card_disabled" }, 200, headers);
+      }
       const mime = cleanString(customerMessage.attachment_mime, 100).toLowerCase();
       if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mime)) return json({ error: "Gift-card proof must be a JPG, PNG, WEBP or GIF image." }, 400, headers);
       const { data: existingProof } = await admin.from("business_payments").select("id,payment_reference").eq("proof_path", customerMessage.attachment_path).maybeSingle();
@@ -687,8 +693,8 @@ Deno.serve(async (req: Request) => {
       { key: "Chime", label: "Chime" }
     ].filter((method:any) => {
       const details = paymentAccountSettings[method.key];
-      return !!details && typeof details === "object" &&
-        Object.values(details).some((value:any) => typeof value === "string" && value.trim().length > 0);
+      return !!details && typeof details === "object" && details.enabled !== false &&
+        [details.email, details.phone, details.username].some((value:any) => typeof value === "string" && value.trim().length > 0);
     }).map((method:any) => method.label);
     if (paymentAccountSettings.giftCardEnabled === true) configuredPaymentMethods.push("Gift Card");
 
