@@ -812,28 +812,8 @@ Deno.serve(async (req: Request) => {
         reply=`The Christmas offer is active for ${matchedStoreProduct.name}. Original price: ${formatUsd(original)}. Christmas discount: ${percent}% (you save ${formatUsd(original-sale)}). Your promotional price: ${formatUsd(sale)}. Stock, options and delivery are confirmed during checkout.`;
       }
     }
-    if (local.intent === "investment_explanation") {
-      try {
-        const quoteResponse = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/TSLA?range=1d&interval=1m", { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0 TeslaMarketsEnquiry/1.0" }, signal: AbortSignal.timeout(6000) });
-        if (!quoteResponse.ok) throw new Error("Market quote unavailable");
-        const quotePayload = await quoteResponse.json();
-        const quote = quotePayload?.chart?.result?.[0];
-        const price = Number(quote?.meta?.regularMarketPrice);
-        const quoteTime = Number(quote?.meta?.regularMarketTime);
-        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(quoteTime)) throw new Error("Invalid market quote");
-        const amountMatch = customerMessage.body.match(/(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)|\b([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?:usd|dollars?)\b/i);
-        const amount = amountMatch ? Number((amountMatch[1] || amountMatch[2]).replace(/,/g, "")) : 0;
-        const quoteDate = new Date(quoteTime * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC");
-        const shareCount = amount > 0 ? amount / price : 0;
-        reply = "Tesla (NASDAQ: TSLA) designs and manufactures electric vehicles, energy generation and storage products, and related software and services. A share represents a small ownership interest in Tesla; its market price moves with trading and company and market developments.\n\nLatest reported company performance (Q3 2026, reported October 21, 2026): revenue was $28.046 billion and GAAP net income attributable to common stockholders was $787 million; diluted GAAP earnings per share were $0.22. For the first nine months of 2026, revenue was $78.669 billion and GAAP net income attributable to common stockholders was $2.378 billion. These are Tesla company results, not a return earned by an individual shareholder. Source: Tesla Q3 2026 financial results.\\n\\nLatest available TSLA quote: $" + price.toFixed(2) + " USD per share (quote timestamp: " + quoteDate + "; source: Yahoo Finance market data).";
-        if (amount > 0) reply += "\n\nAt $" + amount.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " USD, the estimate is " + shareCount.toFixed(4) + " shares before brokerage fees and other charges. Fractional shares depend on the broker. This is an estimate, not a trade or guaranteed return.";
-        else reply += "\n\nIf you tell me the amount you are considering, I can estimate how many shares it represents at this quote.";
-        reply += "\n\nTesla Markets collects investment enquiries; this chat does not execute share purchases. Management must confirm any available arrangement before an investment is made.";
-      } catch (_quoteError) {
-        reply = "";
-        local.requiresManagement = true;
-      }
-    }
+    // Investment education stays informational. Do not request a proposed
+    // investment amount or estimate a share purchase through Tesla Markets.
     intent = local.intent;
     requiresManagement = local.requiresManagement;
     extractedDelivery = local.delivery;
