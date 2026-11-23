@@ -1033,75 +1033,46 @@ Deno.serve(async (req: Request) => {
       const orderDiscount = Number(orderPromo?.discountPercent||0);
       const finalAmount = Number.isFinite(baseAmount)&&baseAmount>0&&orderDiscount>=25&&orderDiscount<=70 ? discountedUsd(baseAmount,orderDiscount) : baseAmount;
       if (Number.isFinite(finalAmount) && finalAmount > 0) {
-        const { data: existingOrder, error: existingOrderError } = await admin.from("business_orders")
-          .select("id,order_reference,agreed_amount,item_description,status,payment_url")
-          .eq("conversation_id", conversationId)
-          .neq("status","cancelled")
-          .order("created_at",{ascending:false})
-          .limit(1)
+        const variantName = cleanString(selectedVariant?.name, 100) || "Standard configuration";
+        const { data: orderResult, error: orderResultError } = await admin.rpc("create_or_update_vehicle_draft_order", {
+          p_conversation_id: conversationId,
+          p_customer_id: user.id,
+          p_vehicle_model: cleanString(selectedVehicle.name, 100),
+          p_selected_variant: variantName,
+          p_amount: finalAmount,
+          p_original_amount: baseAmount,
+          p_discount_percent: orderDiscount || 0,
+          p_delivery_details: mergedDetails
+        });
+        if (orderResultError) throw orderResultError;
+        if (!orderResult?.id || !orderResult?.order_reference) {
+          throw new Error("The vehicle draft order could not be verified after submission.");
+        }
+        proformaInvoice = {
+          reference: String(orderResult.order_reference),
+          amount: Number(orderResult.agreed_amount),
+          variant: String(orderResult.item_description),
+          payment_url: typeof orderResult.payment_url === "string" ? orderResult.payment_url : null
+        };
+        const { data: existingNotice, error: noticeReadError } = await admin.from("admin_notifications")
+          .select("id")
+          .eq("type", "proforma_invoice_created")
+          .eq("entity_id", conversationId)
+          .ilike("body", "%" + proformaInvoice.reference + "%")
           .maybeSingle();
-        if (existingOrderError) throw existingOrderError;
-        if (existingOrder) {
-          proformaInvoice = {
-            reference: existingOrder.order_reference,
-            amount: Number(existingOrder.agreed_amount),
-            variant: existingOrder.item_description,
-            payment_url: existingOrder.payment_url || null
-          };
-        } else {
-          const { error: profileUpsertError } = await admin.from("customer_profiles").upsert({
-            id: user.id,
-            display_name: mergedDetails.full_name,
-            email: mergedDetails.email || user.email || null,
-            phone: mergedDetails.phone,
-            is_admin: false,
-            updated_at: new Date().toISOString()
-          },{onConflict:"id"});
-          if (profileUpsertError) throw profileUpsertError;
-
-          const { data: vehicleEnquiry, error: enquiryError } = await admin.from("vehicle_enquiries").insert({
-            customer_id: user.id,
-            vehicle_model: selectedVehicle.name,
-            configuration: {
-              selected_variant: cleanString(selectedVariant?.name,100),
-              selected_price_usd: finalAmount,
-              original_price_usd: baseAmount,
-              christmas_discount_percent: orderDiscount || null,
-              delivery_details: mergedDetails
-            },
-            customer_note: "Customer completed vehicle and delivery details through the Tesla Markets independent chat responder.",
-            status: "new"
-          }).select("id").single();
-          if (enquiryError) throw enquiryError;
-
-          const orderReference = "TM-PRO-" + new Date().toISOString().slice(0,10).replace(/-/g,"") + "-" + crypto.randomUUID().slice(0,6).toUpperCase();
-          const itemDescription = selectedVehicle.name + " · " + cleanString(selectedVariant?.name,100);
-          const { data: order, error: orderError } = await admin.from("business_orders").insert({
-            order_reference: orderReference,
-            customer_id: user.id,
-            conversation_id: conversationId,
-            vehicle_enquiry_id: vehicleEnquiry.id,
-            item_type: "vehicle",
-            item_description: itemDescription,
-            currency: "USD",
-            agreed_amount: finalAmount,
-            status: "draft",
-            internal_notes: "Draft pro forma. Management must confirm vehicle availability, final quotation, taxes, delivery charges and approved payment method before requesting payment."
-          }).select("id,order_reference,agreed_amount,item_description,status").single();
-          if (orderError) throw orderError;
-          proformaInvoice = {
-            reference: order.order_reference,
-            amount: Number(order.agreed_amount),
-            variant: order.item_description
-          };
-          await admin.from("admin_notifications").insert({
+        if (noticeReadError) console.error("Could not check the vehicle-order notification:", noticeReadError.message);
+        if (!existingNotice) {
+          const { error: noticeInsertError } = await admin.from("admin_notifications").insert({
             type: "proforma_invoice_created",
-            title: "Vehicle pro forma invoice ready",
-            body: "A draft vehicle order is awaiting payment-method confirmation. Reference: " + orderReference + ". Review customer delivery details and confirm the final quotation.",
+            title: orderResult.created_new ? "Vehicle pro forma invoice ready" : "Vehicle draft order updated",
+            body: (orderResult.created_new
+              ? "A new draft vehicle order is awaiting management review. Reference: "
+              : "A draft vehicle order was updated and is awaiting management review. Reference: ") + proformaInvoice.reference + ". Confirm availability, final quotation, taxes and delivery before enabling payment.",
             entity_type: "conversation",
             entity_id: conversationId,
             is_read: false
           });
+          if (noticeInsertError) console.error("Could not notify management about the vehicle draft order:", noticeInsertError.message);
         }
       } else {
         intent = "proforma_price_requires_confirmation";
