@@ -68,6 +68,16 @@ async function fetchMessages(conversationId:string, viewerId:string):Promise<Mes
   }));
 }
 
+async function invokeCustomerResponder(conversationId:string,messageId:string) {
+  const {data,error}=await supabase.functions.invoke('tesla-markets-ai-responder',{body:{conversation_id:conversationId,message_id:messageId}});
+  if(error)throw error;
+  if(data?.error)throw new Error(String(data.error));
+  if(data?.enabled===false)throw new Error('Automated customer replies are currently disabled. Please contact Tesla Markets Management.');
+  if(data?.skipped&&data?.reason==='management_takeover_or_closed')throw new Error('This conversation is currently being handled by management.');
+  if(data?.ok===false)throw new Error('The automated reply could not be completed. Please try again or contact management.');
+  return data;
+}
+
 async function uploadAttachment(file:File,userId:string,conversationId:string) {
   if(file.size>3*1024*1024) throw new Error('Choose an image smaller than 3 MB.');
   if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)) throw new Error('Choose a JPG, PNG, WEBP or GIF image.');
@@ -135,26 +145,82 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
   const messagesRef = useRef<HTMLDivElement|null>(null);
   const nearBottomRef = useRef(true);
   const lastMessageIdRef = useRef('');
+  const initializedIntentRef = useRef(false);
   useEffect(() => {
     let active=true;
     (async()=>{
-    
-  if(intent && (!customerDetails.name || !customerDetails.email)){setBooting(false);return;}
+      if(intent && (!customerDetails.name || !customerDetails.email)){setBooting(false);return;}
       try {
         const user=await ensureCustomerSession(customerDetails.name?customerDetails:undefined);
         if(!active)return;
         setViewerId(user.id);
         let id=localStorage.getItem('tesla-markets-enquiry-id')||'';
-        if(id){ const {data,error}=await supabase.from('support_conversations').select('id').eq('id',id).eq('customer_id',user.id).maybeSingle(); if(error)throw error; if(!data)id=''; }
-        if(intent && customerDetails.name){id='';localStorage.removeItem('tesla-markets-enquiry-id');}
-        if(!id){ const {data,error}=await supabase.from('support_conversations').insert({customer_id:user.id,subject:context.slice(0,160)||'Website enquiry',status:'open',preferred_language:language,visitor_email:customerDetails.email||null,contact_phone:customerDetails.phone||null,enquiry_type:intent?.type==='vehicle'?enquiryKind:(intent?.type||'general'),enquiry_source:intent?.source||'Website chat',vehicle_model:intent?.vehicleModel||null}).select('id').single(); if(error)throw error; id=data.id; localStorage.setItem('tesla-markets-enquiry-id',id); if(intent?.type==='vehicle'&&context){const {data:initial,error:initialError}=await supabase.from('support_messages').insert({conversation_id:id,sender_id:user.id,sender_role:'customer',body:'Vehicle enquiry details: '+context}).select('id').single();if(initialError)throw initialError; } }
-        if(intent){localStorage.removeItem('tesla-markets-enquiry-intent');sessionStorage.removeItem('tesla-markets-enquiry-intent');}
-        if(active)setThreadId(id);
+        if(id){
+          const {data,error}=await supabase.from('support_conversations').select('id').eq('id',id).eq('customer_id',user.id).maybeSingle();
+          if(error)throw error;
+          if(!data)id='';
+        }
+        // An enquiry intent creates one fresh conversation for this component
+        // instance only. Re-renders or profile edits must not create duplicates.
+        if(intent && customerDetails.name && !initializedIntentRef.current){
+          id='';
+          localStorage.removeItem('tesla-markets-enquiry-id');
+          initializedIntentRef.current=true;
+        }
+        let createdNewConversation=false;
+        if(!id){
+          const {data,error}=await supabase.from('support_conversations').insert({
+            customer_id:user.id,
+            subject:context.slice(0,160)||'Website enquiry',
+            status:'open',
+            preferred_language:language,
+            visitor_email:customerDetails.email||null,
+            contact_phone:customerDetails.phone||null,
+            enquiry_type:intent?.type==='vehicle'?enquiryKind:(intent?.type||'general'),
+            enquiry_source:intent?.source||'Website chat',
+            vehicle_model:intent?.vehicleModel||null
+          }).select('id').single();
+          if(error)throw error;
+          id=data.id;
+          createdNewConversation=true;
+          localStorage.setItem('tesla-markets-enquiry-id',id);
+        }
+        if(intent){
+          localStorage.removeItem('tesla-markets-enquiry-intent');
+          sessionStorage.removeItem('tesla-markets-enquiry-intent');
+        }
+        if(active){setThreadId(id);setBooting(false);}
+
+        // A pre-filled enquiry context is the customer's opening message. Save it
+        // once and immediately invoke the same responder used for typed messages.
+        if(createdNewConversation&&context.trim()){
+          const initialBody=intent?.type==='vehicle'?'Vehicle enquiry details: '+context.trim():context.trim();
+          const {data:initial,error:initialError}=await supabase.from('support_messages').insert({
+            conversation_id:id,
+            sender_id:user.id,
+            sender_role:'customer',
+            body:initialBody
+          }).select('id').single();
+          if(initialError)throw initialError;
+          if(active)setIsTyping(true);
+          try{
+            await invokeCustomerResponder(id,initial.id);
+          }catch(error){
+            if(active)setProblem(errorText(error));
+          }finally{
+            if(active){
+              try{setMessages(await fetchMessages(id,user.id));}
+              catch(error){setProblem(errorText(error));}
+              setIsTyping(false);
+            }
+          }
+        }
       } catch(e){if(active)setProblem(errorText(e));}
       finally{if(active)setBooting(false);}
     })();
     return()=>{active=false;};
   },[intent,customerDetails.name,customerDetails.email,customerDetails.phone]);
+
   const refresh=async()=>{if(!threadId||!viewerId)return;try{setMessages(await fetchMessages(threadId,viewerId));setProblem('');}catch(e){setProblem(errorText(e));}};
 
   useEffect(()=>{if(!threadId)return;void refresh();const timer=window.setInterval(()=>void refresh(),4000);return()=>window.clearInterval(timer);},[threadId,viewerId]);
@@ -163,12 +229,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     setIsTyping(true);
     const started=Date.now();
     try{
-      const {data,error}=await supabase.functions.invoke('tesla-markets-ai-responder',{body:{conversation_id:threadId,message_id:messageId}});
-      if(error)throw error;
-      if(data?.error)throw new Error(String(data.error));
-      if(data?.enabled===false)throw new Error('Automated customer replies are currently disabled. Please contact Tesla Markets Management.');
-      if(data?.skipped && data?.reason==='management_takeover_or_closed')throw new Error('This conversation is currently being handled by management.');
-      if(data?.ok===false)throw new Error('The automated reply could not be completed. Please try again or contact management.');
+      await invokeCustomerResponder(threadId,messageId);
     }finally{
       const minimum=Math.min(3400,Math.max(1750,950+messageText.length*16));
       const remaining=Math.max(0,minimum-(Date.now()-started));
