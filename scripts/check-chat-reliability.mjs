@@ -23,6 +23,7 @@ assert.equal(isSmallTalkMessage("How are you doing?"), true);
 assert.equal(isGreetingMessage("Hi"), true);
 assert.equal(isVehicleFollowUpMessage("What is the price?"), true);
 assert.equal(isVehicleFollowUpMessage("How are you doing?"), false);
+assert.equal(isVehicleFollowUpMessage("I like it"), false, "A casual mention of it must not inherit a stale vehicle.");
 
 assert.doesNotMatch(chat, /investmentCheckout|submitInvestmentCheckout/, "Investment enquiries must not open a checkout form.");
 assert.match(responder, /looksLikePersonName\(nameMatch\[1\]\)/, "Explicit name candidates must pass name validation.");
@@ -40,6 +41,9 @@ assert.match(responder, /ai_response_failed/, "Failed AI messages must create a 
 assert.match(takeoverMigration, /FOR UPDATE[\s\S]*ai_reply_blocked_by_human_takeover/, "The database must prevent an in-flight AI reply after takeover.");
 assert.match(chat, /HUMAN TAKEOVER · Resume AI/, "The admin inbox must show an explicit human-takeover state.");
 assert.match(chat, /Persist human takeover before sending the first management reply/, "Management takeover must be persisted before a human reply is sent.");
+assert.match(chat, /const {error:pauseError}=await supabase\.from\('support_conversations'\).*?responder_paused:true/s, "Manual management actions must pause the AI.");
+assert.match(takeoverMigration, /SECURITY INVOKER/, "The takeover trigger must respect the caller RLS context.");
+assert.doesNotMatch(takeoverMigration, /SECURITY DEFINER/, "The takeover trigger must not add a public SECURITY DEFINER function.");
 assert.match(responder, /giftCardSettingsRow\?\.value\?\.giftCardEnabled !== true/, "Gift-card proof must be rejected or escalated if the method is disabled.");
 assert.doesNotMatch(responder, /Present the configured payment choices immediately after a vehicle pro forma/, "AI must not expose payment methods before management approval.");
 assert.match(chat, /APPROVED ORDER · /, "Management payment-method cards must identify the approved order.");
