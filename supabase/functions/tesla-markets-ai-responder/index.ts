@@ -758,6 +758,14 @@ Deno.serve(async (req: Request) => {
     if (approvedKnowledgeError) throw approvedKnowledgeError;
     const verifiedKnowledge = (approvedKnowledgeRows || [])
       .filter((row:any) => ["management_approved","verified_official"].includes(String(row.verification_status||"")));
+    // This legacy FAQ still describes the retired investment amount and payment
+    // collection workflow. Never pass it to the model; only current official
+    // investor information and the management-approved financial-claims policy
+    // may be used as investment context.
+    const safeKnowledgeForModel = verifiedKnowledge.filter((row:any) =>
+      !(String(row.category || "") === "investment_information" &&
+        /Tesla Markets Investment Information & Customer FAQ/i.test(String(row.title || "")))
+    );
     const investmentKnowledge = verifiedKnowledge
       .filter((row:any) => String(row.category||"") === "investment_information")
       .map((row:any) => String(row.content || ""))
@@ -1380,7 +1388,7 @@ Deno.serve(async (req: Request) => {
           name: row.name, product_id: row.product_id, original_price: row.original_price,
           discount_percent: row.discount_percent
         })).slice(0, 60),
-        approved_documents: verifiedKnowledge.map((row:any) => ({
+        approved_documents: safeKnowledgeForModel.map((row:any) => ({
           title: row.title, category: row.category, content: String(row.content || "").slice(0, 1200),
           source_url: row.source_url, verification_status: row.verification_status
         })).slice(0, 20),
