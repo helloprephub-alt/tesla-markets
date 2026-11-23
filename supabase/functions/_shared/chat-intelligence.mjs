@@ -28,6 +28,12 @@ export function isKnownCountry(value) {
   return knownCountryNames.has(normalize(value).trim().replace(/[.,]/g, ""));
 }
 
+export function isValidPhoneNumber(value) {
+  const candidate = String(value ?? "").trim();
+  const digits = candidate.replace(/\D/g, "");
+  return /^\+?[0-9][0-9\s().-]{6,18}[0-9]$/.test(candidate) && digits.length >= 8 && digits.length <= 15;
+}
+
 export function looksLikeCity(value) {
   const candidate = String(value ?? "").trim().replace(/[.!?]+$/g, "");
   const words = candidate.split(/\s+/);
