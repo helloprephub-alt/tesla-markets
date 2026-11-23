@@ -397,15 +397,17 @@ export function AdminInbox() {
     if(!selected||!user||busy||!paymentAccountName.trim()||!paymentAccountDetails.trim())return;
     setBusy(true);setProblem('');
     try{
-      const [{data:order,error:orderError},{data:settingsRow,error:settingsError},{data:conversation,error:conversationError}]=await Promise.all([
-        supabase.from('business_orders').select('id,order_reference,agreed_amount,item_description,status').eq('conversation_id',selected).eq('status','awaiting_payment').order('created_at',{ascending:false}).limit(1).maybeSingle(),
+      const [{data:orders,error:orderError},{data:settingsRow,error:settingsError},{data:conversation,error:conversationError}]=await Promise.all([
+        supabase.from('business_orders').select('id,order_reference,agreed_amount,item_description,status').eq('conversation_id',selected).eq('status','awaiting_payment').order('created_at',{ascending:false}).limit(2),
         supabase.from('site_settings').select('value').eq('key','payment_account_details').maybeSingle(),
         supabase.from('support_conversations').select('delivery_details').eq('id',selected).maybeSingle()
       ]);
       if(orderError)throw orderError;
       if(settingsError)throw settingsError;
       if(conversationError)throw conversationError;
-      if(!order||!Number.isFinite(Number(order.agreed_amount))||Number(order.agreed_amount)<=0)throw new Error('No management-approved vehicle order is awaiting payment in this conversation.');
+      if((orders||[]).length!==1)throw new Error((orders||[]).length===0?'No management-approved vehicle order is awaiting payment in this conversation.':'More than one vehicle order is awaiting payment. Please handle one order at a time so payment instructions cannot be attached to the wrong vehicle.');
+      const order=orders[0];
+      if(!Number.isFinite(Number(order.agreed_amount))||Number(order.agreed_amount)<=0)throw new Error('The approved vehicle order has an invalid amount.');
       const settings=settingsRow?.value&&typeof settingsRow.value==='object'?settingsRow.value:{};
       const saved=settings[paymentAccountMethod]&&typeof settings[paymentAccountMethod]==='object'?settings[paymentAccountMethod]:{};
       const savedValues=[saved.email,saved.phone,saved.username].filter((value:any)=>typeof value==='string'&&value.trim());
@@ -450,13 +452,14 @@ export function AdminInbox() {
     if(!selected||!user||busy)return;
     setBusy(true);setProblem('');
     try{
-      const [{data:order,error:orderError},{data:settingsRow,error:settingsError}]=await Promise.all([
-        supabase.from('business_orders').select('id,order_reference,agreed_amount,item_description,status').eq('conversation_id',selected).eq('status','awaiting_payment').order('created_at',{ascending:false}).limit(1).maybeSingle(),
+      const [{data:orders,error:orderError},{data:settingsRow,error:settingsError}]=await Promise.all([
+        supabase.from('business_orders').select('id,order_reference,agreed_amount,item_description,status').eq('conversation_id',selected).eq('status','awaiting_payment').order('created_at',{ascending:false}).limit(2),
         supabase.from('site_settings').select('value').eq('key','payment_account_details').maybeSingle()
       ]);
       if(orderError)throw orderError;
       if(settingsError)throw settingsError;
-      if(!order)throw new Error('Approve the final quotation and set the order to awaiting payment before sending payment methods.');
+      if((orders||[]).length!==1)throw new Error((orders||[]).length===0?'Approve the final quotation and set the order to awaiting payment before sending payment methods.':'More than one vehicle order is awaiting payment. Please handle one order at a time so payment methods cannot be attached to the wrong vehicle.');
+      const order=orders[0];
       const settings=settingsRow?.value&&typeof settingsRow.value==='object'?settingsRow.value:{};
       const methods=['PayPal','Zelle','Chime','Apple Pay'].filter(method=>{
         const details=settings[method]&&typeof settings[method]==='object'?settings[method]:{};
