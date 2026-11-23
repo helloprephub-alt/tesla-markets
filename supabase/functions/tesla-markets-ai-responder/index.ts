@@ -491,49 +491,133 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Customer message not found." }, 404, headers);
     }
     const savedPaymentLockAtMessage = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
-    if (customerMessage.attachment_path && savedPaymentLockAtMessage?.kind === "vehicle" && savedPaymentLockAtMessage?.order_id && savedPaymentLockAtMessage?.method === "Gift Card" && ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockAtMessage.status || "pending"))) {
-      const { data: giftCardSettingsRow, error: giftCardSettingsError } = await admin.from("site_settings").select("value").eq("key", "payment_account_details").maybeSingle();
-      if (giftCardSettingsError) throw giftCardSettingsError;
-      if (giftCardSettingsRow?.value?.giftCardEnabled !== true) {
-        await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card proof received while disabled", body: "A gift-card image was uploaded after the gift-card option was disabled. Review manually; do not treat it as a payment.", entity_type: "conversation", entity_id: conversationId, is_read: false });
-        return json({ ok: true, escalated: true, reason: "gift_card_disabled" }, 200, headers);
+    const proofMethod = cleanString(savedPaymentLockAtMessage?.method, 40);
+    const proofMethodMap: Record<string,string> = {
+      "PayPal": "paypal",
+      "Zelle": "zelle",
+      "Chime": "chime",
+      "Apple Pay": "apple_pay",
+      "Gift Card": "gift_card"
+    };
+    if (customerMessage.attachment_path &&
+        savedPaymentLockAtMessage?.kind === "vehicle" &&
+        savedPaymentLockAtMessage?.order_id &&
+        proofMethodMap[proofMethod] &&
+        ["awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockAtMessage.status || ""))) {
+      const { data: paymentSettingsRow, error: paymentSettingsError } = await admin.from("site_settings")
+        .select("value").eq("key", "payment_account_details").maybeSingle();
+      if (paymentSettingsError) throw paymentSettingsError;
+      const paymentSettings = paymentSettingsRow?.value && typeof paymentSettingsRow.value === "object" ? paymentSettingsRow.value : {};
+      const selectedMethodSettings = paymentSettings[proofMethod] && typeof paymentSettings[proofMethod] === "object" ? paymentSettings[proofMethod] : {};
+      const methodEnabled = proofMethod === "Gift Card"
+        ? paymentSettings.giftCardEnabled === true
+        : selectedMethodSettings.enabled !== false &&
+          [selectedMethodSettings.email, selectedMethodSettings.phone, selectedMethodSettings.username]
+            .some((value:any) => typeof value === "string" && value.trim().length > 0);
+      if (!methodEnabled) {
+        await admin.from("admin_notifications").insert({
+          type: "payment_proof_received",
+          title: "Payment evidence needs manual review",
+          body: ("A customer uploaded evidence for " + proofMethod + " after the payment method was disabled. Do not mark the order paid.").slice(0, 240),
+          entity_type: "conversation",
+          entity_id: conversationId,
+          is_read: false
+        });
+        return json({ ok: true, escalated: true, reason: "payment_method_disabled" }, 200, headers);
       }
       const mime = cleanString(customerMessage.attachment_mime, 100).toLowerCase();
-      if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mime)) return json({ error: "Gift-card proof must be a JPG, PNG, WEBP or GIF image." }, 400, headers);
-      const { data: existingProof } = await admin.from("business_payments").select("id,payment_reference").eq("proof_path", customerMessage.attachment_path).maybeSingle();
+      if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mime)) {
+        return json({ error: "Payment evidence must be a JPG, PNG, WEBP or GIF image." }, 400, headers);
+      }
+      const { data: existingProof, error: existingProofError } = await admin.from("business_payments")
+        .select("id,payment_reference")
+        .eq("proof_path", customerMessage.attachment_path)
+        .maybeSingle();
+      if (existingProofError) throw existingProofError;
       if (existingProof) return json({ ok: true, duplicate: true, payment_reference: existingProof.payment_reference }, 200, headers);
-      const { data: linkedOrder, error: linkedOrderError } = await admin.from("business_orders").select("id,order_reference,agreed_amount,currency,item_description").eq("id", savedPaymentLockAtMessage.order_id).eq("conversation_id", conversationId).eq("customer_id", user.id).eq("status", "awaiting_payment").maybeSingle();
+
+      const { data: linkedOrder, error: linkedOrderError } = await admin.from("business_orders")
+        .select("id,order_reference,agreed_amount,currency,item_description")
+        .eq("id", savedPaymentLockAtMessage.order_id)
+        .eq("conversation_id", conversationId)
+        .eq("customer_id", user.id)
+        .eq("status", "awaiting_payment")
+        .maybeSingle();
       if (linkedOrderError) throw linkedOrderError;
       if (!linkedOrder) {
-        await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card proof needs order matching", body: "A customer uploaded gift-card proof, but no active business order could be linked automatically. Review the conversation.", entity_type: "conversation", entity_id: conversationId, is_read: false });
+        await admin.from("admin_notifications").insert({
+          type: "payment_proof_received",
+          title: "Payment evidence needs order matching",
+          body: "A customer uploaded payment evidence, but no matching active approved order could be found. Review the conversation manually.",
+          entity_type: "conversation",
+          entity_id: conversationId,
+          is_read: false
+        });
         return json({ ok: true, escalated: true, reason: "order_link_required" }, 200, headers);
       }
-      const paymentReference = "TM-GC-" + crypto.randomUUID().slice(0, 8).toUpperCase();
+
+      const paymentReference = "TM-PAY-" + crypto.randomUUID().slice(0, 8).toUpperCase();
       const { data: paymentRow, error: paymentInsertError } = await admin.from("business_payments").insert({
-        payment_reference: paymentReference, order_id: linkedOrder.id, customer_id: user.id,
-        amount: Number(linkedOrder.agreed_amount), currency: cleanString(linkedOrder.currency, 8) || "USD",
-        method: "gift_card", proof_path: customerMessage.attachment_path, status: "pending",
-        notes: "Customer-submitted gift-card proof image. Administrator verification required; image upload is not proof of successful redemption."
+        payment_reference: paymentReference,
+        order_id: linkedOrder.id,
+        customer_id: user.id,
+        amount: Number(linkedOrder.agreed_amount),
+        currency: cleanString(linkedOrder.currency, 8) || "USD",
+        method: proofMethodMap[proofMethod],
+        proof_path: customerMessage.attachment_path,
+        status: "pending",
+        notes: "Customer-submitted payment evidence for the exact approved order. Administrator verification required; upload is not proof of successful payment."
       }).select("id,payment_reference").single();
       if (paymentInsertError) throw paymentInsertError;
+
       const updatedDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
-      const nextLock = { ...savedPaymentLockAtMessage, status: "proof_submitted", payment_record_id: paymentRow.id, payment_reference: paymentReference, proof_submitted_at: new Date().toISOString() };
-      const { error: lockUpdateError } = await admin.from("support_conversations").update({ delivery_details: { ...updatedDetails, payment_lock: nextLock }, updated_at: new Date().toISOString() }).eq("id", conversationId);
+      const nextLock = {
+        ...savedPaymentLockAtMessage,
+        status: "proof_submitted",
+        payment_record_id: paymentRow.id,
+        payment_reference: paymentReference,
+        proof_submitted_at: new Date().toISOString()
+      };
+      const { error: lockUpdateError } = await admin.from("support_conversations")
+        .update({ delivery_details: { ...updatedDetails, payment_lock: nextLock }, updated_at: new Date().toISOString() })
+        .eq("id", conversationId);
       if (lockUpdateError) throw lockUpdateError;
-      const { data: adminSender } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
+
+      const { data: adminSender } = await admin.from("customer_profiles")
+        .select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (adminSender?.id) {
-        await admin.from("support_messages").insert({
-          conversation_id: conversationId, sender_id: adminSender.id, sender_role: "management",
-          body: "Your gift-card proof has been received and is awaiting management verification.",
-          automated_type: "ai_response", message_type: "payment_receipt",
-          structured_data: { title: "Gift-card proof received", subtitle: "PENDING MANAGEMENT VERIFICATION", status: "Under Review",
-            fields: [{ label: "Payment reference", value: paymentReference }, { label: "Order reference", value: linkedOrder.order_reference }, { label: "Payment method", value: "Gift Card" }, { label: "Amount", value: String(linkedOrder.agreed_amount) + " " + (linkedOrder.currency || "USD") }],
-            note: "The uploaded image has been attached to the payment record. Payment is not confirmed until management verifies it.",
-            source_message_id: messageId
+        const { error: receiptMessageError } = await admin.from("support_messages").insert({
+          conversation_id: conversationId,
+          sender_id: adminSender.id,
+          sender_role: "management",
+          body: "Your " + proofMethod + " payment evidence has been received and is awaiting management verification.",
+          automated_type: "ai_response",
+          message_type: "payment_receipt",
+          structured_data: {
+            title: "Payment evidence received",
+            subtitle: "PENDING MANAGEMENT VERIFICATION",
+            status: "Under Review",
+            fields: [
+              { label: "Payment reference", value: paymentReference },
+              { label: "Order reference", value: linkedOrder.order_reference },
+              { label: "Payment method", value: proofMethod },
+              { label: "Amount", value: String(linkedOrder.agreed_amount) + " " + (linkedOrder.currency || "USD") }
+            ],
+            note: "The uploaded image is attached to the private payment record. Payment is not confirmed until management verifies receipt."
           }
         });
+        if (receiptMessageError) console.error("Could not send payment evidence acknowledgement:", receiptMessageError.message);
       }
-      await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card payment proof submitted", body: "Order " + linkedOrder.order_reference + " · " + paymentReference + " · Review the uploaded image in the payment record and customer conversation.", entity_type: "conversation", entity_id: conversationId, is_read: false });
+
+      const { error: proofNoticeError } = await admin.from("admin_notifications").insert({
+        type: "payment_proof_received",
+        title: "Customer submitted payment evidence",
+        body: [linkedOrder.order_reference, proofMethod, paymentReference].join(" · ").slice(0, 240),
+        entity_type: "conversation",
+        entity_id: conversationId,
+        is_read: false
+      });
+      if (proofNoticeError) console.error("Could not notify management about payment evidence:", proofNoticeError.message);
       return json({ ok: true, payment_reference: paymentReference, status: "pending_verification" }, 200, headers);
     }
     // Human takeover blocks AI text replies, but the dedicated payment-proof
