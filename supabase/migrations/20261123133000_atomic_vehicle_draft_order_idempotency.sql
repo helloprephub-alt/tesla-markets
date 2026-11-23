@@ -336,6 +336,7 @@ GRANT EXECUTE ON FUNCTION public.create_or_update_vehicle_draft_order(
      FOR UPDATE;
 
     IF FOUND THEN
+      v_updated_draft := v_order.item_description IS DISTINCT FROM v_item_description OR v_order.agreed_amount IS DISTINCT FROM p_amount;
       v_enquiry_id := v_order.vehicle_enquiry_id;
       IF v_enquiry_id IS NULL THEN
         INSERT INTO public.vehicle_enquiries (
