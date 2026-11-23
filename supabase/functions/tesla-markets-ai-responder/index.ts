@@ -738,7 +738,9 @@ Deno.serve(async (req: Request) => {
     // duplicate reply protection is enforced per conversation by the DB trigger.
 
     const { data: catalogueRows, error: catalogueError } = await admin.from("vehicle_catalog")
-      .select("name,model,slug,description,price_usd,availability,images,specifications");
+      .select("name,model,slug,description,price_usd,availability,images,specifications")
+      .eq("is_published", true)
+      .eq("verification_status", "verified");
     if(catalogueError) throw catalogueError;
     const catalogue=(catalogueRows||[]).map((row:any)=>{
       const promo=SHOP_VEHICLE_PROMOS[String(row.slug||"").toLowerCase()];
