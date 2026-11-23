@@ -308,7 +308,10 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   } else if(asksIdentity){
     intent="assistant_identity";
     reply="I'm the Tesla Markets virtual assistant. I can help with general questions, vehicle enquiries, investment enquiries and the services offered by Tesla Markets.";
-  } else if(smallTalk){\n    intent="casual_conversation";\n    reply=lang==="fr"?"Je vais bien, merci ! Comment puis-je vous aider aujourd'hui ?":lang==="es"?"Estoy bien, gracias. ¿En qué puedo ayudarle hoy?":lang==="de"?"Mir geht es gut, danke! Wie kann ich Ihnen heute helfen?":"I'm doing well, thank you! How can I assist you today?";\n  } else if(asksAddAnother){
+  } else if(smallTalk){
+    intent="casual_conversation";
+    reply=lang==="fr"?"Je vais bien, merci ! Comment puis-je vous aider aujourd'hui ?":lang==="es"?"Estoy bien, gracias. ¿En qué puedo ayudarle hoy?":lang==="de"?"Mir geht es gut, danke! Wie kann ich Ihnen heute helfen?":"I'm doing well, thank you! How can I assist you today?";
+  } else if(asksAddAnother){
     intent="add_vehicle_to_order";
     const model=explicitModel ? (canonicalVehicle(explicitModel) || explicitModel) : "";
     reply=model
