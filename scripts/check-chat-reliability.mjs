@@ -13,10 +13,12 @@ const chat = read("src/ChatWorkspace.tsx");
 const admin = read("src/AdminConsole.tsx");
 const responder = read("supabase/functions/tesla-markets-ai-responder/index.ts");
 const takeoverMigration = read("supabase/migrations/20261123120000_block_ai_replies_during_human_takeover.sql");
+const orderMigration = read("supabase/migrations/20261123133000_atomic_vehicle_draft_order_idempotency.sql");
 
 assert.equal(isConversationalReply("How are you doing?"), true);
 assert.equal(looksLikePersonName("How are you doing", true), false);
-assert.equal(looksLikePersonName("I'm doing well", false), false);
+assert.equal(looksLikePersonName("I'm doing well", true), false);
+assert.equal(looksLikePersonName("Good morning", true), false);
 assert.equal(looksLikePersonName("John Smith", true), true);
 assert.equal(looksLikePersonName("john smith", true), true);
 assert.equal(isSmallTalkMessage("How are you doing?"), true);
@@ -35,6 +37,10 @@ assert.match(responder, /const investmentFlow = intent\.startsWith\("investment"
 assert.doesNotMatch(responder, /investment_enquiries|investmentAmountMatch|investmentDetailsComplete|investment_summary/, "Investment conversations must not collect personal details or create payment-like enquiry records.");
 assert.match(responder, /investment_information_only/, "Investment context must remain informational.");
 assert.match(responder, /order_id: activeOrder\.id/, "Payment locks must reference the exact approved order.");
+assert.match(responder, /create_or_update_vehicle_draft_order/, "Vehicle draft creation must use the atomic order RPC.");
+assert.doesNotMatch(responder, /from\("business_orders"\)\.insert/, "The responder must not create draft orders through non-atomic direct inserts.");
+assert.match(chat, /vehicleCheckout\.mode==='cart'\?'Add '\+vehicleCheckout\.title\+' to my cart\.'/,"Add-to-cart must not also submit a vehicle purchase.");
+assert.match(chat, /Submit purchase enquiry/, "The customer-facing purchase action must submit an enquiry, not imply immediate payment.");
 assert.match(responder, /savedPaymentLockCandidate\?\.kind === "vehicle"/, "Only vehicle-order locks may trigger payment follow-up.");
 assert.match(responder, /Compare-and-swap the exact previous status and timestamp/, "AI processing retries must use an atomic claim.");
 assert.match(responder, /ai_response_failed/, "Failed AI messages must create a management escalation.");
@@ -43,6 +49,9 @@ assert.match(chat, /HUMAN TAKEOVER · Resume AI/, "The admin inbox must show an 
 assert.match(chat, /Persist human takeover before sending the first management reply/, "Management takeover must be persisted before a human reply is sent.");
 assert.match(chat, /const {error:pauseError}=await supabase\.from\('support_conversations'\).*?responder_paused:true/s, "Manual management actions must pause the AI.");
 assert.match(takeoverMigration, /SECURITY INVOKER/, "The takeover trigger must respect the caller RLS context.");
+assert.match(orderMigration, /business_orders_active_vehicle_selection_uidx/, "Active vehicle draft orders must be unique per customer, conversation and selection.");
+assert.match(orderMigration, /create_or_update_vehicle_draft_order/, "The database must provide the atomic vehicle-order workflow.");
+assert.match(orderMigration, /REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon, authenticated/, "Only the service role may execute the privileged order RPC.");
 assert.doesNotMatch(takeoverMigration, /SECURITY DEFINER/, "The takeover trigger must not add a public SECURITY DEFINER function.");
 assert.match(responder, /giftCardSettingsRow\?\.value\?\.giftCardEnabled !== true/, "Gift-card proof must be rejected or escalated if the method is disabled.");
 assert.doesNotMatch(responder, /Present the configured payment choices immediately after a vehicle pro forma/, "AI must not expose payment methods before management approval.");
