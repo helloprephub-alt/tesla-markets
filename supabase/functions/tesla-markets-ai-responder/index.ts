@@ -824,7 +824,10 @@ Deno.serve(async (req: Request) => {
     // investment amount or estimate a share purchase through Tesla Markets.
     intent = local.intent;
     requiresManagement = local.requiresManagement;
-    extractedDelivery = local.delivery;
+    const investmentFlowMessage = incomingInvestmentTopic || intent.startsWith("investment");
+    // Investment conversations must not inherit vehicle checkout details or
+    // capture contact/delivery fields, even if a customer volunteers them.
+    extractedDelivery = investmentFlowMessage ? {} : local.delivery;
 
     // Recover customer details expressed naturally across multiple messages.
     const priorDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
@@ -839,7 +842,7 @@ Deno.serve(async (req: Request) => {
     if (mergedDetails.country && !isKnownCountry(String(mergedDetails.country))) delete mergedDetails.country;
     if (mergedDetails.city && !looksLikeCity(String(mergedDetails.city))) delete mergedDetails.city;
     if (mergedDetails.address && !looksLikeAddress(String(mergedDetails.address))) delete mergedDetails.address;
-    const selectedVehicle = vehicle;
+    const selectedVehicle = investmentFlowMessage ? null : vehicle;
     const previousSelectedVehicle = canonicalVehicle(cleanString(aiMemory.selected_vehicle || conversation.vehicle_model,100));
     const currentSelectedVehicle = canonicalVehicle(cleanString(selectedVehicle?.name || "",100));
     const requestedVehicleChanged = !!currentSelectedVehicle && !!previousSelectedVehicle && currentSelectedVehicle !== previousSelectedVehicle;
@@ -872,8 +875,8 @@ Deno.serve(async (req: Request) => {
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
     const explicitVehiclePurchase = /\b(i want to buy|i would like to buy|i'd like to buy|i want to purchase|i'd like to purchase|buy now|place an order|reserve|book this)\b/i.test(customerMessage.body) || ["purchase_ready","vehicle_purchase"].includes(intent);
-    const priorPurchaseStage = requestedVehicleChanged && !explicitVehiclePurchase ? "" : cleanString(aiMemory.conversation_stage,80);
-    const purchaseFlowActive = explicitVehiclePurchase || ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage);
+    const priorPurchaseStage = investmentFlowMessage || (requestedVehicleChanged && !explicitVehiclePurchase) ? "" : cleanString(aiMemory.conversation_stage,80);
+    const purchaseFlowActive = !investmentFlowMessage && (explicitVehiclePurchase || ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage));
     if (intent === "vehicle_variant_selected" && priorPurchaseStage === "purchase_collecting_details") {
       intent = "customer_details_progress";
       reply = deliveryComplete
@@ -1054,7 +1057,7 @@ Deno.serve(async (req: Request) => {
     // Do not suppress identical wording across different customer messages.
 
 
-    if (local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
+    if (!investmentFlowMessage && local.vehicleModel && local.vehicleModel !== conversation.vehicle_model) {
       const { error: vehicleContextError } = await admin.from("support_conversations")
         .update({ vehicle_model: local.vehicleModel, updated_at: new Date().toISOString() })
         .eq("id", conversationId);
@@ -1066,7 +1069,7 @@ Deno.serve(async (req: Request) => {
     // against the question just asked, selected car, chosen trim and collected facts.
     const memoryNext = {
       ...aiMemory,
-      selected_vehicle: selectedVehicle?.name || local.vehicleModel || null,
+      selected_vehicle: investmentFlowMessage ? null : selectedVehicle?.name || local.vehicleModel || null,
       vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
       selected_variant: mergedDetails.selected_variant || null,
       last_intent: intent,
