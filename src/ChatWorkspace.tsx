@@ -193,18 +193,34 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
 
         // A pre-filled enquiry context is the customer's opening message. Save it
         // once and immediately invoke the same responder used for typed messages.
-        if(createdNewConversation&&context.trim()){
+        if(context.trim()&&(createdNewConversation||!!intent)){
           const initialBody=intent?.type==='vehicle'?'Vehicle enquiry details: '+context.trim():context.trim();
-          const {data:initial,error:initialError}=await supabase.from('support_messages').insert({
-            conversation_id:id,
-            sender_id:user.id,
-            sender_role:'customer',
-            body:initialBody
-          }).select('id').single();
-          if(initialError)throw initialError;
+          const {data:existingInitial,error:existingInitialError}=await supabase.from('support_messages')
+            .select('id')
+            .eq('conversation_id',id)
+            .eq('sender_id',user.id)
+            .eq('sender_role','customer')
+            .eq('body',initialBody)
+            .order('created_at',{ascending:true})
+            .limit(1)
+            .maybeSingle();
+          if(existingInitialError)throw existingInitialError;
+          let initialMessageId=existingInitial?.id||'';
+          if(!initialMessageId){
+            const {data:initial,error:initialError}=await supabase.from('support_messages').insert({
+              conversation_id:id,
+              sender_id:user.id,
+              sender_role:'customer',
+              body:initialBody
+            }).select('id').single();
+            if(initialError)throw initialError;
+            initialMessageId=initial.id;
+          }
           if(active)setIsTyping(true);
           try{
-            await invokeCustomerResponder(id,initial.id);
+            // The edge function's message-id claim makes retries safe: completed
+            // opening messages are ignored; failed or interrupted runs can retry.
+            await invokeCustomerResponder(id,initialMessageId);
           }catch(error){
             if(active)setProblem(errorText(error));
           }finally{
