@@ -1402,7 +1402,7 @@ Deno.serve(async (req: Request) => {
       })
       .select("id").single();
     if (responseInsertError) {
-      if (responseInsertError.code === "PGRST116" || /duplicate_management_reply_blocked/i.test(responseInsertError.message || "")) {
+      if (responseInsertError.code === "PGRST116" || /duplicate_management_reply_blocked|ai_reply_blocked_by_human_takeover/i.test(responseInsertError.message || "")) {
         await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
         return json({ ok: true, silent: true, duplicate_reply: true, intent }, 200, headers);
       }
