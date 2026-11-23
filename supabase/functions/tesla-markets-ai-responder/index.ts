@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { isConversationalReply, looksLikePersonName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage, isKnownCountry, looksLikeCity, looksLikeAddress } from "../_shared/chat-intelligence.mjs";
+import { isConversationalReply, looksLikePersonName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage, isKnownCountry, looksLikeCity, looksLikeAddress, isValidPhoneNumber } from "../_shared/chat-intelligence.mjs";
 
 const corsHeaders = (origin: string | null) => {
   const allowed = origin === "https://teslamarketsofficial.com" ||
@@ -227,9 +227,9 @@ function languageOf(text: string): "en"|"fr"|"es"|"de" {
 function extractDelivery(text: string, pendingSlot = "") {
   const out: Record<string,string> = {};
   const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-  const phone=text.match(/\b(?:my phone(?: number)?|phone(?: number)?|telephone|mobile(?: number)?)\s*(?:is|:|=)?\s*(\+?\d[\d ()-]{7,}\d)/i);
+  const phone=text.match(/\b(?:my phone(?: number)?|phone(?: number)?|telephone|mobile(?: number)?|call me at)\s*(?:is|:|=)?\s*(\+?\d[\d ()-]{7,}\d)/i);
   if(email)out.email=email[0].slice(0,200);
-  if(phone?.[1])out.phone=phone[1].trim().slice(0,60);
+  if(phone?.[1] && isValidPhoneNumber(phone[1]))out.phone=phone[1].trim().slice(0,60);
   const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
   if(nameMatch?.[1] && looksLikePersonName(nameMatch[1],true))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+?)(?=(?:[,;\n]\s*)?(?:e-?mail|phone|telephone|country|delivery country|city|delivery city|preferred version|vehicle version|full name|name)\s*[:=-]|[\n]|$)/i);
@@ -243,7 +243,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   if(pendingSlot==="country" && !out.country && isKnownCountry(plain)) out.country=plain;
   if(pendingSlot==="city" && !out.city && looksLikeCity(plain)) out.city=plain;
   if(pendingSlot==="address" && !out.address && looksLikeAddress(plain)) out.address=plain.slice(0,240);
-  if(pendingSlot==="phone" && !out.phone && /(?:\+?\d[\d ()-]{7,}\d)/.test(plain)) out.phone=plain.match(/(?:\+?\d[\d ()-]{7,}\d)/)?.[0]?.trim().slice(0,60)||"";
+  if(pendingSlot==="phone" && !out.phone && isValidPhoneNumber(plain)) out.phone=plain.slice(0,60);
 
   if(pendingSlot==="email" && !out.email && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(plain)) out.email=plain.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]||"";
 
@@ -749,6 +749,16 @@ Deno.serve(async (req: Request) => {
     // Recover customer details expressed naturally across multiple messages.
     const priorDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
     const mergedDetails: Record<string, any> = { ...priorDetails, ...extractedDelivery };
+    const candidateEmail = cleanString(mergedDetails.email || conversation.visitor_email || user.email, 200);
+    const candidatePhone = cleanString(mergedDetails.phone || conversation.contact_phone, 60);
+    if (candidateEmail && /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(candidateEmail)) mergedDetails.email = candidateEmail;
+    else delete mergedDetails.email;
+    if (candidatePhone && isValidPhoneNumber(candidatePhone)) mergedDetails.phone = candidatePhone;
+    else delete mergedDetails.phone;
+    if (mergedDetails.full_name && !looksLikePersonName(String(mergedDetails.full_name), true)) delete mergedDetails.full_name;
+    if (mergedDetails.country && !isKnownCountry(String(mergedDetails.country))) delete mergedDetails.country;
+    if (mergedDetails.city && !looksLikeCity(String(mergedDetails.city))) delete mergedDetails.city;
+    if (mergedDetails.address && !looksLikeAddress(String(mergedDetails.address))) delete mergedDetails.address;
     const selectedVehicle = vehicle;
     const selectedSpecs = selectedVehicle?.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
@@ -761,8 +771,8 @@ Deno.serve(async (req: Request) => {
     if (selectedVehicle && !mergedDetails.selected_variant && variants.length === 1) mergedDetails.selected_variant = cleanString(variants[0].name,100);
     const hasPaymentIntent = /\b(payment|payment method|payment options|how do i pay|where do i pay|pay now|transfer|bank details|paiement|pago|zahlung)\b/i.test(normalized(customerMessage.body));
     const hasName = !!cleanString(mergedDetails.full_name,100);
-    const hasEmail = !!cleanString(mergedDetails.email || conversation.visitor_email || user.email,200);
-    const hasPhone = !!cleanString(mergedDetails.phone || conversation.contact_phone,60);
+    const hasEmail = !!cleanString(mergedDetails.email,200);
+    const hasPhone = !!cleanString(mergedDetails.phone,60);
     const hasCountry = !!cleanString(mergedDetails.country,80);
     const hasCity = !!cleanString(mergedDetails.city,80);
     const hasAddress = !!cleanString(mergedDetails.address,240);
