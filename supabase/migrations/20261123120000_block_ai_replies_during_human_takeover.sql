@@ -4,7 +4,7 @@
 CREATE OR REPLACE FUNCTION public.block_ai_reply_during_human_takeover()
 RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public
 AS $function$
 DECLARE
