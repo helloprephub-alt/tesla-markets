@@ -1,8 +1,8 @@
 const normalize = (value) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export function isConversationalReply(value) {
-  const text = normalize(value).trim().replace(/[.!?]+$/g, "");
-  return /^(?:how are you(?: doing)?|how is it going|how's it going|whats up|what is up|im fine|i am fine|im good|i am good|im doing well|i am doing well|im doing great|i am doing great|doing well|doing great|not bad|all good|great|good|fine|well|okay|ok|yes|no|thanks|thank you|thank you very much|nice to meet you|pleased to meet you|hello|hi|hey)$/i.test(text);
+  const text = normalize(value).trim().replace(/[.!?]+$/g, "").replace(/['’]/g, "");
+  return isGreetingMessage(text) || /^(?:how are you(?: doing)?|how is it going|hows it going|whats up|what is up|im fine|i am fine|im good|i am good|im doing well|i am doing well|im doing great|i am doing great|doing well|doing great|not bad|all good|great|good|fine|well|okay|ok|yes|no|thanks|thank you|thank you very much|nice to meet you|pleased to meet you|hello|hi|hey)$/i.test(text);
 }
 
 export function looksLikePersonName(value, requireFullName = false) {
