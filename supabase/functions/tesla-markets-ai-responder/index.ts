@@ -223,6 +223,17 @@ function languageOf(text: string): "en"|"fr"|"es"|"de" {
   ].sort((x,y)=>Number(y[1])-Number(x[1]));
   return Number(scores[0][1])>=2 ? String(scores[0][0]) as "fr"|"es"|"de" : "en";
 }
+function isConversationalReply(value: string) {
+  const t = normalized(value).trim().replace(/[.!?]+$/g, "");
+  return /^(?:how are you(?: doing)?|how is it going|how's it going|whats up|what is up|im fine|i am fine|im good|i am good|im doing well|i am doing well|im doing great|i am doing great|doing well|doing great|not bad|all good|great|good|fine|well|okay|ok|yes|no|thanks|thank you|thank you very much|nice to meet you|pleased to meet you|hello|hi|hey)$/i.test(t);
+}
+function looksLikePersonName(value: string, requireFullName = false) {
+  const candidate = value.trim().replace(/[.!?]+$/g, "");
+  if (!candidate || /[?@0-9]/.test(candidate) || isConversationalReply(candidate)) return false;
+  const words = candidate.split(/\s+/);
+  if (words.length > 5 || (requireFullName && words.length < 2)) return false;
+  return words.every((word) => /^\p{L}[\p{L}'’.-]*$/u.test(word));
+}
 function extractDelivery(text: string, pendingSlot = "") {
   const out: Record<string,string> = {};
   const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -230,7 +241,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   if(email)out.email=email[0].slice(0,200);
   if(phone)out.phone=phone[0].trim().slice(0,60);
   const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|this is|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
-  if(nameMatch?.[1])out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
+  if(nameMatch?.[1] && looksLikePersonName(nameMatch[1]))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+?)(?=(?:[,;\n]\s*)?(?:e-?mail|phone|telephone|country|delivery country|city|delivery city|preferred version|vehicle version|full name|name)\s*[:=-]|[\n]|$)/i);
   if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
   const labelled:Record<string,RegExp>={country:/\b(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,80})/i,city:/\b(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,80})/i,preferred_delivery_date:/\b(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,instructions:/\b(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i};
@@ -238,16 +249,16 @@ function extractDelivery(text: string, pendingSlot = "") {
   // If the assistant previously asked for one specific field, accept a natural,
   // unlabelled answer instead of asking the customer to repeat the label.
   const plain=text.trim().replace(/[.!?]+$/,"");
-  if(pendingSlot==="full_name" && !out.full_name && plain.split(/\s+/).length>=2 && plain.split(/\s+/).length<=5 && /^[\p{L}][\p{L} .’'-]{2,98}$/u.test(plain) && !/^(yes|no|okay|ok|sure|hello|hi|thanks|thank you|i need|i want|can you|please|actually|what about|how about)/i.test(plain)) out.full_name=plain;
+  if(pendingSlot==="full_name" && !out.full_name && looksLikePersonName(plain,true)) out.full_name=plain;
   if(pendingSlot==="country" && !out.country && /^(united states|united states of america|usa|u\.s\.a\.|united kingdom|uk|nigeria|canada|france|germany|australia|ireland|spain|italy|netherlands|south africa|united arab emirates|uae)$/i.test(plain)) out.country=plain;
-  if(pendingSlot==="city" && !out.city && plain.split(/\s+/).length<=4 && /^[\p{L} .'-]{2,70}$/u.test(plain) && !/^(yes|no|okay|ok|sure|thanks|thank you|i need|i want|can you|please|actually|what about|how about)/i.test(plain)) out.city=plain;
+  if(pendingSlot==="city" && !out.city && !isConversationalReply(plain) && plain.split(/\s+/).length<=4 && /^[\p{L} .'-]{2,70}$/u.test(plain)) out.city=plain;
   if(pendingSlot==="address" && !out.address && plain.length>=6 && /[0-9]/.test(plain)) out.address=plain.slice(0,240);
   if(pendingSlot==="phone" && !out.phone && /(?:\+?\d[\d ()-]{7,}\d)/.test(plain)) out.phone=plain.match(/(?:\+?\d[\d ()-]{7,}\d)/)?.[0]?.trim().slice(0,60)||"";
 
   if(pendingSlot==="email" && !out.email && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(plain)) out.email=plain.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]||"";
 
   if(!out.country || !out.city){
-    const location=text.match(/\b(?:from|based in|located in|delivery to|deliver to)\s+(.+?)(?=[.!?]|$)/i)?.[1]?.trim();
+    const location=text.match(/\b(?:i am from|i'm from|based in|located in|delivery to|deliver to)\s+(.+?)(?=[.!?]|$)/i)?.[1]?.trim();
     if(location){
       const countries=["United States of America","United States","USA","U.S.A.","United Kingdom","UK","Nigeria","Canada","France","Germany","Australia","United Arab Emirates","UAE"];
       const found=countries.find(country=>location.toLowerCase().includes(country.toLowerCase()));
@@ -269,13 +280,13 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const asksIdentity=has(/\b(who are you|what are you|are you (a )?(bot|ai|human)|are you real)\b/);
   const asksAddAnother=has(/\b(add another|another car|one more car|also order|also buy|add (a )?car|include another|second car)\b/);
   const asksGeneralKnowledge=has(/\b(what is|who is|where is|when is|why is|how does|how do|can you explain|tell me about)\b/);
-  const asksVehicleView=has(/\b(show me|can i see|let me see|may i see|view|display|show|see the|see a|photos of|pictures of|images of)\b/);
+  const asksVehicleView=has(/\b(show me|can i see|let me see|may i see|view|display|show|see the|see a|photos of|pictures of|images of)\b/);\n  const smallTalk = /^(?:how are you(?: doing)?|how is it going|how's it going|what's up|whats up|thank you|thanks|thanks a lot|i am fine|i'm fine|i am good|i'm good|i am doing well|i'm doing well|doing well|doing great|not bad|all good)[.!?\\s]*$/i.test(text.trim());
 
 
   const modelPattern=/\b(model\s*yl|model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
   const explicitModel=text.match(modelPattern)?.[0];
   const priorModel=[...history].reverse().filter((row:any)=>row.sender_role==="customer").map((row:any)=>String(row.body||"").match(modelPattern)?.[0]).find(Boolean);
-  const rawModel=explicitModel||conversation.vehicle_model||priorModel||null;
+  const vehicleFollowUp = /\b(price|prices|pricing|cost|how much|colou?rs?|colors?|range|performance|specifications?|features|wheels?|versions?|availability|available|delivery|charging|battery|it|that one|this one)\b/i.test(t);\n  const rawModel=explicitModel||(!smallTalk&&vehicleFollowUp?(conversation.vehicle_model||priorModel):null)||null;
   const mentionedModel=rawModel ? (/cyber\s*truck/i.test(rawModel)?"Cybertruck":/roadster/i.test(rawModel)?"Roadster":/semi/i.test(rawModel)?"Tesla Semi":rawModel.replace(/\s+/g," ").replace(/\bmodel\s*([3ysx])\b/i,(_,v)=>"Model "+String(v).toUpperCase())) : undefined;
   const name=vehicle?.name||vehicle?.model||mentionedModel||"your selected vehicle";
   const specsForVariant = vehicle?.specifications && typeof vehicle.specifications === "object" ? vehicle.specifications : {};
@@ -295,7 +306,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   } else if(asksIdentity){
     intent="assistant_identity";
     reply="I'm the Tesla Markets virtual assistant. I can help with general questions, vehicle enquiries, investment enquiries and the services offered by Tesla Markets.";
-  } else if(asksAddAnother){
+  } else if(smallTalk){\n    intent="casual_conversation";\n    reply=lang==="fr"?"Je vais bien, merci ! Comment puis-je vous aider aujourd'hui ?":lang==="es"?"Estoy bien, gracias. ¿En qué puedo ayudarle hoy?":lang==="de"?"Mir geht es gut, danke! Wie kann ich Ihnen heute helfen?":"I'm doing well, thank you! How can I assist you today?";\n  } else if(asksAddAnother){
     intent="add_vehicle_to_order";
     const model=explicitModel ? (canonicalVehicle(explicitModel) || explicitModel) : "";
     reply=model
@@ -334,7 +345,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     lang==="es"?"Gracias por informarnos. Queremos revisar el asunto y ayudarle. Su mensaje se ha señalado para la atención de la dirección. Puede compartir la referencia del pedido, sin datos de pago confidenciales.":
     lang==="de"?"Vielen Dank für Ihren Hinweis. Wir möchten den Vorgang prüfen und Ihnen weiterhelfen. Ich prüfe das gerne für Sie. Bitte senden Sie keine sensiblen Zahlungsdaten.":
     "Thank you for bringing this to our attention. We appreciate the opportunity to review it and help. I’m sorry this has happened. Please give me a moment to look into this and help you with the next step.";
-  } else if(has(/\b(hello|hi|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo)\b/)&&t.split(/\s+/).length<9&&!mentionedModel&&!conversation.vehicle_model){
+  } else if(has(/\b(hello|hi|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo)\b/)&&t.split(/\s+/).length<9&&!mentionedModel){
     intent="greeting";
     reply=lang==="fr"?"Bienvenue chez Tesla Markets. Merci de nous avoir contactés. Notre équipe est à votre disposition. Que souhaitez-vous savoir aujourd'hui ?":
     lang==="es"?"Le damos la bienvenida a Tesla Markets. Gracias por contactarnos. Nuestro equipo está encantado de ayudarle. ¿Qué desea saber hoy?":
@@ -662,9 +673,11 @@ Deno.serve(async (req: Request) => {
     const priorCustomerVehicle = [...history].reverse().find((row:any) =>
       row.sender_role === "customer" && canonicalVehicle(cleanString(row.body, 500))
     );
+    const currentText = normalized(customerMessage.body);
+    const isSmallTalk = /^(?:hi|hello|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo|how are you(?: doing)?|how is it going|how's it going|what's up|thanks|thank you|i am fine|i'm fine|i am good|i'm good|i am doing well|i'm doing well|doing well|not bad|all good)[.!?\\s]*$/i.test(customerMessage.body.trim());
+    const isVehicleFollowUp = /\b(price|prices|pricing|cost|how much|colou?rs?|colors?|range|performance|specifications?|features|wheels?|versions?|availability|available|delivery|charging|battery|it|that one|this one)\b/i.test(currentText);
     const contextualVehicle = canonicalVehicle(customerMessage.body) ||
-      canonicalVehicle(cleanString(conversation.vehicle_model || aiMemory.selected_vehicle || "", 100)) ||
-      canonicalVehicle(cleanString(priorCustomerVehicle?.body || "", 500));
+      (!isSmallTalk && isVehicleFollowUp ? canonicalVehicle(cleanString(conversation.vehicle_model || aiMemory.selected_vehicle || priorCustomerVehicle?.body || "", 100)) : "");
     const vehicle = matchVehicle(customerMessage.body, contextualVehicle, catalogue || []);
     let reply = "";
     let intent = "general";
@@ -732,7 +745,7 @@ Deno.serve(async (req: Request) => {
     // Recover customer details expressed naturally across multiple messages.
     const priorDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
     const mergedDetails: Record<string, any> = { ...priorDetails, ...extractedDelivery };
-    const selectedVehicle = vehicle || matchVehicle("", conversation.vehicle_model || "", catalogue || []);
+    const selectedVehicle = vehicle;
     const selectedSpecs = selectedVehicle?.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
     const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); });
@@ -1367,7 +1380,7 @@ Deno.serve(async (req: Request) => {
       previousLanguage: normalizeResponseLanguage(cleanString(conversation.preferred_language || aiMemory.preferred_language || aiMemory.language, 40), "en"),
       intent,
       approvedDraft: reply,
-      vehicleModel: selectedVehicle?.name || local.vehicleModel || conversation.vehicle_model || null,
+      vehicleModel: selectedVehicle?.name || local.vehicleModel || null,
       knowledgeContext: JSON.stringify({
         vehicles: (catalogue || []).map((row:any) => ({
           name: row.name, model: row.model, slug: row.slug, description: row.description,
@@ -1382,7 +1395,7 @@ Deno.serve(async (req: Request) => {
           source_url: row.source_url, verification_status: row.verification_status
         })).slice(0, 20),
         current_intent: intent,
-        selected_vehicle: selectedVehicle?.name || local.vehicleModel || conversation.vehicle_model || null,
+        selected_vehicle: selectedVehicle?.name || local.vehicleModel || null,
         selected_variant: cleanString(mergedDetails.selected_variant, 100) || null,
         current_cart: Array.isArray(mergedDetails.cart_items) ? mergedDetails.cart_items : []
       })
