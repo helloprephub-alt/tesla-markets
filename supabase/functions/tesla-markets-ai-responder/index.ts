@@ -437,6 +437,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, headers);
 
   let runMessageId = "";
+  let runConversationId = "";
   let admin: ReturnType<typeof createClient> | null = null;
 
   try {
@@ -464,6 +465,7 @@ Deno.serve(async (req: Request) => {
     const messageId = cleanString(body?.message_id, 80);
     if (!conversationId || !messageId) return json({ error: "A conversation and message are required." }, 400, headers);
     runMessageId = messageId;
+    runConversationId = conversationId;
 
     const { data: conversation, error: conversationError } = await admin
       .from("support_conversations")
@@ -1492,9 +1494,39 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, response_message_id: responseMessage.id, intent }, 200, headers);
   } catch (error) {
     console.error("tesla-markets-ai-responder:", error);
+    let managementNotified = false;
     if (admin && runMessageId) {
-      await admin.from("ai_responder_runs").update({ status: "failed", updated_at: new Date().toISOString() }).eq("message_id", runMessageId);
+      const { error: runFailureError } = await admin.from("ai_responder_runs")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("message_id", runMessageId);
+      if (runFailureError) console.error("Could not mark AI responder run failed:", runFailureError.message);
+      if (runConversationId) {
+        const { data: existingNotice, error: noticeReadError } = await admin.from("admin_notifications")
+          .select("id")
+          .eq("type", "ai_response_failed")
+          .eq("entity_id", runConversationId)
+          .ilike("body", "%" + runMessageId + "%")
+          .maybeSingle();
+        if (noticeReadError) console.error("Could not check prior AI failure notification:", noticeReadError.message);
+        if (!existingNotice) {
+          const { error: noticeInsertError } = await admin.from("admin_notifications").insert({
+            type: "ai_response_failed",
+            title: "Customer message needs management attention",
+            body: ("Automated response failed for customer message " + runMessageId + ". Open this conversation and reply manually.").slice(0, 240),
+            entity_type: "conversation",
+            entity_id: runConversationId,
+            is_read: false
+          });
+          managementNotified = !noticeInsertError;
+          if (noticeInsertError) console.error("Could not notify management about AI failure:", noticeInsertError.message);
+        } else {
+          managementNotified = true;
+        }
+      }
     }
-    return json({ error: "Tesla Markets could not complete the automated response. Management has been notified." }, 500, headers);
+    return json({
+      error: "The automated response could not be completed. Your message remains in the conversation and needs support.",
+      management_notified: managementNotified
+    }, 500, headers);
   }
 });
