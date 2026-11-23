@@ -106,8 +106,10 @@ BEGIN
    FOR UPDATE;
 
   IF FOUND THEN
-    v_enquiry_id := v_order.vehicle_enquiry_id;
+      v_updated_draft := v_order.item_description IS DISTINCT FROM v_item_description OR v_order.agreed_amount IS DISTINCT FROM p_amount;
+      v_enquiry_id := v_order.vehicle_enquiry_id;
     IF v_order.status = 'draft' THEN
+      v_updated_draft := v_order.agreed_amount IS DISTINCT FROM p_amount;
       IF v_enquiry_id IS NULL THEN
         INSERT INTO public.vehicle_enquiries (
           customer_id, vehicle_model, configuration, customer_note, status
@@ -131,8 +133,6 @@ BEGIN
              updated_at = now()
        WHERE id = v_order.id
        RETURNING * INTO v_order;
-
-      v_updated_draft := true;
     END IF;
   ELSE
     -- Reuse the latest draft for this same model if the customer changes variant.
@@ -174,8 +174,6 @@ BEGIN
              updated_at = now()
        WHERE id = v_order.id
        RETURNING * INTO v_order;
-
-      v_updated_draft := true;
     ELSE
       INSERT INTO public.vehicle_enquiries (
         customer_id, vehicle_model, configuration, customer_note, status
