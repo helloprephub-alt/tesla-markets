@@ -382,6 +382,8 @@ export function AdminInbox() {
     if(!rows.length){setProblem('Add at least one row using Label | Value.');return;}
     setBusy(true);setProblem('');
     try{
+      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
+      if(pauseError)throw pauseError;
       const {error}=await supabase.from('support_messages').insert({
         conversation_id:selected,sender_id:user.id,sender_role:'management',
         body:cardTitle.trim(),message_type:'management_card',
@@ -389,8 +391,6 @@ export function AdminInbox() {
         attachment_path:null,attachment_name:null,attachment_mime:null
       });
       if(error)throw error;
-      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
-      if(pauseError)throw pauseError;
       setCardTitle('');setCardSubtitle('');setCardRows('');setCardMode(false);await loadMessages();await loadThreads();
     }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
   };
@@ -465,6 +465,8 @@ export function AdminInbox() {
       });
       if(settings.giftCardEnabled===true)methods.push('Gift Card');
       if(!methods.length)throw new Error('No payment methods are enabled with verified details in Settings.');
+      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
+      if(pauseError)throw pauseError;
       const {error}=await supabase.from('support_messages').insert({
         conversation_id:selected,sender_id:user.id,sender_role:'management',
         body:'Available payment methods for order '+order.order_reference,message_type:'payment_methods',
@@ -479,6 +481,8 @@ export function AdminInbox() {
     if(!selected||!user||busy)return;
     setBusy(true);setProblem('');
     try{
+      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
+      if(pauseError)throw pauseError;
       const {error}=await supabase.from('support_messages').insert({
         conversation_id:selected,sender_id:user.id,sender_role:'management',
         body:'Payment receipt received — pending verification',
@@ -487,8 +491,6 @@ export function AdminInbox() {
         attachment_path:null,attachment_name:null,attachment_mime:null
       });
       if(error)throw error;
-      const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,updated_at:new Date().toISOString()}).eq('id',selected);
-      if(pauseError)throw pauseError;
       await loadMessages();await loadThreads();
     }catch(e){setProblem(errorText(e));}finally{setBusy(false);}
   };
@@ -514,7 +516,7 @@ export function AdminInbox() {
     sections.push({title:"Availability and delivery",rows:[{label:"Status",value:String(vehicle.availability||"To be confirmed")},{label:"Next step",value:"Management must confirm market availability, final specification, price, taxes and delivery."}]});
     const data={title:String(vehicle.name||vehicle.model),subtitle:String(specs.subtitle||"TESLA VEHICLE INFORMATION"),vehicle_slug:String(vehicle.slug||""),description:String(vehicle.description||""),image_url:Array.isArray(vehicle.images)?vehicle.images[0]||"": "",gallery_urls:Array.isArray(vehicle.images)?vehicle.images:[],metrics,fields_title:"Vehicle details",fields:rows,sections,purchase_variants:Array.isArray(specs.variants)?specs.variants:[],customization:{colors:Array.isArray(specs.colors)?specs.colors:[],wheels:Array.isArray(specs.wheels)?specs.wheels:[]},note:"This card is sent by Tesla Markets Management. Configuration preferences are not a confirmed factory order.",disclaimer:"Prices and specifications must be checked against the destination market and selected version. Unreleased or unverified specifications are not guaranteed."};
     setBusy(true);setProblem("");
-    try{const {error}=await supabase.from("support_messages").insert({conversation_id:selected,sender_id:user.id,sender_role:"management",body:"Vehicle information: "+vehicle.name,message_type:"vehicle_card",structured_data:data,attachment_path:null,attachment_name:null,attachment_mime:null});if(error)throw error;const {error:pauseError}=await supabase.from("support_conversations").update({responder_paused:true,updated_at:new Date().toISOString()}).eq("id",selected);if(pauseError)throw pauseError;setManualVehicleSlug("");await loadMessages();await loadThreads();}catch(e){setProblem(errorText(e));}finally{setBusy(false);}
+    try{const {error:pauseError}=await supabase.from("support_conversations").update({responder_paused:true,updated_at:new Date().toISOString()}).eq("id",selected);if(pauseError)throw pauseError;const {error}=await supabase.from("support_messages").insert({conversation_id:selected,sender_id:user.id,sender_role:"management",body:"Vehicle information: "+vehicle.name,message_type:"vehicle_card",structured_data:data,attachment_path:null,attachment_name:null,attachment_mime:null});if(error)throw error;setManualVehicleSlug("");await loadMessages();await loadThreads();}catch(e){setProblem(errorText(e));}finally{setBusy(false);}
   };
   const toggleResponder=async()=>{if(!selected||!user||pauseBusy)return;const thread=threads.find(item=>item.id===selected);const next=!(thread?.responderPaused??false);setPauseBusy(true);setProblem("");try{const {error}=await supabase.from("support_conversations").update({responder_paused:next,updated_at:new Date().toISOString()}).eq("id",selected);if(error)throw error;await loadThreads();}catch(e){setProblem(errorText(e));}finally{setPauseBusy(false);}};
   const login=async()=>{const {error}=await supabase.auth.signInWithOtp({email:ADMIN_EMAIL,options:{emailRedirectTo:window.location.origin+'/#admin'}});if(error)setProblem(error.message);else setProblem('A secure sign-in link has been sent to the authorised administrator email. Open it on this device to continue.');};
