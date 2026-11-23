@@ -60,7 +60,7 @@ assert.match(aiSource, /Some model responses are valid plain text/, 'The respond
 assert.match(aiSource, /I don't have enough verified information to answer that accurately yet/, 'Unknown questions must receive a contextual, honest fallback rather than silence.');
 assert.match(adminSource, /giftCardEnabled/, 'Administrators must control whether optional gift-card fallback is enabled.');
 assert.match(aiSource, /paymentAccountSettings\.giftCardEnabled === true/, 'Gift-card fallback must require explicit administrator enablement.');
-assert.match(aiSource, /payment_unavailable/, 'A disabled gift-card method must not create a payment lock.');
+assert.match(aiSource, /gift_card_disabled|payment_method_unavailable/, 'Disabled payment methods must not create a payment lock.');
 assert.match(emailHelper, /tesla-markets-translate/, 'Transactional email translator is not connected.');
 assert.match(emailOutbox, /translateTeslaEmailPayload/, 'Email outbox does not use the saved customer language.');
 assert.match(welcomeEmail, /translateTeslaEmailPayload/, 'Welcome email does not use the saved customer language.');
