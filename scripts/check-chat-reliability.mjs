@@ -64,6 +64,8 @@ assert.match(chat, /Submit purchase enquiry/, "The customer-facing purchase acti
 assert.match(responder, /savedPaymentLockCandidate\?\.kind === "vehicle"/, "Only vehicle-order locks may trigger payment follow-up.");
 assert.match(responder, /Compare-and-swap the exact previous status and timestamp/, "AI processing retries must use an atomic claim.");
 assert.match(responder, /ai_response_failed/, "Failed AI messages must create a management escalation.");
+assert.match(responder, /protectedBusinessIntents = new Set/, "Financial, payment, order and verified price replies must not be rewritten by the language model.");
+assert.match(responder, /!protectedBusinessIntents\.has\(intent\) \|\| !cleanString\(reply, 3000\)/, "Only unprotected open-ended replies may be replaced by model output.");
 assert.match(takeoverMigration, /FOR UPDATE[\s\S]*ai_reply_blocked_by_human_takeover/, "The database must prevent an in-flight AI reply after takeover.");
 assert.match(chat, /HUMAN TAKEOVER · Resume AI/, "The admin inbox must show an explicit human-takeover state.");
 assert.match(chat, /Persist human takeover before sending the first management reply/, "Management takeover must be persisted before a human reply is sent.");
