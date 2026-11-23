@@ -12,6 +12,7 @@ const read = (path) => fs.readFileSync(new URL("../" + path, import.meta.url), "
 const chat = read("src/ChatWorkspace.tsx");
 const admin = read("src/AdminConsole.tsx");
 const responder = read("supabase/functions/tesla-markets-ai-responder/index.ts");
+const takeoverMigration = read("supabase/migrations/20261123120000_block_ai_replies_during_human_takeover.sql");
 
 assert.equal(isConversationalReply("How are you doing?"), true);
 assert.equal(looksLikePersonName("How are you doing", true), false);
@@ -34,6 +35,11 @@ assert.doesNotMatch(responder, /investment_enquiries|investmentAmountMatch|inves
 assert.match(responder, /investment_information_only/, "Investment context must remain informational.");
 assert.match(responder, /order_id: activeOrder\.id/, "Payment locks must reference the exact approved order.");
 assert.match(responder, /savedPaymentLockCandidate\?\.kind === "vehicle"/, "Only vehicle-order locks may trigger payment follow-up.");
+assert.match(responder, /Compare-and-swap the exact previous status and timestamp/, "AI processing retries must use an atomic claim.");
+assert.match(responder, /ai_response_failed/, "Failed AI messages must create a management escalation.");
+assert.match(takeoverMigration, /FOR UPDATE[\s\S]*ai_reply_blocked_by_human_takeover/, "The database must prevent an in-flight AI reply after takeover.");
+assert.match(chat, /HUMAN TAKEOVER · Resume AI/, "The admin inbox must show an explicit human-takeover state.");
+assert.match(chat, /Persist human takeover before sending the first management reply/, "Management takeover must be persisted before a human reply is sent.");
 assert.match(responder, /giftCardSettingsRow\?\.value\?\.giftCardEnabled !== true/, "Gift-card proof must be rejected or escalated if the method is disabled.");
 assert.doesNotMatch(responder, /Present the configured payment choices immediately after a vehicle pro forma/, "AI must not expose payment methods before management approval.");
 assert.match(chat, /APPROVED ORDER · /, "Management payment-method cards must identify the approved order.");
