@@ -83,6 +83,8 @@ assert.doesNotMatch(responder, /Present the configured payment choices immediate
 assert.match(chat, /APPROVED ORDER · /, "Management payment-method cards must identify the approved order.");
 assert.match(chat, /must exactly match a verified value saved in Settings/, "Payment recipient instructions must match saved management configuration.");
 assert.match(chat, /\(orders\|\|\[\]\)\.length!==1/, "Payment cards must refuse ambiguous multiple awaiting-payment orders.");
+assert.match(responder, /\.limit\(2\);[\s\S]*?\(activeOrders \|\| \[\]\)\.length !== 1/, "Payment selection must refuse ambiguous multiple awaiting-payment orders.");
+assert.match(responder, /payment_order_ambiguous/, "Ambiguous payment order selection must be escalated.");
 assert.match(orderMigration, /already awaiting payment/, "A model already awaiting payment cannot silently switch versions.");
 assert.match(admin, /Enable \{method\}/, "Management must be able to enable or disable each payment method.");
 assert.match(admin, /Enable optional gift-card payment method/, "Gift-card availability must be controlled independently.");
