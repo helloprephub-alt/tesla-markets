@@ -65,7 +65,7 @@ assert.match(orderMigration, /business_orders_active_vehicle_selection_uidx/, "A
 assert.match(orderMigration, /create_or_update_vehicle_draft_order/, "The database must provide the atomic vehicle-order workflow.");
 assert.match(orderMigration, /REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon, authenticated/, "Only the service role may execute the privileged order RPC.");
 assert.doesNotMatch(takeoverMigration, /SECURITY DEFINER/, "The takeover trigger must not add a public SECURITY DEFINER function.");
-assert.match(responder, /giftCardSettingsRow\?\.value\?\.giftCardEnabled !== true/, "Gift-card proof must be rejected or escalated if the method is disabled.");
+assert.match(responder, /paymentSettings\.giftCardEnabled === true/, "Gift-card proof must be rejected or escalated if the method is disabled.");
 assert.doesNotMatch(responder, /Present the configured payment choices immediately after a vehicle pro forma/, "AI must not expose payment methods before management approval.");
 assert.match(chat, /APPROVED ORDER · /, "Management payment-method cards must identify the approved order.");
 assert.match(chat, /must exactly match a verified value saved in Settings/, "Payment recipient instructions must match saved management configuration.");
