@@ -324,7 +324,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     reply = "Tesla, Inc. is publicly traded on Nasdaq under ticker TSLA. " + rateSection + "\n\n" + riskSection + "\n\n" + sourceLine;
   } else if(has(/\b(invest|investment|investing|shares|stock|portfolio|profit|return|roi|investissement|inversion|acciones|anlage|aktien|rendite)\b/)){
     intent="investment"; requiresManagement=true;
-    reply="I can help record your Tesla Markets investment enquiry. Please share your full name, email address, phone number and country. If you already have an amount in mind, include that too.";
+    reply="I can explain general information about Tesla, Inc. and TSLA shares, including market risks. Tesla Markets does not collect investment funds, open brokerage accounts or execute share trades. To buy TSLA shares, use a regulated brokerage. What would you like to know?";
   } else if(has(/\b(payment|payment method|payment options|paid|pay|transfer|receipt|refund|charge|paiement|remboursement|pago|zahlung)\b/)){
     intent="payment"; requiresManagement=true;
     reply="The management will get back to them about the available payment method.";
@@ -805,10 +805,7 @@ Deno.serve(async (req: Request) => {
       mergedDetails.cart_items = cartSummary;
       await admin.from("support_conversations").update({delivery_details:mergedDetails,vehicle_model:selectedVehicle.name,updated_at:new Date().toISOString()}).eq("id",conversationId);
     }
-    const priorInvestmentStage = cleanString(aiMemory.conversation_stage, 80);
-    const investmentStages = ["investment_awaiting_amount","investment_collecting_details","investment_confirming_details"];
-    const investmentSubmittedFollowUp = priorInvestmentStage === "investment_submitted" && (hasPaymentIntent || /\b(how do i proceed|how can i proceed|what next|next step|what should i do|proceed|continue|okay|ok|thanks|thank you)\b/i.test(customerMessage.body));
-    const investmentFlow = intent === "investment" || investmentStages.includes(priorInvestmentStage) || investmentSubmittedFollowUp;
+    const investmentFlow = intent.startsWith("investment") || incomingInvestmentTopic;
     if (paymentChoice) {
       const selectedMethod = paymentChoice[1];
       if (investmentFlow || intent === "investment" || intent.startsWith("investment")) {
@@ -866,23 +863,6 @@ Deno.serve(async (req: Request) => {
         }
       }
     }
-    const investmentAmountMatch = customerMessage.body.match(/(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)|\b([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?:usd|dollars?)\b/i) || (priorInvestmentStage === "investment_awaiting_amount" && /^\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?\s*$/.test(customerMessage.body) ? [customerMessage.body.trim(), customerMessage.body.trim().replace(/,/g,""), undefined] as any : null);
-    const startingNewInvestment = intent === "investment" && priorInvestmentStage === "investment_submitted";
-    const investmentAmount = investmentAmountMatch ? Number((investmentAmountMatch[1] || investmentAmountMatch[2]).replace(/,/g,"")) : startingNewInvestment ? 0 : Number(aiMemory.investment_amount_usd || 0);
-    const investmentName = cleanString(mergedDetails.full_name,100);
-    const investmentEmail = cleanString(mergedDetails.email || conversation.visitor_email || user.email,200);
-    const investmentPhone = cleanString(mergedDetails.phone || conversation.contact_phone,60);
-    const investmentCountry = cleanString(mergedDetails.country,80);
-    const investmentCity = cleanString(mergedDetails.city,80);
-    const investmentAddress = cleanString(mergedDetails.address,240);
-    const investmentDetailsComplete = !!(investmentName && investmentEmail && investmentPhone && investmentCountry);
-    const saysConfirm = /^(yes|yeah|yep|sure|okay|ok|please do|go ahead|confirm|confirmed|proceed|submit|send it|that's correct|that is correct)[.!\s]*$/i.test(customerMessage.body.trim());
-    const saysCorrectDetails = /\b(correct|update|change|new email|new phone|wrong|not correct)\b/i.test(customerMessage.body);
-    let investmentEnquiryCreated = false;
-    let investmentShareEstimate: number | null = null;
-    let investmentSharePrice: number | null = null;
-    let investmentQuoteTime = "";
-
     if (cartSummary) {
       intent = "cart_updated";
       requiresManagement = true;
@@ -890,67 +870,11 @@ Deno.serve(async (req: Request) => {
       const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
       reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";
     } else if (investmentFlow) {
+      intent = hasPaymentIntent || paymentChoice ? "investment_payment_restricted" : "investment_information";
       requiresManagement = true;
-      if (investmentSubmittedFollowUp && hasPaymentIntent) {
-        intent = "investment_purchase_guidance";
-        reply = "Your investment enquiry has already been recorded for management review.";
-      } else if (investmentSubmittedFollowUp && /\b(how do i proceed|how can i proceed|what next|next step|what should i do|proceed|continue|okay|ok|thanks|thank you)\b/i.test(customerMessage.body)) {
-        intent = "investment_status_followup";
-        reply = "You’re welcome. Your investment enquiry is saved and awaiting management review. You do not need to repeat the details already provided.";
-      } else if (!(investmentAmount > 0) || !Number.isFinite(investmentAmount)) {
-        intent = "investment_awaiting_amount";
-        reply = "I can explain how Tesla shares work and show you the latest available TSLA market information. How much would you like to invest in USD? For example, you can enter $1,000.";
-      } else if (!investmentDetailsComplete) {
-        intent = "investment_collecting_details";
-        const missingInvestment = !investmentName ? "your full legal name" : !investmentEmail ? "your email address" : !investmentPhone ? "your phone number" : "your country of residence";
-        reply = "Thank you. I have noted your intended investment amount of $" + investmentAmount.toLocaleString("en-US") + " USD. To prepare your investment enquiry record, please provide " + missingInvestment + ".";
-      } else {
-        try {
-          const quoteResponse = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/TSLA?range=1d&interval=1m", { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0 TeslaMarketsEnquiry/1.0" }, signal: AbortSignal.timeout(6000) });
-          if (quoteResponse.ok) {
-            const quotePayload = await quoteResponse.json();
-            const quote = quotePayload?.chart?.result?.[0];
-            const price = Number(quote?.meta?.regularMarketPrice);
-            const quoteTime = Number(quote?.meta?.regularMarketTime);
-            if (Number.isFinite(price) && price > 0 && Number.isFinite(quoteTime)) {
-              investmentSharePrice = price;
-              investmentShareEstimate = investmentAmount / price;
-              investmentQuoteTime = new Date(quoteTime * 1000).toISOString();
-            }
-          }
-        } catch (_quoteError) { /* Enquiry can still be recorded without a live share estimate. */ }
-        const summary = {
-          full_name: investmentName,
-          email: investmentEmail,
-          phone: investmentPhone,
-          country: investmentCountry,
-          city: investmentCity,
-          amount_usd: investmentAmount,
-          estimated_shares: investmentShareEstimate,
-          share_price_usd: investmentSharePrice,
-          quote_timestamp: investmentQuoteTime || null,
-          status: "Management review"
-        };
-        const { error: profileError } = await admin.from("customer_profiles").upsert({
-          id: user.id, display_name: investmentName, email: investmentEmail, phone: investmentPhone, is_admin: false, updated_at: new Date().toISOString()
-        }, { onConflict: "id" });
-        if (profileError) throw profileError;
-        const { error: conversationUpdateError } = await admin.from("support_conversations").update({
-          visitor_email: investmentEmail, contact_phone: investmentPhone, delivery_details: { ...mergedDetails, investment_enquiry: summary }, updated_at: new Date().toISOString()
-        }).eq("id", conversationId);
-        if (conversationUpdateError) throw conversationUpdateError;
-        const { error: investmentInsertError } = await admin.from("investment_enquiries").insert({
-          customer_id: user.id,
-          opportunity: "Tesla Markets investment enquiry — $" + investmentAmount.toLocaleString("en-US") + " USD",
-          category: "investment",
-          customer_question: JSON.stringify(summary),
-          status: "new"
-        });
-        if (investmentInsertError) throw investmentInsertError;
-        investmentEnquiryCreated = true;
-        intent = "investment_submitted";
-        reply = "Your investment enquiry has been recorded and sent to Tesla Markets Management for review.";
-      }
+      reply = hasPaymentIntent || paymentChoice
+        ? "Tesla Markets does not accept or process payments for TSLA shares. To purchase TSLA shares, use a regulated brokerage. I can refer any further questions to management."
+        : "I can help with general information about Tesla, Inc. and TSLA shares. Tesla Markets does not accept investment funds, execute trades, open brokerage accounts or guarantee returns. Share your question and I can explain verified general information or refer it to management. To buy shares, use a regulated brokerage.";
     } else if (hasPaymentIntent) {
       intent = "payment_method_confirmation"; requiresManagement = true;
       reply = "Thank you. Your vehicle enquiry and the details shared so far have been noted. Please hold on while our management team confirms the approved payment methods and final delivery quotation for your selected vehicle. We will update you here. Your payment is not yet confirmed.";
@@ -1033,8 +957,7 @@ Deno.serve(async (req: Request) => {
       vehicle_interests: (() => { const existing = Array.isArray(aiMemory.vehicle_interests) ? aiMemory.vehicle_interests : []; const extra = cleanString(local.additionalVehicleModel, 80); if (!extra) return existing; return [...existing.filter((item:any) => cleanString(item?.model,80).toLowerCase() !== extra.toLowerCase()), { model: extra, status: "additional_interest", added_at: new Date().toISOString() }]; })(),
       selected_variant: mergedDetails.selected_variant || null,
       last_intent: intent,
-      pending_slot: investmentFlow ? (!(investmentAmount > 0) ? "investment_amount" : !investmentName ? "full_name" : !investmentEmail ? "email" : !investmentPhone ? "phone" : !investmentCountry ? "country" : "") : nextPendingSlot,
-      investment_amount_usd: investmentAmount > 0 && Number.isFinite(investmentAmount) ? investmentAmount : aiMemory.investment_amount_usd || null,
+      pending_slot: investmentFlow ? "" : nextPendingSlot,
       last_customer_message: cleanString(customerMessage.body,500),
       last_customer_message_at: customerMessage.created_at,
       last_ai_response: cleanString(reply,1200),
@@ -1048,7 +971,7 @@ Deno.serve(async (req: Request) => {
         address: !!cleanString(mergedDetails.address,240),
         selected_variant: !!cleanString(mergedDetails.selected_variant,100)
       },
-      conversation_stage: investmentFlow ? (investmentEnquiryCreated || investmentSubmittedFollowUp ? "investment_submitted" : intent === "investment_awaiting_amount" ? "investment_awaiting_amount" : "investment_collecting_details") : requestedVehicleChanged && !explicitVehiclePurchase ? "vehicle_browsing" : intent === "proforma_invoice_created" ? "vehicle_order_submitted" : ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage) || ["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && priorPurchaseStage === "purchase_collecting_details") ? (priorPurchaseStage === "vehicle_order_submitted" ? "vehicle_order_submitted" : "purchase_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent
+      conversation_stage: investmentFlow ? "investment_information_only" : requestedVehicleChanged && !explicitVehiclePurchase ? "vehicle_browsing" : intent === "proforma_invoice_created" ? "vehicle_order_submitted" : ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage) || ["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && priorPurchaseStage === "purchase_collecting_details") ? (priorPurchaseStage === "vehicle_order_submitted" ? "vehicle_order_submitted" : "purchase_collecting_details") : hasPaymentIntent ? "awaiting_payment_method_confirmation" : deliveryComplete ? "details_complete" : hasName || hasEmail || hasPhone || hasAddress ? "collecting_delivery_details" : intent
     };
     const { error: memoryWriteError } = await admin.from("ai_conversation_memory").upsert({
       conversation_id: conversationId,
@@ -1242,33 +1165,6 @@ Deno.serve(async (req: Request) => {
         ]}],
         note:"You can add more vehicles to this cart during the same conversation. Your saved customer details are retained."
       };
-    } else if (investmentEnquiryCreated) {
-      messageType = "investment_summary";
-      structuredData = {
-        title: "Investment enquiry summary",
-        subtitle: "CUSTOMER ENQUIRY · NOT AN INVOICE",
-        status: "Under management review",
-        amount_label: "INTENDED INVESTMENT AMOUNT",
-        amount: "$" + investmentAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USD",
-        fields_title: "Customer information",
-        fields: [
-          { label: "Full legal name", value: investmentName },
-          { label: "Email address", value: investmentEmail },
-          { label: "Phone number", value: investmentPhone },
-          { label: "Country of residence", value: investmentCountry },
-        ],
-        sections: [{
-          title: "Investment details",
-          rows: [
-            { label: "Intended amount", value: "$" + investmentAmount.toLocaleString("en-US") + " USD" },
-            { label: "Indicative share equivalent (before fees)", value: investmentShareEstimate !== null ? investmentShareEstimate.toFixed(4) : "Unavailable — current quote could not be verified" },
-            { label: "Share price", value: investmentSharePrice !== null ? "$" + investmentSharePrice.toFixed(2) + " USD" : "Not available" },
-            { label: "Quote timestamp", value: investmentQuoteTime || "Not available" },
-            { label: "Enquiry status", value: "Under management review — no payment due to Tesla Markets" },
-            { label: "Calculation basis", value: "Illustrative only, based on the displayed quote and before any broker fees or taxes" }
-          ]
-        }]
-      };
     } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && !proformaInvoice) {
       const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
       const purchaseVariants = Array.isArray(purchaseSpecs.variants) ? purchaseSpecs.variants : [];
@@ -1318,7 +1214,7 @@ Deno.serve(async (req: Request) => {
         ],
         note:"Send all outstanding information together in one message. Details already saved do not need to be repeated."
       };
-    } else if (Object.keys(extractedDelivery).length > 0 && !investmentEnquiryCreated) {
+    } else if (Object.keys(extractedDelivery).length > 0) {
       messageType = "customer_details";
       structuredData = {
         title:"Customer enquiry details",
@@ -1388,21 +1284,7 @@ Deno.serve(async (req: Request) => {
           ]}
         ]
       };
-    } else if (investmentFlow && investmentDetailsComplete && !investmentEnquiryCreated) {
-      messageType = "customer_details";
-      structuredData = {
-        title: "Investment enquiry details",
-        subtitle: "INFORMATION COLLECTED SO FAR",
-        fields: [
-          { label: "Full legal name", value: investmentName },
-          { label: "Email address", value: investmentEmail },
-          { label: "Phone number", value: investmentPhone },
-          { label: "Country of residence", value: investmentCountry },
-        ],
-        amount_label: "INTENDED INVESTMENT AMOUNT",
-        amount: "$" + investmentAmount.toLocaleString("en-US") + " USD"
-      };
-    }
+
 
     // Cloudflare Workers AI now renders the real customer-facing reply.
     // Supabase remains authoritative for prices, discounts, orders and all business actions.
@@ -1547,16 +1429,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (intent === "investment" || intent === "investment_submitted") {
-      await admin.from("admin_notifications").insert({
-        type: "investment_enquiry",
-        title: intent === "investment_submitted" ? "Investment enquiry submitted — $" + investmentAmount.toLocaleString("en-US") + " USD" : "New investment enquiry",
-        body: `Customer ${conversation.visitor_email || investmentEmail || "website visitor"} · ${intent === "investment_submitted" ? "Amount: $" + investmentAmount.toLocaleString("en-US") + " USD" : "Investment details are being collected."}`,
-        entity_type: "conversation",
-        entity_id: conversationId,
-        is_read: false,
-      });
-    }
+
 
     if (intent === "purchase_ready" || intent === "vehicle_purchase") {
       await admin.from("admin_notifications").insert({
