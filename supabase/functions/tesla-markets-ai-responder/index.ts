@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { isConversationalReply, looksLikePersonName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage } from "../_shared/chat-intelligence.mjs";
+import { isConversationalReply, looksLikePersonName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage, isKnownCountry, looksLikeCity, looksLikeAddress } from "../_shared/chat-intelligence.mjs";
 
 const corsHeaders = (origin: string | null) => {
   const allowed = origin === "https://teslamarketsofficial.com" ||
@@ -231,18 +231,18 @@ function extractDelivery(text: string, pendingSlot = "") {
   if(email)out.email=email[0].slice(0,200);
   if(phone?.[1])out.phone=phone[1].trim().slice(0,60);
   const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
-  if(nameMatch?.[1] && looksLikePersonName(nameMatch[1]))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
+  if(nameMatch?.[1] && looksLikePersonName(nameMatch[1],true))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+?)(?=(?:[,;\n]\s*)?(?:e-?mail|phone|telephone|country|delivery country|city|delivery city|preferred version|vehicle version|full name|name)\s*[:=-]|[\n]|$)/i);
-  if(addressMatch?.[1] && addressMatch[1].trim().length>=5 && !isConversationalReply(addressMatch[1]))out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
+  if(addressMatch?.[1] && looksLikeAddress(addressMatch[1]))out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
   const labelled:Record<string,RegExp>={country:/\b(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,80})/i,city:/\b(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,80})/i,preferred_delivery_date:/\b(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,instructions:/\b(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i};
-  for(const [key,pattern] of Object.entries(labelled)){const m=text.match(pattern);if(m?.[1]&&!isConversationalReply(m[1]))out[key]=m[1].trim().slice(0,240);}
+  for(const [key,pattern] of Object.entries(labelled)){const m=text.match(pattern);if(!m?.[1])continue;const value=m[1].trim();if(key==="country"&&isKnownCountry(value))out[key]=value;else if(key==="city"&&looksLikeCity(value))out[key]=value;else if(key!=="country"&&key!=="city"&&!isConversationalReply(value))out[key]=value.slice(0,240);}
   // If the assistant previously asked for one specific field, accept a natural,
   // unlabelled answer instead of asking the customer to repeat the label.
   const plain=text.trim().replace(/[.!?]+$/,"");
   if(pendingSlot==="full_name" && !out.full_name && looksLikePersonName(plain,true)) out.full_name=plain;
-  if(pendingSlot==="country" && !out.country && /^(united states|united states of america|usa|u\.s\.a\.|united kingdom|uk|nigeria|canada|france|germany|australia|ireland|spain|italy|netherlands|south africa|united arab emirates|uae)$/i.test(plain)) out.country=plain;
-  if(pendingSlot==="city" && !out.city && !isConversationalReply(plain) && plain.split(/\s+/).length<=4 && /^[\p{L} .'-]{2,70}$/u.test(plain)) out.city=plain;
-  if(pendingSlot==="address" && !out.address && plain.length>=6 && /[0-9]/.test(plain)) out.address=plain.slice(0,240);
+  if(pendingSlot==="country" && !out.country && isKnownCountry(plain)) out.country=plain;
+  if(pendingSlot==="city" && !out.city && looksLikeCity(plain)) out.city=plain;
+  if(pendingSlot==="address" && !out.address && looksLikeAddress(plain)) out.address=plain.slice(0,240);
   if(pendingSlot==="phone" && !out.phone && /(?:\+?\d[\d ()-]{7,}\d)/.test(plain)) out.phone=plain.match(/(?:\+?\d[\d ()-]{7,}\d)/)?.[0]?.trim().slice(0,60)||"";
 
   if(pendingSlot==="email" && !out.email && /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(plain)) out.email=plain.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]||"";
@@ -250,11 +250,11 @@ function extractDelivery(text: string, pendingSlot = "") {
   if(!out.country || !out.city){
     const location=text.match(/\b(?:i am from|i'm from|based in|located in|delivery to|deliver to)\s+(.+?)(?=[.!?]|$)/i)?.[1]?.trim();
     if(location){
-      const countries=["United States of America","United States","USA","U.S.A.","United Kingdom","UK","Nigeria","Canada","France","Germany","Australia","United Arab Emirates","UAE"];
-      const found=countries.find(country=>location.toLowerCase().includes(country.toLowerCase()));
+      const parts=location.split(",").map((part)=>part.trim()).filter(Boolean);
+      const found=parts.find((part)=>isKnownCountry(part));
       if(found&&!out.country)out.country=found;
-      const rest=found?location.replace(new RegExp(found.replace(/[.*+?^$()|[\]\\]/g,"\$&"),"i"),"").trim():location;
-      if(rest&&!out.city&&rest.length<80)out.city=rest.replace(/^,|,$/g,"").trim();
+      const rest=found?parts.filter((part)=>part!==found).join(", ").trim():location;
+      if(rest&&!out.city&&looksLikeCity(rest))out.city=rest;
     }
   }
   return out;
