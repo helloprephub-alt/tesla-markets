@@ -498,12 +498,12 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Customer message not found." }, 404, headers);
     }
     const savedPaymentLockAtMessage = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
-    if (customerMessage.attachment_path && savedPaymentLockAtMessage?.method === "Gift Card" && ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockAtMessage.status || "pending"))) {
+    if (customerMessage.attachment_path && savedPaymentLockAtMessage?.kind === "vehicle" && savedPaymentLockAtMessage?.order_id && savedPaymentLockAtMessage?.method === "Gift Card" && ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockAtMessage.status || "pending"))) {
       const mime = cleanString(customerMessage.attachment_mime, 100).toLowerCase();
       if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(mime)) return json({ error: "Gift-card proof must be a JPG, PNG, WEBP or GIF image." }, 400, headers);
       const { data: existingProof } = await admin.from("business_payments").select("id,payment_reference").eq("proof_path", customerMessage.attachment_path).maybeSingle();
       if (existingProof) return json({ ok: true, duplicate: true, payment_reference: existingProof.payment_reference }, 200, headers);
-      const { data: linkedOrder, error: linkedOrderError } = await admin.from("business_orders").select("id,order_reference,agreed_amount,currency,item_description").eq("conversation_id", conversationId).eq("customer_id", user.id).neq("status", "cancelled").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const { data: linkedOrder, error: linkedOrderError } = await admin.from("business_orders").select("id,order_reference,agreed_amount,currency,item_description").eq("id", savedPaymentLockAtMessage.order_id).eq("conversation_id", conversationId).eq("customer_id", user.id).eq("status", "awaiting_payment").maybeSingle();
       if (linkedOrderError) throw linkedOrderError;
       if (!linkedOrder) {
         await admin.from("admin_notifications").insert({ type: "gift_card_payment_proof", title: "Gift-card proof needs order matching", body: "A customer uploaded gift-card proof, but no active business order could be linked automatically. Review the conversation.", entity_type: "conversation", entity_id: conversationId, is_read: false });
@@ -557,45 +557,29 @@ Deno.serve(async (req: Request) => {
       throw runWrite.error;
     }
 
-    const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Gift Card|Verified broker onboarding)\b/i);
-    if (paymentChoice?.[1] === "Gift Card" && !configuredPaymentMethods.includes("Gift Card")) {
-      const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
-      if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
-      const { data: unavailableMessage, error: unavailableError } = await admin.from("support_messages").insert({
-        conversation_id: conversationId, sender_id: managementProfile.id, sender_role: "management",
-        body: "Gift-card payment is not currently enabled. Please choose one of the available payment methods or contact Tesla Markets Management.",
-        automated_type: "ai_response", message_type: "payment_unavailable",
-        structured_data: { title: "Gift-card payment unavailable", source_message_id: messageId }
-      }).select("id").single();
-      if (unavailableError) throw unavailableError;
-      await admin.from("ai_responder_runs").update({ status: "completed", response_message_id: unavailableMessage.id, updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      return json({ ok: true, response_message_id: unavailableMessage.id, payment_unavailable: true }, 200, headers);
-    }
-    if (paymentChoice && !["pending", "awaiting_proof", "proof_submitted"].includes(String((conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null)?.status || ""))) {
-      const amountMatch = customerMessage.body.match(/\$[0-9][0-9,]*(?:\.[0-9]{1,2})?/);
-      const currentDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
-      const previousLock = currentDetails.payment_lock && typeof currentDetails.payment_lock === "object" ? currentDetails.payment_lock : {};
-      const paymentLockNext = {
-        status: paymentChoice[1] === "Gift Card" ? "awaiting_proof" : "pending", method: paymentChoice[1],
-        amount: amountMatch?.[0] || previousLock.amount || "Amount to be confirmed",
-        vehicle: cleanString(conversation.vehicle_model,100) || cleanString(customerMessage.body.match(/for (.+?)\. Amount:/i)?.[1],100) || "Tesla Markets order",
-        kind: /investment/i.test(customerMessage.body) ? "investment" : "vehicle",
-        created_at: previousLock.created_at || new Date().toISOString()
+    const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Gift Card)\b/i);
+    const savedPaymentLockCandidate = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
+    const incomingInvestmentTopic = /\b(invest|investment|investing|shares|stock|tsla|portfolio)\b/i.test(customerMessage.body);
+    let savedPaymentLock: any = null;
+    if (savedPaymentLockCandidate?.kind === "vehicle" && savedPaymentLockCandidate?.order_id &&
+        ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockCandidate.status || ""))) {
+      const { data: lockedOrder, error: lockedOrderError } = await admin.from("business_orders")
+        .select("id,order_reference,agreed_amount,item_description,status")
+        .eq("id", savedPaymentLockCandidate.order_id)
+        .eq("conversation_id", conversationId)
+        .eq("customer_id", user.id)
+        .eq("status", "awaiting_payment")
+        .maybeSingle();
+      if (lockedOrderError) throw lockedOrderError;
+      if (lockedOrder) savedPaymentLock = {
+        ...savedPaymentLockCandidate,
+        order_id: lockedOrder.id,
+        order_reference: lockedOrder.order_reference,
+        amount: formatUsd(Number(lockedOrder.agreed_amount)) + " USD",
+        vehicle: lockedOrder.item_description
       };
-      const { error: lockError } = await admin.from("support_conversations").update({ delivery_details: { ...currentDetails, payment_lock: paymentLockNext }, updated_at: new Date().toISOString() }).eq("id", conversationId);
-      if (lockError) throw lockError;
-      const { error: notificationError } = await admin.from("admin_notifications").insert({
-        type: "payment_method_selected", title: "Customer selected a payment method",
-        body: [conversation.visitor_email || "Website visitor", paymentLockNext.vehicle, paymentLockNext.amount, paymentChoice[1]].filter(Boolean).join(" · ").slice(0,240),
-        entity_type: "conversation", entity_id: conversationId, is_read: false
-      });
-      if (notificationError) throw notificationError;
-      await admin.from("ai_responder_runs").update({ status: "completed", updated_at: new Date().toISOString() }).eq("message_id", messageId);
-      return json({ ok: true, management_handoff: true, payment_method: paymentChoice[1], payment_status: "pending" }, 200, headers);
     }
-
-    const savedPaymentLock = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
-    if (["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLock?.status || ""))) {
+    if (!incomingInvestmentTopic && savedPaymentLock && ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLock.status || ""))) {
       const { data: managementProfile } = await admin.from("customer_profiles").select("id").eq("is_admin", true).order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (!managementProfile?.id) throw new Error("No authorised management sender is configured.");
       const reminder = savedPaymentLock?.method === "Gift Card" && savedPaymentLock?.status !== "proof_submitted"
@@ -706,7 +690,7 @@ Deno.serve(async (req: Request) => {
       return !!details && typeof details === "object" &&
         Object.values(details).some((value:any) => typeof value === "string" && value.trim().length > 0);
     }).map((method:any) => method.label);
-    if (configuredPaymentMethods.length === 0 && paymentAccountSettings.giftCardEnabled === true) configuredPaymentMethods.push("Gift Card");
+    if (paymentAccountSettings.giftCardEnabled === true) configuredPaymentMethods.push("Gift Card");
 
     const customerTextNormalized=normalized(customerMessage.body);
     const matchedStoreProduct=(activeProducts||[]).filter((p:any)=>cleanString(p.name,180).length>=4)
@@ -829,6 +813,63 @@ Deno.serve(async (req: Request) => {
     const investmentStages = ["investment_awaiting_amount","investment_collecting_details","investment_confirming_details"];
     const investmentSubmittedFollowUp = priorInvestmentStage === "investment_submitted" && (hasPaymentIntent || /\b(how do i proceed|how can i proceed|what next|next step|what should i do|proceed|continue|okay|ok|thanks|thank you)\b/i.test(customerMessage.body));
     const investmentFlow = intent === "investment" || investmentStages.includes(priorInvestmentStage) || investmentSubmittedFollowUp;
+    if (paymentChoice) {
+      const selectedMethod = paymentChoice[1];
+      if (investmentFlow || intent === "investment" || intent.startsWith("investment")) {
+        intent = "investment_payment_restricted";
+        requiresManagement = true;
+        reply = "Tesla Markets does not accept or process payments for TSLA shares. To purchase TSLA shares, use a regulated brokerage. I can refer any further questions to Tesla Markets Management.";
+      } else if (!configuredPaymentMethods.includes(selectedMethod)) {
+        intent = "payment_method_unavailable";
+        requiresManagement = true;
+        reply = "That payment method is not currently enabled by Tesla Markets Management. I will refer your request to management so they can confirm the available options for your order.";
+      } else {
+        const { data: activeOrder, error: activeOrderError } = await admin.from("business_orders")
+          .select("id,order_reference,agreed_amount,item_description,status")
+          .eq("conversation_id", conversationId)
+          .eq("customer_id", user.id)
+          .eq("status", "awaiting_payment")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (activeOrderError) throw activeOrderError;
+        if (!activeOrder || !Number.isFinite(Number(activeOrder.agreed_amount)) || Number(activeOrder.agreed_amount) <= 0) {
+          intent = "payment_requires_approved_order";
+          requiresManagement = true;
+          reply = "Payment options are available only after Tesla Markets Management approves a final quotation for a specific order. Your request has been referred to management; please do not send money yet.";
+        } else {
+          const currentDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
+          const previousLock = currentDetails.payment_lock && typeof currentDetails.payment_lock === "object" ? currentDetails.payment_lock : {};
+          const paymentLockNext = {
+            status: selectedMethod === "Gift Card" ? "awaiting_proof" : "pending",
+            method: selectedMethod,
+            amount: formatUsd(Number(activeOrder.agreed_amount)) + " USD",
+            vehicle: cleanString(activeOrder.item_description, 180),
+            kind: "vehicle",
+            order_id: activeOrder.id,
+            order_reference: activeOrder.order_reference,
+            created_at: previousLock.created_at || new Date().toISOString()
+          };
+          const { error: lockError } = await admin.from("support_conversations")
+            .update({ delivery_details: { ...currentDetails, payment_lock: paymentLockNext }, updated_at: new Date().toISOString() })
+            .eq("id", conversationId)
+            .eq("customer_id", user.id);
+          if (lockError) throw lockError;
+          const { error: notificationError } = await admin.from("admin_notifications").insert({
+            type: "payment_method_selected",
+            title: "Customer selected a payment method",
+            body: [conversation.visitor_email || "Website visitor", activeOrder.order_reference, paymentLockNext.vehicle, paymentLockNext.amount, selectedMethod].filter(Boolean).join(" · ").slice(0, 240),
+            entity_type: "conversation",
+            entity_id: conversationId,
+            is_read: false
+          });
+          if (notificationError) throw notificationError;
+          intent = "payment_method_selected";
+          requiresManagement = true;
+          reply = "Thank you. Your " + selectedMethod + " preference has been recorded for order " + activeOrder.order_reference + ". Tesla Markets Management will provide the verified instructions. Do not send payment until you receive them.";
+        }
+      }
+    }
     const investmentAmountMatch = customerMessage.body.match(/(?:\$|usd\s*)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)|\b([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*(?:usd|dollars?)\b/i) || (priorInvestmentStage === "investment_awaiting_amount" && /^\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?\s*$/.test(customerMessage.body) ? [customerMessage.body.trim(), customerMessage.body.trim().replace(/,/g,""), undefined] as any : null);
     const startingNewInvestment = intent === "investment" && priorInvestmentStage === "investment_submitted";
     const investmentAmount = investmentAmountMatch ? Number((investmentAmountMatch[1] || investmentAmountMatch[2]).replace(/,/g,"")) : startingNewInvestment ? 0 : Number(aiMemory.investment_amount_usd || 0);
@@ -1149,17 +1190,7 @@ Deno.serve(async (req: Request) => {
 
     let messageType = "text";
     let structuredData: Record<string, any> | null = null;
-    if (intent === "payment_method_confirmation" && configuredPaymentMethods.length > 0) {
-      messageType = "payment_methods";
-      structuredData = {
-        title: "Choose a payment method",
-        subtitle: "TESLA MARKETS · AVAILABLE PAYMENT OPTIONS",
-        amount_label: "AMOUNT",
-        amount: cleanString((mergedDetails as any).checkout_amount, 100) || "As confirmed in your order summary",
-        payment_methods: configuredPaymentMethods,
-        note: "Select one of the currently configured payment methods. Tesla Markets Management will provide or confirm the payment instructions for your order. Payment remains pending until receipt is verified."
-      };
-    } else if(matchedStoreProduct&&intent==="store_product_price"){
+    if(matchedStoreProduct&&intent==="store_product_price"){
       const original=Number(matchedStoreProduct.original_price),percent=Number(matchedStoreProduct.discount_percent),sale=discountedUsd(original,percent);
       messageType="store_product_card";
       structuredData={title:cleanString(matchedStoreProduct.name,180),subtitle:"CHRISTMAS SHOP OFFER",amount_label:"PROMOTIONAL PRICE",amount:formatUsd(sale),
@@ -1487,25 +1518,7 @@ Deno.serve(async (req: Request) => {
       updated_at: new Date().toISOString(),
     }).eq("message_id", messageId);
 
-    // Present the configured payment choices immediately after a vehicle pro forma.
-    // The customer selects a method; management still sends the verified account-details card.
-    if (intent === "proforma_invoice_created" && configuredPaymentMethods.length > 0) {
-      const { error: paymentCardError } = await admin.from("support_messages").insert({
-        conversation_id: conversationId,
-        sender_id: managementProfile.id,
-        sender_role: "management",
-        body: "Available payment methods",
-        automated_type: "ai_response",
-        message_type: "payment_methods",
-        structured_data: {
-          title: "Choose a payment method",
-          subtitle: "TESLA MARKETS · AVAILABLE PAYMENT OPTIONS",
-          payment_methods: configuredPaymentMethods,
-          note: "Choose one of the currently available methods. For PayPal, Zelle, Apple Pay or Chime, Tesla Markets Management will send a separate card containing the verified payment details. Gift-card proof must be uploaded securely and remains pending until reviewed."
-        }
-      });
-      if (paymentCardError) console.error("Could not send payment methods card:", paymentCardError.message);
-    }
+    // Payment choices and recipient instructions are sent only by management after approving the exact order.
 
     await admin.from("admin_notifications").insert({
       type: "ai_response",
