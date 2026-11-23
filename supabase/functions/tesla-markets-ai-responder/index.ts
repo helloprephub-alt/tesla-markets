@@ -227,15 +227,15 @@ function languageOf(text: string): "en"|"fr"|"es"|"de" {
 function extractDelivery(text: string, pendingSlot = "") {
   const out: Record<string,string> = {};
   const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-  const phone=text.match(/(?:\+?\d[\d ()-]{7,}\d)/);
+  const phone=text.match(/\b(?:my phone(?: number)?|phone(?: number)?|telephone|mobile(?: number)?)\s*(?:is|:|=)?\s*(\+?\d[\d ()-]{7,}\d)/i);
   if(email)out.email=email[0].slice(0,200);
-  if(phone)out.phone=phone[0].trim().slice(0,60);
+  if(phone?.[1])out.phone=phone[1].trim().slice(0,60);
   const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
   if(nameMatch?.[1] && looksLikePersonName(nameMatch[1]))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+?)(?=(?:[,;\n]\s*)?(?:e-?mail|phone|telephone|country|delivery country|city|delivery city|preferred version|vehicle version|full name|name)\s*[:=-]|[\n]|$)/i);
-  if(addressMatch?.[1] && addressMatch[1].trim().length>=5)out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
+  if(addressMatch?.[1] && addressMatch[1].trim().length>=5 && !isConversationalReply(addressMatch[1]))out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
   const labelled:Record<string,RegExp>={country:/\b(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,80})/i,city:/\b(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,80})/i,preferred_delivery_date:/\b(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,instructions:/\b(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i};
-  for(const [key,pattern] of Object.entries(labelled)){const m=text.match(pattern);if(m?.[1])out[key]=m[1].trim().slice(0,240);}
+  for(const [key,pattern] of Object.entries(labelled)){const m=text.match(pattern);if(m?.[1]&&!isConversationalReply(m[1]))out[key]=m[1].trim().slice(0,240);}
   // If the assistant previously asked for one specific field, accept a natural,
   // unlabelled answer instead of asking the customer to repeat the label.
   const plain=text.trim().replace(/[.!?]+$/,"");
