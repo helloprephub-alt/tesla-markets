@@ -28,7 +28,10 @@ assert.match(responder, /looksLikePersonName\(nameMatch\[1\]\)/, "Explicit name 
 assert.match(responder, /looksLikePersonName\(plain,true\)/, "Unlabelled names must pass strict pending-slot validation.");
 assert.match(responder, /const selectedVehicle = vehicle;/, "A previous vehicle must not be auto-selected for unrelated messages.");
 assert.match(responder, /isSmallTalkMessage\(customerMessage\.body\) \|\| isGreetingMessage\(customerMessage\.body\)/, "Greetings and small talk must not inherit stale vehicle context.");
-assert.match(responder, /intent = "investment_payment_restricted"/, "Investment payment requests must be rejected as payment workflows.");
+assert.match(responder, /"investment_payment_restricted"/, "Investment payment requests must be rejected as payment workflows.");
+assert.match(responder, /const investmentFlow = intent\.startsWith\("investment"\) \|\| incomingInvestmentTopic;/, "Investment intent must be based on the current message, not stale vehicle or identity context.");
+assert.doesNotMatch(responder, /investment_enquiries|investmentAmountMatch|investmentDetailsComplete|investment_summary/, "Investment conversations must not collect personal details or create payment-like enquiry records.");
+assert.match(responder, /investment_information_only/, "Investment context must remain informational.");
 assert.match(responder, /order_id: activeOrder\.id/, "Payment locks must reference the exact approved order.");
 assert.match(responder, /savedPaymentLockCandidate\?\.kind === "vehicle"/, "Only vehicle-order locks may trigger payment follow-up.");
 assert.match(responder, /giftCardSettingsRow\?\.value\?\.giftCardEnabled !== true/, "Gift-card proof must be rejected or escalated if the method is disabled.");
