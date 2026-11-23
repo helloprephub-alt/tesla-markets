@@ -5,7 +5,11 @@ import {
   looksLikePersonName,
   isSmallTalkMessage,
   isGreetingMessage,
-  isVehicleFollowUpMessage
+  isVehicleFollowUpMessage,
+  isKnownCountry,
+  looksLikeCity,
+  looksLikeAddress,
+  isValidPhoneNumber
 } from "../supabase/functions/_shared/chat-intelligence.mjs";
 
 const read = (path) => fs.readFileSync(new URL("../" + path, import.meta.url), "utf8");
@@ -26,9 +30,17 @@ assert.equal(isGreetingMessage("Hi"), true);
 assert.equal(isVehicleFollowUpMessage("What is the price?"), true);
 assert.equal(isVehicleFollowUpMessage("How are you doing?"), false);
 assert.equal(isVehicleFollowUpMessage("I like it"), false, "A casual mention of it must not inherit a stale vehicle.");
+assert.equal(isKnownCountry("Nigeria"), true);
+assert.equal(isKnownCountry("How are you"), false);
+assert.equal(looksLikeCity("Ile-Ife"), true);
+assert.equal(looksLikeCity("How are you doing today"), false);
+assert.equal(looksLikeAddress("10 Downing Street"), true);
+assert.equal(looksLikeAddress("How are you doing today"), false);
+assert.equal(isValidPhoneNumber("+234 803 925 4732"), true);
+assert.equal(isValidPhoneNumber("How are you doing"), false);
 
 assert.doesNotMatch(chat, /investmentCheckout|submitInvestmentCheckout/, "Investment enquiries must not open a checkout form.");
-assert.match(responder, /looksLikePersonName\(nameMatch\[1\]\)/, "Explicit name candidates must pass name validation.");
+assert.match(responder, /looksLikePersonName\(nameMatch\[1\],true\)/, "Explicit name candidates must pass name validation.");
 assert.match(responder, /looksLikePersonName\(plain,true\)/, "Unlabelled names must pass strict pending-slot validation.");
 assert.match(responder, /const selectedVehicle = vehicle;/, "A previous vehicle must not be auto-selected for unrelated messages.");
 assert.match(responder, /isSmallTalkMessage\(customerMessage\.body\) \|\| isGreetingMessage\(customerMessage\.body\)/, "Greetings and small talk must not inherit stale vehicle context.");
