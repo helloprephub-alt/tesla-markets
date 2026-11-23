@@ -416,7 +416,7 @@ export function AdminInbox() {
       const amount=Number(order.agreed_amount);
       const formattedAmount=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2}).format(amount)+' USD';
       const previousDetails=conversation?.delivery_details&&typeof conversation.delivery_details==='object'?conversation.delivery_details:{};
-      const paymentLock={status:'pending',method:paymentAccountMethod,amount:formattedAmount,vehicle:String(order.item_description||'Vehicle order'),kind:'vehicle',order_id:order.id,order_reference:order.order_reference,created_at:new Date().toISOString()};
+      const paymentLock={status:'awaiting_proof',method:paymentAccountMethod,amount:formattedAmount,vehicle:String(order.item_description||'Vehicle order'),kind:'vehicle',order_id:order.id,order_reference:order.order_reference,created_at:new Date().toISOString()};
       const {error:pauseError}=await supabase.from('support_conversations').update({responder_paused:true,delivery_details:{...previousDetails,payment_lock:paymentLock},updated_at:new Date().toISOString()}).eq('id',selected);
       if(pauseError)throw pauseError;
       const {error}=await supabase.from('support_messages').insert({
