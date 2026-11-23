@@ -1412,7 +1412,7 @@ Deno.serve(async (req: Request) => {
     if (cloudflareReply.used) {
       const protectedBusinessIntents = new Set([
         "investment", "investment_explanation", "investment_information", "investment_payment_restricted",
-        "payment_method_selected", "payment_requires_approved_order", "payment_method_unavailable",
+        "payment_method_selected", "payment_requires_approved_order", "payment_method_unavailable", "payment_order_ambiguous",
         "payment_method_confirmation", "purchase_ready", "purchase_collecting_details",
         "customer_details_progress", "vehicle_order_submitted", "proforma_invoice_created",
         "vehicle_price", "vehicle_information", "vehicle_specs", "unverified_vehicle_information",
