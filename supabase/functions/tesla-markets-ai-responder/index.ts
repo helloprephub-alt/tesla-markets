@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { isConversationalReply, looksLikePersonName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage } from "../_shared/chat-intelligence.mjs";
 
 const corsHeaders = (origin: string | null) => {
   const allowed = origin === "https://teslamarketsofficial.com" ||
@@ -223,17 +224,6 @@ function languageOf(text: string): "en"|"fr"|"es"|"de" {
   ].sort((x,y)=>Number(y[1])-Number(x[1]));
   return Number(scores[0][1])>=2 ? String(scores[0][0]) as "fr"|"es"|"de" : "en";
 }
-function isConversationalReply(value: string) {
-  const t = normalized(value).trim().replace(/[.!?]+$/g, "");
-  return /^(?:how are you(?: doing)?|how is it going|how's it going|whats up|what is up|im fine|i am fine|im good|i am good|im doing well|i am doing well|im doing great|i am doing great|doing well|doing great|not bad|all good|great|good|fine|well|okay|ok|yes|no|thanks|thank you|thank you very much|nice to meet you|pleased to meet you|hello|hi|hey)$/i.test(t);
-}
-function looksLikePersonName(value: string, requireFullName = false) {
-  const candidate = value.trim().replace(/[.!?]+$/g, "");
-  if (!candidate || /[?@0-9]/.test(candidate) || isConversationalReply(candidate)) return false;
-  const words = candidate.split(/\s+/);
-  if (words.length > 5 || (requireFullName && words.length < 2)) return false;
-  return words.every((word) => /^\p{L}[\p{L}'’.-]*$/u.test(word));
-}
 function extractDelivery(text: string, pendingSlot = "") {
   const out: Record<string,string> = {};
   const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -281,13 +271,13 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   const asksAddAnother=has(/\b(add another|another car|one more car|also order|also buy|add (a )?car|include another|second car)\b/);
   const asksGeneralKnowledge=has(/\b(what is|who is|where is|when is|why is|how does|how do|can you explain|tell me about)\b/);
   const asksVehicleView=has(/\b(show me|can i see|let me see|may i see|view|display|show|see the|see a|photos of|pictures of|images of)\b/);
-  const smallTalk = /^(?:how are you(?: doing)?|how is it going|how's it going|what's up|whats up|thank you|thanks|thanks a lot|i am fine|i'm fine|i am good|i'm good|i am doing well|i'm doing well|doing well|doing great|not bad|all good)[.!?\s]*$/i.test(text.trim());
+  const smallTalk = isSmallTalkMessage(text);
 
 
   const modelPattern=/\b(model\s*yl|model\s*[3ysx]|cyber\s*truck|roadster|tesla\s*semi|semi)\b/i;
   const explicitModel=text.match(modelPattern)?.[0];
   const priorModel=[...history].reverse().filter((row:any)=>row.sender_role==="customer").map((row:any)=>String(row.body||"").match(modelPattern)?.[0]).find(Boolean);
-  const vehicleFollowUp = /\b(price|prices|pricing|cost|how much|colou?rs?|colors?|range|performance|specifications?|features|wheels?|versions?|availability|available|delivery|charging|battery|it|that one|this one)\b/i.test(t);
+  const vehicleFollowUp = isVehicleFollowUpMessage(text);
   const rawModel=explicitModel||(!smallTalk&&vehicleFollowUp?(conversation.vehicle_model||priorModel):null)||null;
   const mentionedModel=rawModel ? (/cyber\s*truck/i.test(rawModel)?"Cybertruck":/roadster/i.test(rawModel)?"Roadster":/semi/i.test(rawModel)?"Tesla Semi":rawModel.replace(/\s+/g," ").replace(/\bmodel\s*([3ysx])\b/i,(_,v)=>"Model "+String(v).toUpperCase())) : undefined;
   const name=vehicle?.name||vehicle?.model||mentionedModel||"your selected vehicle";
@@ -669,8 +659,8 @@ Deno.serve(async (req: Request) => {
       row.sender_role === "customer" && canonicalVehicle(cleanString(row.body, 500))
     );
     const currentText = normalized(customerMessage.body);
-    const isSmallTalk = /^(?:hi|hello|hey|good morning|good afternoon|good evening|bonjour|bonsoir|hola|guten tag|hallo|how are you(?: doing)?|how is it going|how's it going|what's up|thanks|thank you|i am fine|i'm fine|i am good|i'm good|i am doing well|i'm doing well|doing well|not bad|all good)[.!?\s]*$/i.test(customerMessage.body.trim());
-    const isVehicleFollowUp = /\b(price|prices|pricing|cost|how much|colou?rs?|colors?|range|performance|specifications?|features|wheels?|versions?|availability|available|delivery|charging|battery|it|that one|this one)\b/i.test(currentText);
+    const isSmallTalk = isSmallTalkMessage(customerMessage.body) || isGreetingMessage(customerMessage.body);
+    const isVehicleFollowUp = isVehicleFollowUpMessage(customerMessage.body);
     const contextualVehicle = canonicalVehicle(customerMessage.body) ||
       (!isSmallTalk && isVehicleFollowUp ? canonicalVehicle(cleanString(conversation.vehicle_model || aiMemory.selected_vehicle || priorCustomerVehicle?.body || "", 100)) : "");
     const vehicle = matchVehicle(customerMessage.body, contextualVehicle, catalogue || []);
