@@ -69,6 +69,8 @@ assert.match(responder, /giftCardSettingsRow\?\.value\?\.giftCardEnabled !== tru
 assert.doesNotMatch(responder, /Present the configured payment choices immediately after a vehicle pro forma/, "AI must not expose payment methods before management approval.");
 assert.match(chat, /APPROVED ORDER · /, "Management payment-method cards must identify the approved order.");
 assert.match(chat, /must exactly match a verified value saved in Settings/, "Payment recipient instructions must match saved management configuration.");
+assert.match(chat, /\(orders\|\|\[\]\)\.length!==1/, "Payment cards must refuse ambiguous multiple awaiting-payment orders.");
+assert.match(orderMigration, /already awaiting payment/, "A model already awaiting payment cannot silently switch versions.");
 assert.match(admin, /Enable \{method\}/, "Management must be able to enable or disable each payment method.");
 assert.match(admin, /Enable optional gift-card payment method/, "Gift-card availability must be controlled independently.");
 
