@@ -294,10 +294,10 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
   let intent="general", requiresManagement=false, reply="";
   if(asksOfficial){
     intent="official_status";
-    reply="This is the Tesla Markets website enquiry channel. Tesla Markets is a separate business and is not Tesla, Inc.’s official factory sales channel. We can help with vehicle and investment-related enquiries. What would you like to know?";
+    reply="This is the Tesla Markets website enquiry channel. Tesla Markets is a separate business and is not Tesla, Inc.’s official factory sales channel. We can help with vehicle enquiries and general information about TSLA shares. What would you like to know?";
   } else if(asksIdentity){
     intent="assistant_identity";
-    reply="I'm the Tesla Markets virtual assistant. I can help with general questions, vehicle enquiries, investment enquiries and the services offered by Tesla Markets.";
+    reply="I'm the Tesla Markets virtual assistant. I can help with general questions, vehicle enquiries and general information about TSLA shares.";
   } else if(smallTalk){
     intent="casual_conversation";
     reply=lang==="fr"?"Je vais bien, merci ! Comment puis-je vous aider aujourd'hui ?":lang==="es"?"Estoy bien, gracias. ¿En qué puedo ayudarle hoy?":lang==="de"?"Mir geht es gut, danke! Wie kann ich Ihnen heute helfen?":"I'm doing well, thank you! How can I assist you today?";
