@@ -42,7 +42,7 @@ assert.equal(isValidPhoneNumber("How are you doing"), false);
 assert.doesNotMatch(chat, /investmentCheckout|submitInvestmentCheckout/, "Investment enquiries must not open a checkout form.");
 assert.match(responder, /looksLikePersonName\(nameMatch\[1\],true\)/, "Explicit name candidates must pass name validation.");
 assert.match(responder, /looksLikePersonName\(plain,true\)/, "Unlabelled names must pass strict pending-slot validation.");
-assert.match(responder, /const selectedVehicle = vehicle;/, "A previous vehicle must not be auto-selected for unrelated messages.");
+assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : vehicle;/, "Unrelated and investment messages must not inherit a previous vehicle.");
 assert.match(responder, /\.eq\("is_published", true\)[\s\S]*?\.eq\("verification_status", "verified"\)/, "The AI must only use published, verified vehicle records.");
 assert.match(chat, /\.eq\('is_published',true\)\.eq\('verification_status','verified'\)/, "Management chat cards must only show published, verified vehicles.");
 assert.match(responder, /isSmallTalkMessage\(customerMessage\.body\) \|\| isGreetingMessage\(customerMessage\.body\)/, "Greetings and small talk must not inherit stale vehicle context.");
