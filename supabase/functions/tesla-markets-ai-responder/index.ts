@@ -544,13 +544,30 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, processing: true }, 200, headers);
     }
 
-    const runWrite = existingRun
-      ? await admin.from("ai_responder_runs").update({ status: "processing", updated_at: new Date().toISOString() }).eq("message_id", messageId)
-      : await admin.from("ai_responder_runs").insert({ message_id: messageId, conversation_id: conversationId, status: "processing" });
-    if (runWrite.error) {
-      const { data: claimed } = await admin.from("ai_responder_runs").select("status").eq("message_id", messageId).maybeSingle();
-      if (claimed?.status === "completed" || claimed?.status === "processing") return json({ ok: true, duplicate: true }, 200, headers);
-      throw runWrite.error;
+    if (existingRun) {
+      // Compare-and-swap the exact previous status and timestamp. If two retries
+      // arrive together, only one can claim the message for processing.
+      const { data: claimedRun, error: claimError } = await admin.from("ai_responder_runs")
+        .update({ status: "processing", updated_at: new Date().toISOString() })
+        .eq("message_id", messageId)
+        .eq("status", existingRun.status)
+        .eq("updated_at", existingRun.updated_at)
+        .select("message_id")
+        .maybeSingle();
+      if (claimError) throw claimError;
+      if (!claimedRun) return json({ ok: true, processing: true, duplicate: true }, 200, headers);
+    } else {
+      const { error: insertRunError } = await admin.from("ai_responder_runs")
+        .insert({ message_id: messageId, conversation_id: conversationId, status: "processing" });
+      if (insertRunError) {
+        const { data: claimedRun, error: readClaimError } = await admin.from("ai_responder_runs")
+          .select("status").eq("message_id", messageId).maybeSingle();
+        if (readClaimError) throw readClaimError;
+        if (claimedRun?.status === "completed" || claimedRun?.status === "processing") {
+          return json({ ok: true, duplicate: true, processing: claimedRun.status === "processing" }, 200, headers);
+        }
+        throw insertRunError;
+      }
     }
 
     const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Gift Card)\b/i);
