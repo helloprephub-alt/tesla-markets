@@ -790,13 +790,26 @@ Deno.serve(async (req: Request) => {
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
     const bareVehicleConfirmation=isBareVehicleConfirmation(customerMessage.body);
     if(bareVehicleConfirmation) delete mergedDetails.full_name;
-    const variantMatch = variants.find((variant: any) => {
+    // Match the most specific (longest) catalogue trim first. Otherwise
+    // "Model Y" incorrectly captures "Model Y Performance" and "Model Y Premium".
+    const variantMatch = variants.slice().sort((a:any,b:any)=>
+      normalized(cleanString(b?.name,100)).length-normalized(cleanString(a?.name,100)).length
+    ).find((variant:any)=>{
+      const variantName=cleanString(variant?.name,100);
+      if(!variantName) return false;
+      const escapedName=normalized(variantName).replace(/[.*+?^${}()|[\]\\]/g,"\\    const variantMatch = variants.find((variant: any) => {
       const variantName=cleanString(variant?.name,100);
       if(!variantName || !normalized(customerMessage.body).includes(normalized(variantName))) return false;
       const genericVehicleName=normalized(variantName)===normalized(cleanString(selectedVehicle?.name||"",100));
       if(bareVehicleConfirmation && genericVehicleName) return false;
       return true;
-    });
+    });");
+      const exactPhrase=new RegExp("(^|[^a-z0-9])"+escapedName+"($|[^a-z0-9])","i");
+      if(!exactPhrase.test(normalized(customerMessage.body))) return false;
+      const genericVehicleName=normalized(variantName)===normalized(cleanString(selectedVehicle?.name||"",100));
+      if(bareVehicleConfirmation && genericVehicleName) return false;
+      return true;
+    }) || null;
     if (variantMatch) mergedDetails.selected_variant = cleanString(variantMatch.name,100);
     const storedVariant = cleanString(mergedDetails.selected_variant,100);
     if (storedVariant && (!variants.length || !variants.some((variant:any) => normalized(cleanString(variant?.name,100)) === normalized(storedVariant)))) {
@@ -858,7 +871,12 @@ Deno.serve(async (req: Request) => {
       const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
       const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
       const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
-      const existing = current.find((item:any)=>item.slug===selectedVehicle.slug&&normalized(cleanString(item.variant,100))===normalized(chosenName));
+      // Upgrade a previously mis-saved generic model line to the exact trim
+      // instead of leaving a stale generic line beside the corrected version.
+      const existing = current.find((item:any)=>item.slug===selectedVehicle.slug&&normalized(cleanString(item.variant,100))===normalized(chosenName))
+        || current.find((item:any)=>item.slug===selectedVehicle.slug
+          && normalized(cleanString(item.variant,100))===normalized(cleanString(item.model,100))
+          && normalized(chosenName).startsWith(normalized(cleanString(item.variant,100))+" "));
       if (existing) {
         existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
         existing.model = selectedVehicle.name;
@@ -1277,7 +1295,7 @@ Deno.serve(async (req: Request) => {
       const cartTotal = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
       structuredData = {
         title:"Your vehicle cart",
-        image_url:cartSummary.find((item:any)=>item.image_url)?.image_url||null,
+        // Do not show a generic catalogue image as if it were the selected trim.
         subtitle:"CUSTOMER VEHICLE SELECTION",
         amount_label:"ESTIMATED CART TOTAL",
         amount:"$"+cartTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USD",
