@@ -52,3 +52,11 @@ assert.match(chat,/const fallbackImage=type==='cart_summary'\?'':/,
 
 assert.match(responder,/if \(explicitQuantityMatch \|\| addAnother\) \{[\s\S]*existing\.quantity = Math\.min/,
   "Repeated unqualified add-to-cart messages must not inflate an existing line quantity.");
+
+assert.ok(responder.includes('const cartRemovalMatch = customerMessage.body.match('), "Cart removal commands must identify a specific saved item.");
+assert.ok(responder.includes('priorCart.filter((_item:any,index:number)=>index!==cartRemovalIndex)'), "Removing an item must persist only the remaining cart entries.");
+assert.ok(responder.includes('cart_items:cartSummary.map'), "Cart cards must carry item identifiers for per-item removal.");
+assert.ok(chat.includes('onRemoveCartItem?.(item)'), "Cart rows must expose a remove action.");
+assert.ok(chat.includes('>PAY NOW</button>'), "Non-empty carts must display a Pay Now action.");
+assert.ok(chat.includes('REMOVE_CART_ITEM|'), "The remove action must send a deterministic cart-item identifier.");
+assert.ok(chat.includes('Pay now for my cart.'), "Pay Now must enter the existing payment approval flow.");

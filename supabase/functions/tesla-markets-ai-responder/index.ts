@@ -847,18 +847,22 @@ Deno.serve(async (req: Request) => {
         : "Thank you. I have selected that vehicle version. To complete your enquiry, please provide: " + missing.join(", ") + ". You can send the remaining details together in one message.";
     }
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
-    const cartIntent = /\b(?:add|put|include)\b[\s\S]{0,100}\b(?:to\s+(?:my\s+)?(?:cart|basket)|cart|basket)\b/i.test(customerMessage.body) || /\b(?:view|show|open)\b[\s\S]{0,40}\b(?:cart|basket)\b/i.test(customerMessage.body);
-    const cartSummary = cartIntent && selectedVehicle ? (() => {
-      // Only an explicit add/put/include quantity directly before a vehicle or
-      // quantity noun counts. Address numbers, postcodes and phone numbers do not.
+    const cartRemovalMatch = customerMessage.body.match(/^REMOVE_CART_ITEM\|([^|]+)\|([\s\S]*)$/);
+    const cartRemovalRequested = !!cartRemovalMatch;
+    const cartRemovalIndex = cartRemovalMatch ? priorCart.findIndex((item:any)=>
+      cleanString(item?.slug,100)===cleanString(cartRemovalMatch[1],100) &&
+      normalized(cleanString(item?.variant||"",100))===normalized(cleanString(cartRemovalMatch[2]||"",100))
+    ) : -1;
+    const cartRemovalFound = cartRemovalRequested && cartRemovalIndex >= 0;
+    const cartIntent = cartRemovalRequested || /\b(?:add|put|include)\b[\s\S]{0,100}\b(?:to\s+(?:my\s+)?(?:cart|basket)|cart|basket)\b/i.test(customerMessage.body) || /\b(?:view|show|open)\b[\s\S]{0,40}\b(?:cart|basket)\b/i.test(customerMessage.body);
+    const cartSummary = cartRemovalRequested
+      ? priorCart.filter((_item:any,index:number)=>index!==cartRemovalIndex)
+      : cartIntent && selectedVehicle ? (() => {
       const explicitQuantityMatch = customerMessage.body.match(/\b(?:add|put|include)\s+(?:(\d{1,2})|(one|two|three|four|five|six|seven|eight|nine|ten))\s+(?:(?:of\s+)?(?:a\s+)?)?(?:cybertruck|model\s*[3ysx]|roadster|tesla\s+semi|vehicles?|cars?|units?)\b/i);
       const quantityWords:Record<string,number>={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
       const requestedQuantity = explicitQuantityMatch ? (explicitQuantityMatch[1] ? Number(explicitQuantityMatch[1]) : quantityWords[String(explicitQuantityMatch[2]).toLowerCase()] || 1) : 1;
       const quantity = Math.max(1, Math.min(20, requestedQuantity));
-      // A repeated natural-language "add this to my cart" message is usually
-      // a retry or correction, not a request for another unit. Increment an
-      // existing line only when the customer states a quantity or says "another".
-      const addAnother = /\\b(?:another|one more|additional)\\b/i.test(customerMessage.body);
+      const addAnother = /\b(?:another|one more|additional)\b/i.test(customerMessage.body);
       const current = priorCart.map((item:any)=>({...item}));
       const chosenName=cleanString(mergedDetails.selected_variant,100);
       const chosen=variants.find((v:any)=>normalized(cleanString(v?.name,100))===normalized(chosenName))||null;
@@ -868,39 +872,30 @@ Deno.serve(async (req: Request) => {
       const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
       const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
       const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
-      // Upgrade a previously mis-saved generic model line to the exact trim
-      // instead of leaving a stale generic line beside the corrected version.
       const existing = current.find((item:any)=>item.slug===selectedVehicle.slug&&normalized(cleanString(item.variant,100))===normalized(chosenName))
         || current.find((item:any)=>item.slug===selectedVehicle.slug
           && normalized(cleanString(item.variant,100))===normalized(cleanString(item.model,100))
           && normalized(chosenName).startsWith(normalized(cleanString(item.variant,100))+" "));
       if (existing) {
-        if (explicitQuantityMatch || addAnother) {
-          existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
-        }
+        const wasGenericModelLine = normalized(cleanString(existing.variant,100))===normalized(cleanString(existing.model,100));
+        if (explicitQuantityMatch || addAnother) existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
+        else if (wasGenericModelLine && chosenName) existing.quantity = 1;
         existing.model = selectedVehicle.name;
         existing.variant = chosen?.name||chosenName||null;
         existing.unit_price_usd = sale;
         existing.original_unit_price_usd = base;
         existing.discount_percent = pct||null;
       } else {
-        current.push({
-          slug:selectedVehicle.slug,
-          model:selectedVehicle.name,
-          variant:chosen?.name||chosenName||null,
-          quantity,
-          unit_price_usd:sale,
-          original_unit_price_usd:base,
-          discount_percent:pct||null,
-          image_url:Array.isArray(selectedVehicle.images)&&typeof selectedVehicle.images[0]==="string"?selectedVehicle.images[0]:null,
-          availability:selectedVehicle.availability||"to_be_confirmed"
-        });
+        current.push({slug:selectedVehicle.slug,model:selectedVehicle.name,variant:chosen?.name||chosenName||null,quantity,unit_price_usd:sale,original_unit_price_usd:base,discount_percent:pct||null,image_url:Array.isArray(selectedVehicle.images)&&typeof selectedVehicle.images[0]==="string"?selectedVehicle.images[0]:null,availability:selectedVehicle.availability||"to_be_confirmed"});
       }
       return current;
     })() : null;
     if (cartSummary) {
       mergedDetails.cart_items = cartSummary;
-      await admin.from("support_conversations").update({delivery_details:mergedDetails,vehicle_model:selectedVehicle.name,updated_at:new Date().toISOString()}).eq("id",conversationId);
+      const cartUpdate:Record<string,any>={delivery_details:mergedDetails,updated_at:new Date().toISOString()};
+      if(selectedVehicle)cartUpdate.vehicle_model=selectedVehicle.name;
+      const {error:cartSaveError}=await admin.from("support_conversations").update(cartUpdate).eq("id",conversationId);
+      if(cartSaveError)throw cartSaveError;
     }
     const investmentFlow = intent.startsWith("investment") || incomingInvestmentTopic;
     if (paymentChoice) {
@@ -971,9 +966,11 @@ Deno.serve(async (req: Request) => {
     if (cartSummary) {
       intent = "cart_updated";
       requiresManagement = false;
-      const totalItems = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0);
-      const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
-      reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";
+      if(cartRemovalRequested){
+        reply = cartRemovalFound ? (cartSummary.length ? "The selected vehicle has been removed from your cart. Your remaining cart total has been recalculated." : "The vehicle has been removed. Your cart is now empty.") : "I could not find that exact vehicle version in your cart. Your cart has not been changed.";
+      }else{
+        reply = "Your vehicle cart has been updated. You can remove any item or add another vehicle. Your saved customer details are retained.";
+      }
     } else if (cartIntent && selectedVehicle && variants.length > 1 && !cleanString(mergedDetails.selected_variant,100)) {
       intent = "vehicle_variant_required";
       requiresManagement = false;
@@ -1299,13 +1296,14 @@ Deno.serve(async (req: Request) => {
         amount_label:"ESTIMATED CART TOTAL",
         amount:"$"+cartTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USD",
         fields_title:"Selected vehicles",
+        cart_items:cartSummary.map((item:any)=>({slug:item.slug,model:item.model,variant:item.variant||null,quantity:Number(item.quantity||1),unit_price_usd:Number(item.unit_price_usd||0),original_unit_price_usd:Number(item.original_unit_price_usd||item.unit_price_usd||0),discount_percent:Number(item.discount_percent||0)})),
         fields:cartSummary.map((item:any)=>({label:item.model+(item.variant?" · "+item.variant:"")+" × "+item.quantity,value:item.unit_price_usd>0?"$"+(item.unit_price_usd*item.quantity).toLocaleString("en-US")+" USD"+(item.discount_percent?" ("+item.discount_percent+"% Christmas discount; was $"+(Number(item.original_unit_price_usd||item.unit_price_usd)*Number(item.quantity||1)).toLocaleString("en-US")+")":""):"Price to be confirmed"})),
         sections:[{title:"Cart details",rows:[
           {label:"Number of vehicles",value:String(cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0))},
           {label:"Models selected",value:String(cartSummary.length)},
           {label:"Next step",value:"Management will confirm configuration, availability, delivery and final pricing"}
         ]}],
-        note:"You can add more vehicles to this cart during the same conversation. Your saved customer details are retained."
+        note:cartSummary.length?"You can remove any vehicle before continuing. PAY NOW requests the final approved order and payment options; management approval is required before payment methods are released. Your saved customer details are retained.":"Your cart is empty. Add a vehicle to continue."
       };
     } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase","vehicle_variant_required"].includes(intent) && !proformaInvoice) {
       const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
