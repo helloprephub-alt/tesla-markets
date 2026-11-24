@@ -61,7 +61,7 @@ assert.match(responder, /isLikelyCustomerName\(nameMatch\[1\]\)/, "Explicit name
 assert.match(responder, /isLikelyCustomerName\(plain\)/, "Unlabelled name answers must pass strict customer-name validation.");
 assert.match(chat, /isLikelyCustomerName\(customerDetails\.name\)/, "Invalid stored names must never prefill the customer checkout form.");
 assert.match(chat, /Please enter your real full name/, "The checkout form must validate a real customer name before submission.");
-assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : vehicle;/, "Unrelated and investment messages must not inherit a previous vehicle.");
+assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : \(vehicle \|\| matchVehicle\(/, "Unrelated and investment messages must not inherit a previous vehicle; purchase/cart messages may restore only the saved selected model.");
 assert.match(responder, /\.eq\("is_published",true\)[\s\S]*?\.in\("verification_status",\["verified","verified_official","verified_independent","management_approved"\]\)/, "The AI must only use published and approved vehicle records.");
 assert.match(chat, /\.eq\('is_published',true\)\.in\('verification_status',\['verified','verified_official','verified_independent','management_approved'\]\)/, "Management chat cards must only show published and approved vehicles.");
 assert.match(responder, /isSmallTalkMessage\(customerMessage\.body\) \|\| isGreetingMessage\(customerMessage\.body\)/, "Greetings and small talk must not inherit stale vehicle context.");
@@ -77,7 +77,7 @@ assert.match(responder, /Tesla Markets Investment Information & Customer FAQ/, "
 assert.match(responder, /Tesla Markets does not accept or process payments for TSLA shares/, "TSLA payment requests must be explicitly refused.");
 assert.match(responder, /investment_information_only/, "Investment context must remain informational.");
 assert.match(responder, /extractedDelivery = investmentFlowMessage \? \{\} : local\.delivery/, "Investment conversations must not save volunteered contact or delivery details.");
-assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : vehicle/, "Investment conversations must not inherit a selected vehicle.");
+assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : \(vehicle \|\| matchVehicle\(/, "Investment conversations must not inherit a selected vehicle.");
 assert.match(responder, /purchaseFlowActive = !investmentFlowMessage/, "Investment conversations must never enter a stale vehicle checkout stage.");
 assert.match(responder, /order_id: activeOrder\.id/, "Payment locks must reference the exact approved order.");
 assert.match(responder, /create_or_update_vehicle_draft_order/, "Vehicle draft creation must use the atomic order RPC.");
