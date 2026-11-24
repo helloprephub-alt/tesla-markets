@@ -595,6 +595,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Gift Card)\b/i);
+    const wantsPaymentStage = /\b(?:proceed to payment|continue to payment|choose (?:a )?payment method|show payment options)\b/i.test(customerMessage.body);
     const savedPaymentLockCandidate = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
     const incomingInvestmentTopic = isInvestmentTopic(customerMessage.body);
     let savedPaymentLock: any = null;
@@ -1159,6 +1160,38 @@ Deno.serve(async (req: Request) => {
       requiresManagement = false;
     }
 
+    let paymentMethodPrompt: {order_reference:string;amount:number;currency:string;item_description:string;methods:string[]} | null = null;
+    if (wantsPaymentStage && !paymentChoice && !incomingInvestmentTopic && !proformaInvoice) {
+      const {data:approvedOrders,error:approvedOrdersError}=await admin.from("business_orders")
+        .select("id,order_reference,agreed_amount,currency,item_description")
+        .eq("conversation_id",conversationId)
+        .eq("customer_id",user.id)
+        .eq("item_type","vehicle")
+        .eq("status","awaiting_payment")
+        .order("created_at",{ascending:false})
+        .limit(2);
+      if(approvedOrdersError)throw approvedOrdersError;
+      if((approvedOrders||[]).length===1 && configuredPaymentMethods.length>0){
+        const order=approvedOrders[0];
+        paymentMethodPrompt={
+          order_reference:String(order.order_reference),
+          amount:Number(order.agreed_amount),
+          currency:String(order.currency||"USD"),
+          item_description:String(order.item_description||"Vehicle order"),
+          methods:[...configuredPaymentMethods]
+        };
+        intent="vehicle_payment_method_selection";
+        reply="Your vehicle order has been approved for payment. Choose one of the payment methods enabled by Tesla Markets Management below. The order reference and amount are linked to your approved order.";
+        requiresManagement=false;
+      }else{
+        intent=(approvedOrders||[]).length>1?"payment_order_ambiguous":"payment_requires_approved_order";
+        reply=(approvedOrders||[]).length>1
+          ?"More than one vehicle order is awaiting payment. Please contact Tesla Markets Management so the correct order can be selected."
+          :"Your vehicle order is still awaiting management approval, or no payment method has been configured. No payment is due yet. Tesla Markets Management must approve the final quotation and enable a payment method first.";
+        requiresManagement=false;
+      }
+    }
+
     let messageType = "text";
     let structuredData: Record<string, any> | null = null;
     if(matchedStoreProduct&&intent==="store_product_price"){
@@ -1166,6 +1199,22 @@ Deno.serve(async (req: Request) => {
       messageType="store_product_card";
       structuredData={title:cleanString(matchedStoreProduct.name,180),subtitle:"CHRISTMAS SHOP OFFER",amount_label:"PROMOTIONAL PRICE",amount:formatUsd(sale),
         sections:[{title:"Your Christmas price",rows:[{label:"Original price",value:formatUsd(original)},{label:"Christmas discount",value:percent+"% OFF"},{label:"You save",value:formatUsd(original-sale)},{label:"Promotional price",value:formatUsd(sale)}]}]};
+    } else if (paymentMethodPrompt) {
+      messageType = "payment_card";
+      structuredData = {
+        title:"Choose a payment method",
+        subtitle:"APPROVED VEHICLE ORDER",
+        status:"Ready for payment",
+        amount_label:"APPROVED AMOUNT DUE",
+        amount:formatUsd(paymentMethodPrompt.amount)+" "+paymentMethodPrompt.currency,
+        fields_title:"Order information",
+        fields:[
+          {label:"Order reference",value:paymentMethodPrompt.order_reference},
+          {label:"Vehicle and version",value:paymentMethodPrompt.item_description}
+        ],
+        payment_methods:paymentMethodPrompt.methods,
+        note:"Select your preferred enabled method. Tesla Markets will display only the administrator-configured instructions for this order."
+      };
     } else if (proformaInvoice) {
       messageType = "proforma_invoice";
       const invoiceAmount = new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2}).format(proformaInvoice.amount) + " USD";
