@@ -41,6 +41,7 @@ assert.equal(isValidPhoneNumber("+234 803 925 4732"), true);
 assert.equal(isValidPhoneNumber("How are you doing"), false);
 assert.equal(isInvestmentTopic("I want to invest in Tesla"), true);
 assert.equal(isInvestmentTopic("What is the TSLA stock price?"), true);
+assert.equal(isInvestmentTopic("I want to buy Tesla stock"), true);
 assert.equal(isInvestmentTopic("I want to buy Tesla shares"), true);
 assert.equal(isInvestmentTopic("Is the Model Y in stock?"), false);
 assert.equal(isInvestmentTopic("How many Model 3 are in stock?"), false);
