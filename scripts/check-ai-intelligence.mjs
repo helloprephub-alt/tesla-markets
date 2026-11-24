@@ -11,9 +11,14 @@ assert.match(admin,/TESLA_PRIVATE_LLM_ENDPOINT/);assert.doesNotMatch(admin,/CLOU
 assert.match(adminUi,/verified_official.*verified_independent.*management_approved/);
 const base=100000,pct=35,saved=base*pct/100;assert.equal(saved,35000);assert.equal(base-saved,65000);
 console.log("Tesla Markets AI intelligence checks passed.");
+assert.match(responder,/explicitQuantityMatch = customerMessage\.body\.match/, "Vehicle quantity must require an explicit add/put/include instruction.");
+assert.doesNotMatch(responder,/const quantityMatch = customerMessage\.body\.match/, "Unqualified message numbers must never be interpreted as cart quantity.");
+assert.match(chat,/const selected=selectedVariant===String\(variant\.name\|\|''\)/, "Selected vehicle trim highlighting must use the live local selection.");
+assert.match(chat,/save_vehicle_variant_selection/, "Vehicle version selection must persist without sending a chat message.");
+
 assert.match(responder, /isBareVehicleConfirmation/, "Affirmative vehicle selection must not be captured as a customer name.");
 assert.match(responder, /if\(bareVehicleConfirmation\) delete mergedDetails\.full_name/, "A stale conversational pseudo-name must be cleared.");
-assert.match(chat, /Choose your preferred version[\s\S]*setSelectedVariant\(String\(variant\.name\)\)/, "Version selection must update locally without sending another chat message.");
+assert.match(chat,/const next=String\(variant\.name\);setSelectedVariant\(next\);onSelectVariant/, "Version selection must update locally and persist without sending another chat message.");
 assert.doesNotMatch(chat, /onSelectVariant=\{\(variant,data\)=>void sendQuickMessage/, "A trim selection must not generate another AI purchase card.");
 assert.match(chat, /selected_variant:selectedVariant\|\|null/, "The exact selected trim must flow into checkout.");
 assert.match(responder, /promo_active===true[\s\S]*discount_percent/, "Vehicle promotions must be calculated from the selected live catalogue variant.");
@@ -21,3 +26,7 @@ assert.match(responder, /Exact selected configuration/, "The pro forma invoice m
 assert.match(responder, /if \(explicitVehiclePurchase && selectedVehicle\) \{[\s\S]*intent = "customer_details_progress"/, "An explicit vehicle purchase must override a generic intent classification.");
 assert.match(responder, /Object\.keys\(extractedDelivery\)\.length > 0 && !purchaseFlowActive/, "Purchase details must not fall through to the generic customer-enquiry card.");
 assert.match(responder, /selected_variant,100\) \|\| selectedVehicle\.name/, "The purchase response must retain the exact selected vehicle configuration.");
+
+assert.match(responder,/wantsPaymentStage/, "A customer must be able to request the payment stage from the pro forma invoice.");
+assert.match(responder,/paymentMethodPrompt/, "Only an approved vehicle order may produce the payment-method selection card.");
+assert.match(chat,/PROCEED TO PAYMENT/, "The vehicle pro forma invoice must expose a proceed-to-payment action.");

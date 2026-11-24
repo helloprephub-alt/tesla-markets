@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - repair/customer-chat-ai-20261123
+      - repair/vehicle-checkout-production-20261124
 
 permissions:
   contents: read
