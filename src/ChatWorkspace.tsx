@@ -9,11 +9,11 @@ type VehicleCheckoutDraft = { title:string; slug:string; mode:'cart'|'purchase';
 type VehicleCheckoutForm = { fullName:string; email:string; phone:string; country:string; city:string; address:string; variant:string; color:string; wheels:string; instructions:string };
 const emptyVehicleCheckoutForm:VehicleCheckoutForm={fullName:'',email:'',phone:'',country:'',city:'',address:'',variant:'',color:'',wheels:'',instructions:''};
 const checkoutVariantPrice=(item:{price:string;discount_percent?:number;promo_active?:boolean})=>{
- const base=Number(String(item.price||'').replace(/[^0-9.]/g,''));
+ const base=Number(String(item.price||"").replace(/[^0-9.]/g,""));
  const pct=item.promo_active&&Number.isInteger(item.discount_percent)&&Number(item.discount_percent)>=25&&Number(item.discount_percent)<=70?Number(item.discount_percent):0;
  const sale=base>0&&pct?Math.round(base*(1-pct/100)*100)/100:base;
- return sale>0?'
-
+ return sale>0?"$"+sale.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+(pct?" · "+pct+"% OFF":""):"Price to be confirmed";
+};
 const isLikelyCustomerName=(value:string)=>{
  const candidate=String(value||'').trim().replace(/[.!?]+$/g,'');
  const words=candidate.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().split(/\s+/).filter(Boolean);
