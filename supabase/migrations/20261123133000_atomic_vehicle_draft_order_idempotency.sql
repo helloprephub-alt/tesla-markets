@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.create_or_update_vehicle_draft_order(
 )
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $function$
 DECLARE
