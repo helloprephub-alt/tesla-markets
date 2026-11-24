@@ -10,9 +10,10 @@ AS $function$
 DECLARE
   v_responder_paused boolean;
 BEGIN
+  -- Human-authored management messages have automated_type = NULL. Any
+  -- non-NULL automated_type is machine-generated and must stop during takeover.
   IF NEW.sender_role <> 'management'
      OR NEW.automated_type IS NULL
-     OR NEW.automated_type NOT IN ('ai_response', 'automated_reply')
   THEN
     RETURN NEW;
   END IF;
