@@ -664,7 +664,7 @@ Deno.serve(async (req: Request) => {
 
     const paymentChoice = customerMessage.body.match(/\b(?:pay|payment|proceed)\s+using\s+(Apple Pay|Chime|Zelle|PayPal|Gift Card)\b/i);
     const savedPaymentLockCandidate = conversation.delivery_details && typeof conversation.delivery_details === "object" ? (conversation.delivery_details as any).payment_lock : null;
-    const incomingInvestmentTopic = /\b(invest|investment|investing|shares|stock|tsla|portfolio)\b/i.test(customerMessage.body);
+    const incomingInvestmentTopic = isInvestmentTopic(customerMessage.body);
     let savedPaymentLock: any = null;
     if (savedPaymentLockCandidate?.kind === "vehicle" && savedPaymentLockCandidate?.order_id &&
         ["pending", "awaiting_proof", "proof_submitted"].includes(String(savedPaymentLockCandidate.status || ""))) {
