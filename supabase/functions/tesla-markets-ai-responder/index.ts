@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { isConversationalReply, looksLikePersonName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage, isKnownCountry, looksLikeCity, looksLikeAddress, isValidPhoneNumber } from "../_shared/chat-intelligence.mjs";
+import { isConversationalReply, looksLikePersonName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage, isKnownCountry, looksLikeCity, looksLikeAddress, isValidPhoneNumber, isInvestmentTopic } from "../_shared/chat-intelligence.mjs";
 
 const corsHeaders = (origin: string | null) => {
   const allowed = origin === "https://teslamarketsofficial.com" ||
