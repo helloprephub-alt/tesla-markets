@@ -16,5 +16,5 @@ assert.match(responder, /if\(bareVehicleConfirmation\) delete mergedDetails\.ful
 assert.match(chat, /Choose your preferred version[\s\S]*setSelectedVariant\(String\(variant\.name\)\)/, "Version selection must update locally without sending another chat message.");
 assert.doesNotMatch(chat, /onSelectVariant=\{\(variant,data\)=>void sendQuickMessage/, "A trim selection must not generate another AI purchase card.");
 assert.match(chat, /selected_variant:selectedVariant\|\|null/, "The exact selected trim must flow into checkout.");
-assert.match(ai, /promo_active===true[\s\S]*discount_percent/, "Vehicle promotions must be calculated from the selected live catalogue variant.");
-assert.match(ai, /Exact selected configuration/, "The pro forma invoice must name the exact selected vehicle configuration.");
+assert.match(responder, /promo_active===true[\s\S]*discount_percent/, "Vehicle promotions must be calculated from the selected live catalogue variant.");
+assert.match(responder, /Exact selected configuration/, "The pro forma invoice must name the exact selected vehicle configuration.");
