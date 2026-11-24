@@ -55,3 +55,11 @@ assert.match(responder,/if \(explicitQuantityMatch \|\| addAnother\) \{[\s\S]*ex
 
 assert.match(responder,/wasGenericModelLine[\s\S]*existing\.quantity = 1/,
   "A legacy generic line inflated by repeated unqualified retries must be repaired to one selected vehicle.");
+
+assert.match(responder,/REMOVE_CART_ITEM\\\|\(\[\^|\]\+\)\\\|/,"Cart removal commands must identify a specific saved item.");
+assert.match(responder,/priorCart\.filter\(\(_item:any,index:number\)=>index!==cartRemovalIndex\)/,"Removing an item must persist only the remaining cart entries.");
+assert.match(responder,/cart_items:cartSummary\.map/,"Cart cards must carry item identifiers for per-item removal.");
+assert.match(chat,/onRemoveCartItem\?\.\\\(item\\\)/,"Cart rows must expose a remove action.");
+assert.match(chat,/PAY NOW/,"Non-empty carts must display a Pay Now action.");
+assert.match(chat,/REMOVE_CART_ITEM\\\|/,"The remove action must send a deterministic cart-item identifier.");
+assert.match(chat,/Pay now for my cart/,"Pay Now must enter the existing payment approval flow.");
