@@ -48,7 +48,7 @@ assert.equal(isInvestmentTopic("How many Model 3 are in stock?"), false);
 assert.doesNotMatch(chat, /investmentCheckout|submitInvestmentCheckout/, "Investment enquiries must not open a checkout form.");
 assert.match(chat, /context\.trim\(\)&&\(createdNewConversation\|\|!!intent\)/, "A new pre-filled enquiry must save or safely retry its opening message.");
 assert.match(chat, /\.eq\('body',initialBody\)/, "Opening messages must be deduplicated before retrying.");
-assert.match(chat, /await invokeCustomerResponder\(id,initial\.id\)/, "A pre-filled opening message must trigger the AI responder.");
+assert.match(chat, /await invokeCustomerResponder\(id,initialMessageId\)/, "A pre-filled opening message must trigger the AI responder.");
 assert.match(chat, /initializedIntentRef\.current/, "Re-renders must not create duplicate enquiry conversations.");
 assert.match(chat, /await invokeCustomerResponder\(threadId,messageId\)/, "Typed customer messages must use the same responder invocation helper.");
 assert.match(responder, /looksLikePersonName\(nameMatch\[1\],true\)/, "Explicit name candidates must pass name validation.");
