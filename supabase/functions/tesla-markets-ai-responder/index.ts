@@ -1211,7 +1211,6 @@ Deno.serve(async (req: Request) => {
         title:"Your vehicle cart",
         image_url:cartSummary.find((item:any)=>item.image_url)?.image_url||null,
         subtitle:"CUSTOMER VEHICLE SELECTION",
-        status:"Enquiry — not an order",
         amount_label:"ESTIMATED CART TOTAL",
         amount:"$"+cartTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USD",
         fields_title:"Selected vehicles",
