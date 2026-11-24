@@ -80,5 +80,5 @@ export function isVehicleFollowUpMessage(value) {
 
 export function isInvestmentTopic(value) {
   const text = normalize(value).trim();
-  return /\\b(invest(?:ment|ing)?|shares?|stock\\s+(?:market|price|ticker)|ticker|portfolio|brokerage|dividend|tsla(?:\\s+(?:shares?|stock|price))?)\\b/i.test(text);
+  return /\b(invest(?:ment|ing)?|shares?|stock\s+(?:market|price|ticker)|ticker|portfolio|brokerage|dividend|tsla(?:\s+(?:shares?|stock|price))?)\b/i.test(text);
 }
