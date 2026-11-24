@@ -117,8 +117,10 @@ function RichMessageCard({type,data,onAddToCart,onBuyNow,onSelectVariant,onChoos
   const rows=(value:any)=>Array.isArray(value)?value.filter((x:any)=>x&&typeof x.label==='string'&&x.value!==undefined):[];
   const title=String(data.title|| (type==='vehicle_card'?'Vehicle information':type==='investment_summary'?'Investment enquiry summary':type==='customer_details'?'Customer information':'Tesla Markets information'));
   const slug=String(data.vehicle_slug||(/cybertruck/i.test(title)?'cybertruck':/roadster/i.test(title)?'roadster':/semi/i.test(title)?'semi':/model\s*3/i.test(title)?'model-3':/model\s*y/i.test(title)?'model-y':''));
-  const fallbackImage=slug?'/resources/'+slug+'-1.jpg':'';
-  const imageUrl=typeof data.image_url==='string'&&data.image_url.trim()?data.image_url:fallbackImage;
+  // Cart cards must not invent a generic vehicle photo when the exact selected
+  // trim has no verified matching image. Other vehicle cards keep their fallback.
+  const fallbackImage=type==='cart_summary'?'':(slug?'/resources/'+slug+'-1.jpg':'');
+  const imageUrl=type==='cart_summary'?'':(typeof data.image_url==='string'&&data.image_url.trim()?data.image_url:fallbackImage);
   const galleryCounts:Record<string,number>={'model-3':5,'model-y':5,'cybertruck':10,'roadster':5,'semi':10};
   const gallery=Array.isArray(data.gallery_urls)&&data.gallery_urls.length?data.gallery_urls.filter((url:any)=>typeof url==='string'&&url.trim()):Array.from({length:galleryCounts[slug]||0},(_,index)=>'/resources/'+slug+'-'+(index+1)+'.jpg');
   const metrics=rows(data.metrics), fields=rows(data.fields);
