@@ -18,7 +18,7 @@ assert.match(chat,/save_vehicle_variant_selection/, "Vehicle version selection m
 
 assert.match(responder, /isBareVehicleConfirmation/, "Affirmative vehicle selection must not be captured as a customer name.");
 assert.match(responder, /if\(bareVehicleConfirmation\) delete mergedDetails\.full_name/, "A stale conversational pseudo-name must be cleared.");
-assert.match(chat, /Choose your preferred version[\s\S]*setSelectedVariant\(String\(variant\.name\)\)/, "Version selection must update locally without sending another chat message.");
+assert.match(chat,/const next=String\(variant\.name\);setSelectedVariant\(next\);onSelectVariant/, "Version selection must update locally and persist without sending another chat message.");
 assert.doesNotMatch(chat, /onSelectVariant=\{\(variant,data\)=>void sendQuickMessage/, "A trim selection must not generate another AI purchase card.");
 assert.match(chat, /selected_variant:selectedVariant\|\|null/, "The exact selected trim must flow into checkout.");
 assert.match(responder, /promo_active===true[\s\S]*discount_percent/, "Vehicle promotions must be calculated from the selected live catalogue variant.");
