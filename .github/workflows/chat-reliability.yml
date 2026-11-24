@@ -5,6 +5,7 @@ on:
     branches:
       - repair/customer-chat-ai-20261123
       - repair/vehicle-checkout-production-20261124
+      - feat/cart-remove-items-pay-now-20261124
       - fix/authoritative-vehicle-version-journey-20261124
 
 permissions:
