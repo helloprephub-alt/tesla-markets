@@ -665,7 +665,12 @@ Deno.serve(async (req: Request) => {
     // Idempotency is enforced per message_id by ai_responder_runs and
     // duplicate reply protection is enforced per conversation by the DB trigger.
 
-    const {data:catalogueRows,error:catalogueError}=await admin.from("vehicle_catalog").select("id,name,model,slug,category,description,price_usd,availability,is_published,verification_status,images,specifications,model_year,market,source_url,source_type").eq("is_published",true).in("verification_status",["verified","verified_official","verified_independent","management_approved"]).in("availability",["available","limited"]).order("name",{ascending:true});
+    const {data:catalogueRows,error:catalogueError}=await admin.from("vehicle_catalog")
+      .select("id,name,model,slug,category,description,price_usd,availability,is_published,verification_status,images,specifications,model_year,market,source_url,source_type")
+      .eq("is_published",true)
+      .in("verification_status",["verified","verified_official","verified_independent","management_approved"])
+      .in("availability",["available","limited"])
+      .order("name",{ascending:true});
     if(catalogueError)throw catalogueError;
     for(const k of Object.keys(SHOP_VEHICLE_PROMOS))delete SHOP_VEHICLE_PROMOS[k];
     for(const row of catalogueRows||[]){const specs=row.specifications&&typeof row.specifications==="object"?row.specifications:{},variants=Array.isArray(specs.variants)?specs.variants:[];SHOP_VEHICLE_PROMOS[String(row.slug||"").toLowerCase()]={variants:variants.filter((v:any)=>{const end=Date.parse(String(v.promo_ends_at||v.promo_expires_at||""));return v.promo_active!==false&&(!Number.isFinite(end)||end>Date.now());}).map((v:any)=>({...v,discountPercent:Number(v.discount_percent??v.discountPercent??0),price:v.original_price||v.price}))};}

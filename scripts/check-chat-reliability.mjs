@@ -55,8 +55,8 @@ assert.match(chat, /await invokeCustomerResponder\(threadId,messageId\)/, "Typed
 assert.match(responder, /looksLikePersonName\(nameMatch\[1\],true\)/, "Explicit name candidates must pass name validation.");
 assert.match(responder, /looksLikePersonName\(plain,true\)/, "Unlabelled names must pass strict pending-slot validation.");
 assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : vehicle;/, "Unrelated and investment messages must not inherit a previous vehicle.");
-assert.match(responder, /\.eq\("is_published", true\)[\s\S]*?\.eq\("verification_status", "verified"\)/, "The AI must only use published, verified vehicle records.");
-assert.match(chat, /\.eq\('is_published',true\)\.eq\('verification_status','verified'\)/, "Management chat cards must only show published, verified vehicles.");
+assert.match(responder, /\.eq\("is_published",true\)[\s\S]*?\.in\("verification_status",\["verified","verified_official","verified_independent","management_approved"\]\)/, "The AI must only use published and approved vehicle records.");
+assert.match(chat, /\.eq\('is_published',true\)\.in\('verification_status',\['verified','verified_official','verified_independent','management_approved'\]\)/, "Management chat cards must only show published and approved vehicles.");
 assert.match(responder, /isSmallTalkMessage\(customerMessage\.body\) \|\| isGreetingMessage\(customerMessage\.body\)/, "Greetings and small talk must not inherit stale vehicle context.");
 assert.match(responder, /"investment_payment_restricted"/, "Investment payment requests must be rejected as payment workflows.");
 assert.match(responder, /const investmentFlow = intent\.startsWith\("investment"\) \|\| incomingInvestmentTopic;/, "Investment intent must be based on the current message, not stale vehicle or identity context.");
