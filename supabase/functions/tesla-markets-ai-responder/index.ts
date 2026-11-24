@@ -847,8 +847,17 @@ Deno.serve(async (req: Request) => {
         : "Thank you. I have selected that vehicle version. To complete your enquiry, please provide: " + missing.join(", ") + ". You can send the remaining details together in one message.";
     }
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
-    const cartIntent = /\b(?:add|put|include)\b[\s\S]{0,100}\b(?:to\s+(?:my\s+)?(?:cart|basket)|cart|basket)\b/i.test(customerMessage.body) || /\b(?:view|show|open)\b[\s\S]{0,40}\b(?:cart|basket)\b/i.test(customerMessage.body);
-    const cartSummary = cartIntent && selectedVehicle ? (() => {
+    const cartRemovalMatch = customerMessage.body.match(/^REMOVE_CART_ITEM\\|([^|]+)\\|([\\s\\S]*)$/);
+    const cartRemovalRequested = !!cartRemovalMatch;
+    const cartRemovalIndex = cartRemovalMatch ? priorCart.findIndex((item:any)=>
+      cleanString(item?.slug,100)===cleanString(cartRemovalMatch[1],100) &&
+      normalized(cleanString(item?.variant||"",100))===normalized(cleanString(cartRemovalMatch[2]||"",100))
+    ) : -1;
+    const cartRemovalFound = cartRemovalRequested && cartRemovalIndex >= 0;
+    const cartIntent = cartRemovalRequested || /\\b(?:add|put|include)\\b[\\s\\S]{0,100}\\b(?:to\\s+(?:my\\s+)?(?:cart|basket)|cart|basket)\\b/i.test(customerMessage.body) || /\\b(?:view|show|open)\\b[\\s\\S]{0,40}\\b(?:cart|basket)\\b/i.test(customerMessage.body);
+    const cartSummary = cartRemovalRequested
+      ? priorCart.filter((_item:any,index:number)=>index!==cartRemovalIndex)
+      : cartIntent && selectedVehicle ? (() => {
       // Only an explicit add/put/include quantity directly before a vehicle or
       // quantity noun counts. Address numbers, postcodes and phone numbers do not.
       const explicitQuantityMatch = customerMessage.body.match(/\b(?:add|put|include)\s+(?:(\d{1,2})|(one|two|three|four|five|six|seven|eight|nine|ten))\s+(?:(?:of\s+)?(?:a\s+)?)?(?:cybertruck|model\s*[3ysx]|roadster|tesla\s+semi|vehicles?|cars?|units?)\b/i);
@@ -905,7 +914,10 @@ Deno.serve(async (req: Request) => {
     })() : null;
     if (cartSummary) {
       mergedDetails.cart_items = cartSummary;
-      await admin.from("support_conversations").update({delivery_details:mergedDetails,vehicle_model:selectedVehicle.name,updated_at:new Date().toISOString()}).eq("id",conversationId);
+      const cartUpdate:Record<string,any>={delivery_details:mergedDetails,updated_at:new Date().toISOString()};
+      if(selectedVehicle)cartUpdate.vehicle_model=selectedVehicle.name;
+      const {error:cartSaveError}=await admin.from("support_conversations").update(cartUpdate).eq("id",conversationId);
+      if(cartSaveError)throw cartSaveError;
     }
     const investmentFlow = intent.startsWith("investment") || incomingInvestmentTopic;
     if (paymentChoice) {
@@ -978,7 +990,13 @@ Deno.serve(async (req: Request) => {
       requiresManagement = false;
       const totalItems = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0);
       const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
-      reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";
+      if(cartRemovalRequested){
+        reply = cartRemovalFound
+          ? (cartSummary.length ? "The selected vehicle has been removed from your cart. Your remaining cart total has been recalculated." : "The vehicle has been removed. Your cart is now empty.")
+          : "I could not find that exact vehicle version in your cart. Your cart has not been changed.";
+      }else{
+        reply = "Your vehicle cart has been updated. You can remove any item or add another vehicle. Your saved contact details remain with this conversation.";
+      }
     } else if (cartIntent && selectedVehicle && variants.length > 1 && !cleanString(mergedDetails.selected_variant,100)) {
       intent = "vehicle_variant_required";
       requiresManagement = false;
@@ -1304,13 +1322,14 @@ Deno.serve(async (req: Request) => {
         amount_label:"ESTIMATED CART TOTAL",
         amount:"$"+cartTotal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" USD",
         fields_title:"Selected vehicles",
+        cart_items:cartSummary.map((item:any)=>({slug:item.slug,model:item.model,variant:item.variant||null,quantity:Number(item.quantity||1),unit_price_usd:Number(item.unit_price_usd||0),original_unit_price_usd:Number(item.original_unit_price_usd||item.unit_price_usd||0),discount_percent:Number(item.discount_percent||0)})),
         fields:cartSummary.map((item:any)=>({label:item.model+(item.variant?" · "+item.variant:"")+" × "+item.quantity,value:item.unit_price_usd>0?"$"+(item.unit_price_usd*item.quantity).toLocaleString("en-US")+" USD"+(item.discount_percent?" ("+item.discount_percent+"% Christmas discount; was $"+(Number(item.original_unit_price_usd||item.unit_price_usd)*Number(item.quantity||1)).toLocaleString("en-US")+")":""):"Price to be confirmed"})),
         sections:[{title:"Cart details",rows:[
           {label:"Number of vehicles",value:String(cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0))},
           {label:"Models selected",value:String(cartSummary.length)},
           {label:"Next step",value:"Management will confirm configuration, availability, delivery and final pricing"}
         ]}],
-        note:"You can add more vehicles to this cart during the same conversation. Your saved customer details are retained."
+        note:cartSummary.length?"You can remove any vehicle before continuing. PAY NOW requests the final approved order and payment options; management approval is required before payment methods are released. Your saved customer details are retained.":"Your cart is empty. Add a vehicle to continue."
       };
     } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase","vehicle_variant_required"].includes(intent) && !proformaInvoice) {
       const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
