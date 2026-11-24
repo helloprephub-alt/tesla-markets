@@ -813,6 +813,16 @@ Deno.serve(async (req: Request) => {
     if (!hasVariant && variants.length > 1) missing.push("preferred vehicle version");
     const nextPendingSlot = !hasName ? "full_name" : !hasEmail ? "email" : !hasPhone ? "phone" : !hasCountry ? "country" : !hasCity ? "city" : !hasAddress ? "address" : !hasVariant && variants.length > 1 ? "selected_variant" : "";
     const explicitVehiclePurchase = /\b(i want to buy|i would like to buy|i'd like to buy|i want to purchase|i'd like to purchase|buy now|place an order|reserve|book this)\b/i.test(customerMessage.body) || ["purchase_ready","vehicle_purchase"].includes(intent);
+    // A clear purchase request must override a generic classifier result.
+    // This prevents a completed checkout-details message from falling into the
+    // unrelated "customer enquiry details" acknowledgement branch.
+    if (explicitVehiclePurchase && selectedVehicle) {
+      intent = "customer_details_progress";
+      requiresManagement = false;
+      reply = deliveryComplete
+        ? "Thank you. I have your details and the selected " + (cleanString(mergedDetails.selected_variant,100) || selectedVehicle.name) + " configuration. I am preparing the matching pro forma order summary."
+        : "Thank you. I have your " + selectedVehicle.name + " purchase request" + (hasVariant ? " for " + cleanString(mergedDetails.selected_variant,100) : "") + ". Please provide only the remaining details: " + missing.join(", ") + ". I will keep your selected configuration with this order.";
+    }
     const priorPurchaseStage = investmentFlowMessage || (requestedVehicleChanged && !explicitVehiclePurchase) ? "" : cleanString(aiMemory.conversation_stage,80);
     const purchaseFlowActive = !investmentFlowMessage && (explicitVehiclePurchase || ["purchase_collecting_details","vehicle_order_submitted"].includes(priorPurchaseStage));
     if (intent === "vehicle_variant_selected" && priorPurchaseStage === "purchase_collecting_details") {
@@ -1261,7 +1271,7 @@ Deno.serve(async (req: Request) => {
         ],
         note:"Send all outstanding information together in one message. Details already saved do not need to be repeated."
       };
-    } else if (Object.keys(extractedDelivery).length > 0) {
+    } else if (Object.keys(extractedDelivery).length > 0 && !purchaseFlowActive) {
       messageType = "customer_details";
       structuredData = {
         title:"Customer enquiry details",

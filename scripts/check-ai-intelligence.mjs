@@ -18,3 +18,6 @@ assert.doesNotMatch(chat, /onSelectVariant=\{\(variant,data\)=>void sendQuickMes
 assert.match(chat, /selected_variant:selectedVariant\|\|null/, "The exact selected trim must flow into checkout.");
 assert.match(responder, /promo_active===true[\s\S]*discount_percent/, "Vehicle promotions must be calculated from the selected live catalogue variant.");
 assert.match(responder, /Exact selected configuration/, "The pro forma invoice must name the exact selected vehicle configuration.");
+assert.match(responder, /if \(explicitVehiclePurchase && selectedVehicle\) \{[\s\S]*intent = "customer_details_progress"/, "An explicit vehicle purchase must override a generic intent classification.");
+assert.match(responder, /Object\.keys\(extractedDelivery\)\.length > 0 && !purchaseFlowActive/, "Purchase details must not fall through to the generic customer-enquiry card.");
+assert.match(responder, /selected_variant,100\) \|\| selectedVehicle\.name/, "The purchase response must retain the exact selected vehicle configuration.");
