@@ -43,8 +43,8 @@ assert.match(responder,/intent = "vehicle_variant_required"[\s\S]*select the exa
 // Regression: a specific trim must beat its generic model-name prefix.
 assert.match(responder,/variants\.slice\(\)\.sort\(\(a:any,b:any\)=>[\s\S]*\.find\(\(variant:any\)=>/,
   "Variant matching must test the longest catalogue trim before its generic model prefix.");
-assert.match(responder,/Upgrade a previously mis-saved generic model line to the exact trim/,
-  "A previously generic cart line must be upgraded rather than duplicated when the exact trim is selected.");
+assert.match(responder,/const existing = current\.find[\s\S]*normalized\(chosenName\)\.startsWith/, "A specific trim must update a previously generic cart line instead of duplicating it.");
+assert.match(responder,/wasGenericModelLine[\s\S]*existing\.quantity = 1/, "Correcting a generic legacy cart line must restore its single selected unit.");
 assert.doesNotMatch(responder,/image_url:cartSummary\.find/,
   "Cart cards must not reuse an unverified generic model image as the selected trim image.");
 assert.match(chat,/const fallbackImage=type==='cart_summary'\?'':/,
