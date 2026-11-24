@@ -59,6 +59,7 @@ assert.match(chat, /\.eq\('is_published',true\)\.eq\('verification_status','veri
 assert.match(responder, /isSmallTalkMessage\(customerMessage\.body\) \|\| isGreetingMessage\(customerMessage\.body\)/, "Greetings and small talk must not inherit stale vehicle context.");
 assert.match(responder, /"investment_payment_restricted"/, "Investment payment requests must be rejected as payment workflows.");
 assert.match(responder, /const investmentFlow = intent\.startsWith\("investment"\) \|\| incomingInvestmentTopic;/, "Investment intent must be based on the current message, not stale vehicle or identity context.");
+assert.match(responder, /const incomingInvestmentTopic = isInvestmentTopic\(customerMessage\.body\);/, "Vehicle inventory phrases such as Model Y in stock must not be misclassified as TSLA investment intent.");
 assert.doesNotMatch(responder, /investment_enquiries|investmentAmountMatch|investmentDetailsComplete|investment_summary/, "Investment conversations must not collect personal details or create payment-like enquiry records.");
 assert.doesNotMatch(responder, /query1\.finance\.yahoo\.com\/v8\/finance\/chart\/TSLA/, "The customer chat must not estimate TSLA share purchases from a requested investment amount.");
 assert.doesNotMatch(responder, /tell me the amount you are considering|Tesla Markets collects investment enquiries/i, "The customer chat must not solicit investment amounts or imply investment lead collection.");
