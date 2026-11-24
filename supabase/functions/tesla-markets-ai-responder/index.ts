@@ -711,8 +711,11 @@ Deno.serve(async (req: Request) => {
     const currentText = normalized(customerMessage.body);
     const isSmallTalk = isSmallTalkMessage(customerMessage.body) || isGreetingMessage(customerMessage.body);
     const isVehicleFollowUp = isVehicleFollowUpMessage(customerMessage.body);
+    const persistedDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
     const contextualVehicle = canonicalVehicle(customerMessage.body) ||
-      (!isSmallTalk && isVehicleFollowUp ? canonicalVehicle(cleanString(conversation.vehicle_model || aiMemory.selected_vehicle || priorCustomerVehicle?.body || "", 100)) : "");
+      (!isSmallTalk && (isVehicleFollowUp || /\b(cart|basket|add|put|include|buy|purchase|order|payment)\b/i.test(customerMessage.body))
+        ? canonicalVehicle(cleanString(persistedDetails.selected_vehicle_model || aiMemory.selected_vehicle || conversation.vehicle_model || priorCustomerVehicle?.body || "", 140))
+        : "");
     const vehicle = matchVehicle(customerMessage.body, contextualVehicle, catalogue || []);
     let reply = "";
     let intent = "general";
@@ -773,7 +776,7 @@ Deno.serve(async (req: Request) => {
     if (mergedDetails.country && !isKnownCountry(String(mergedDetails.country))) delete mergedDetails.country;
     if (mergedDetails.city && !looksLikeCity(String(mergedDetails.city))) delete mergedDetails.city;
     if (mergedDetails.address && !looksLikeAddress(String(mergedDetails.address))) delete mergedDetails.address;
-    const selectedVehicle = investmentFlowMessage ? null : vehicle;
+    const selectedVehicle = investmentFlowMessage ? null : (vehicle || matchVehicle("", canonicalVehicle(cleanString(priorDetails.selected_vehicle_model || aiMemory.selected_vehicle || conversation.vehicle_model || "",140)), catalogue || []));
     const previousSelectedVehicle = canonicalVehicle(cleanString(aiMemory.selected_vehicle || conversation.vehicle_model,100));
     const currentSelectedVehicle = canonicalVehicle(cleanString(selectedVehicle?.name || "",100));
     const requestedVehicleChanged = !!currentSelectedVehicle && !!previousSelectedVehicle && currentSelectedVehicle !== previousSelectedVehicle;
@@ -833,7 +836,7 @@ Deno.serve(async (req: Request) => {
         : "Thank you. I have selected that vehicle version. To complete your enquiry, please provide: " + missing.join(", ") + ". You can send the remaining details together in one message.";
     }
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
-    const cartIntent = /(?:\b(add|put|include)\b.*\b(to (?:my )?(?:cart|basket)|another|one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2}\s+(?:cybertruck|model|roadster|semi|vehicles?|cars?|units?))\b|\b(view|show)\b.*\b(cart|basket)\b)/i.test(customerMessage.body);
+    const cartIntent = /\b(?:add|put|include)\b[\s\S]{0,100}\b(?:to\s+(?:my\s+)?(?:cart|basket)|cart|basket)\b/i.test(customerMessage.body) || /\b(?:view|show|open)\b[\s\S]{0,40}\b(?:cart|basket)\b/i.test(customerMessage.body);
     const cartSummary = cartIntent && selectedVehicle ? (() => {
       // Only an explicit add/put/include quantity directly before a vehicle or
       // quantity noun counts. Address numbers, postcodes and phone numbers do not.
@@ -843,19 +846,26 @@ Deno.serve(async (req: Request) => {
       const quantity = Math.max(1, Math.min(20, requestedQuantity));
       const current = priorCart.map((item:any)=>({...item}));
       const chosenName=cleanString(mergedDetails.selected_variant,100);
+      const chosen=variants.find((v:any)=>normalized(cleanString(v?.name,100))===normalized(chosenName))||null;
+      if (variants.length > 1 && !chosen) return null;
+      const base=parseUsd(chosen?.original_price||chosen?.price)||Number(selectedVehicle.price_usd||0);
+      const promoEnd=Date.parse(String(chosen?.promo_ends_at||chosen?.promo_expires_at||""));
+      const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
+      const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
+      const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
       const existing = current.find((item:any)=>item.slug===selectedVehicle.slug&&normalized(cleanString(item.variant,100))===normalized(chosenName));
-      if (existing) existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
-      else {
-        const chosen=variants.find((v:any)=>normalized(cleanString(v?.name,100))===normalized(chosenName))||null;
-        const base=parseUsd(chosen?.original_price||chosen?.price)||Number(selectedVehicle.price_usd||0);
-        const promoEnd=Date.parse(String(chosen?.promo_ends_at||chosen?.promo_expires_at||""));
-        const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
-        const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
-        const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
+      if (existing) {
+        existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
+        existing.model = selectedVehicle.name;
+        existing.variant = chosen?.name||chosenName||null;
+        existing.unit_price_usd = sale;
+        existing.original_unit_price_usd = base;
+        existing.discount_percent = pct||null;
+      } else {
         current.push({
           slug:selectedVehicle.slug,
           model:selectedVehicle.name,
-          variant:chosen?.name||cleanString(mergedDetails.selected_variant,100)||null,
+          variant:chosen?.name||chosenName||null,
           quantity,
           unit_price_usd:sale,
           original_unit_price_usd:base,
@@ -1283,7 +1293,9 @@ Deno.serve(async (req: Request) => {
       const chosenVariant = purchaseVariants.find((variant:any) => normalized(cleanString(variant?.name,100)) === normalized(cleanString(mergedDetails.selected_variant,100)));
       messageType = "vehicle_purchase_prompt";
       structuredData = {
-        title: "Continue with " + cleanString(selectedVehicle.name,100),
+        title: "Continue with " + cleanString(selectedVehicle.name,100) + (cleanString(mergedDetails.selected_variant,100) ? " · " + cleanString(mergedDetails.selected_variant,100) : ""),
+        vehicle_model: cleanString(selectedVehicle.name,100),
+        selected_variant: cleanString(mergedDetails.selected_variant,100) || null,
         subtitle: "VEHICLE ENQUIRY · DETAILS REQUIRED",
         image_url: purchaseImage,
         vehicle_slug: purchaseSlug,
@@ -1304,6 +1316,7 @@ Deno.serve(async (req: Request) => {
         sections: [
           { title:"Vehicle and version", rows:[
             { label:"Vehicle", value:cleanString(selectedVehicle.name,100) },
+            { label:"Selected vehicle version", value:cleanString(mergedDetails.selected_variant,100) || "Not selected" },
             { label:"Preferred version", value:cleanString(mergedDetails.selected_variant,100) || (purchaseVariants.length ? "Please choose a version" : "Standard configuration") },
             ...purchaseVariants.map((variant:any)=>{
               const promo=SHOP_VEHICLE_PROMOS[purchaseSlug]?.variants.find((v:any)=>normalized(v.name)===normalized(cleanString(variant?.name,100)));
@@ -1333,7 +1346,7 @@ Deno.serve(async (req: Request) => {
           {label:"Country",value:cleanString(mergedDetails.country,80)||"Not provided"},
           {label:"City",value:cleanString(mergedDetails.city,80)||"Not provided"},
           {label:"Delivery address",value:cleanString(mergedDetails.address,240)||"Not provided"},
-          {label:"Vehicle",value:cleanString(selectedVehicle?.name||conversation.vehicle_model,100)||"Not selected"}
+          {label:"Vehicle",value:[cleanString(selectedVehicle?.name||conversation.vehicle_model,100),cleanString(mergedDetails.selected_variant,100)].filter(Boolean).join(" · ")||"Not selected"}
         ],
         note:"These details are saved with this conversation. The customer does not need to submit the same information again unless something changes."
       };
