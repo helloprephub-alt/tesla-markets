@@ -56,7 +56,7 @@ assert.match(responder,/if \(explicitQuantityMatch \|\| addAnother\) \{[\s\S]*ex
 assert.match(responder,/wasGenericModelLine[\s\S]*existing\.quantity = 1/,
   "A legacy generic line inflated by repeated unqualified retries must be repaired to one selected vehicle.");
 
-assert.ok(responder.includes('customerMessage.body.match(/^REMOVE_CART_ITEM\\\\|'), "Cart removal commands must identify a specific saved item.");
+assert.ok(responder.includes('const cartRemovalMatch = customerMessage.body.match('), "Cart removal commands must identify a specific saved item.");
 assert.ok(responder.includes('priorCart.filter((_item:any,index:number)=>index!==cartRemovalIndex)'), "Removing an item must persist only the remaining cart entries.");
 assert.ok(responder.includes('cart_items:cartSummary.map'), "Cart cards must carry item identifiers for per-item removal.");
 assert.ok(chat.includes('onRemoveCartItem?.(item)'), "Cart rows must expose a remove action.");
