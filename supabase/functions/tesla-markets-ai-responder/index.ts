@@ -855,6 +855,10 @@ Deno.serve(async (req: Request) => {
       const quantityWords:Record<string,number>={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
       const requestedQuantity = explicitQuantityMatch ? (explicitQuantityMatch[1] ? Number(explicitQuantityMatch[1]) : quantityWords[String(explicitQuantityMatch[2]).toLowerCase()] || 1) : 1;
       const quantity = Math.max(1, Math.min(20, requestedQuantity));
+      // A repeated natural-language "add this to my cart" message is usually
+      // a retry or correction, not a request for another unit. Increment an
+      // existing line only when the customer states a quantity or says "another".
+      const addAnother = /\\b(?:another|one more|additional)\\b/i.test(customerMessage.body);
       const current = priorCart.map((item:any)=>({...item}));
       const chosenName=cleanString(mergedDetails.selected_variant,100);
       const chosen=variants.find((v:any)=>normalized(cleanString(v?.name,100))===normalized(chosenName))||null;
@@ -871,7 +875,9 @@ Deno.serve(async (req: Request) => {
           && normalized(cleanString(item.variant,100))===normalized(cleanString(item.model,100))
           && normalized(chosenName).startsWith(normalized(cleanString(item.variant,100))+" "));
       if (existing) {
-        existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
+        if (explicitQuantityMatch || addAnother) {
+          existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
+        }
         existing.model = selectedVehicle.name;
         existing.variant = chosen?.name||chosenName||null;
         existing.unit_price_usd = sale;
