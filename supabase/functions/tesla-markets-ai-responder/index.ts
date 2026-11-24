@@ -1300,7 +1300,6 @@ Deno.serve(async (req: Request) => {
       structuredData = {
         title: "Continue with " + cleanString(selectedVehicle.name,100) + (cleanString(mergedDetails.selected_variant,100) ? " · " + cleanString(mergedDetails.selected_variant,100) : ""),
         vehicle_model: cleanString(selectedVehicle.name,100),
-        selected_variant: cleanString(mergedDetails.selected_variant,100) || null,
         subtitle: "VEHICLE ENQUIRY · DETAILS REQUIRED",
         image_url: purchaseImage,
         vehicle_slug: purchaseSlug,
