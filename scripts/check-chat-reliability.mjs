@@ -9,7 +9,8 @@ import {
   isKnownCountry,
   looksLikeCity,
   looksLikeAddress,
-  isValidPhoneNumber
+  isValidPhoneNumber,
+  isInvestmentTopic
 } from "../supabase/functions/_shared/chat-intelligence.mjs";
 
 const read = (path) => fs.readFileSync(new URL("../" + path, import.meta.url), "utf8");
@@ -38,6 +39,11 @@ assert.equal(looksLikeAddress("10 Downing Street"), true);
 assert.equal(looksLikeAddress("How are you doing today"), false);
 assert.equal(isValidPhoneNumber("+234 803 925 4732"), true);
 assert.equal(isValidPhoneNumber("How are you doing"), false);
+assert.equal(isInvestmentTopic("I want to invest in Tesla"), true);
+assert.equal(isInvestmentTopic("What is the TSLA stock price?"), true);
+assert.equal(isInvestmentTopic("I want to buy Tesla shares"), true);
+assert.equal(isInvestmentTopic("Is the Model Y in stock?"), false);
+assert.equal(isInvestmentTopic("How many Model 3 are in stock?"), false);
 
 assert.doesNotMatch(chat, /investmentCheckout|submitInvestmentCheckout/, "Investment enquiries must not open a checkout form.");
 assert.match(chat, /context\.trim\(\)&&\(createdNewConversation\|\|!!intent\)/, "A new pre-filled enquiry must save or safely retry its opening message.");
