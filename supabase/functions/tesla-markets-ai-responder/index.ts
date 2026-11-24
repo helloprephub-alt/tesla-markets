@@ -1379,7 +1379,7 @@ Deno.serve(async (req: Request) => {
           ]}
         ]
       };
-
+    }
 
     // Cloudflare Workers AI now renders the real customer-facing reply.
     // Supabase remains authoritative for prices, discounts, orders and all business actions.
