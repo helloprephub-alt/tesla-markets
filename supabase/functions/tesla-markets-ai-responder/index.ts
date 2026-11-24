@@ -792,20 +792,13 @@ Deno.serve(async (req: Request) => {
     if(bareVehicleConfirmation) delete mergedDetails.full_name;
     // Match the most specific (longest) catalogue trim first. Otherwise
     // "Model Y" incorrectly captures "Model Y Performance" and "Model Y Premium".
+    // Match the most specific (longest) catalogue trim first. Otherwise
+    // "Model Y" incorrectly captures "Model Y Performance" and "Model Y Premium".
     const variantMatch = variants.slice().sort((a:any,b:any)=>
       normalized(cleanString(b?.name,100)).length-normalized(cleanString(a?.name,100)).length
     ).find((variant:any)=>{
       const variantName=cleanString(variant?.name,100);
-      if(!variantName) return false;
-      const escapedName=normalized(variantName).replace(/[.*+?^${}()|[\]\\]/g,"\\    const variantMatch = variants.find((variant: any) => {
-      const variantName=cleanString(variant?.name,100);
       if(!variantName || !normalized(customerMessage.body).includes(normalized(variantName))) return false;
-      const genericVehicleName=normalized(variantName)===normalized(cleanString(selectedVehicle?.name||"",100));
-      if(bareVehicleConfirmation && genericVehicleName) return false;
-      return true;
-    });");
-      const exactPhrase=new RegExp("(^|[^a-z0-9])"+escapedName+"($|[^a-z0-9])","i");
-      if(!exactPhrase.test(normalized(customerMessage.body))) return false;
       const genericVehicleName=normalized(variantName)===normalized(cleanString(selectedVehicle?.name||"",100));
       if(bareVehicleConfirmation && genericVehicleName) return false;
       return true;
