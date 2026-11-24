@@ -49,3 +49,6 @@ assert.doesNotMatch(responder,/image_url:cartSummary\.find/,
   "Cart cards must not reuse an unverified generic model image as the selected trim image.");
 assert.match(chat,/const fallbackImage=type==='cart_summary'\?'':/,
   "Cart cards must not fall back to a generic model image when no trim-specific image is verified.");
+
+assert.match(responder,/if \(explicitQuantityMatch \|\| addAnother\) \{[\s\S]*existing\.quantity = Math\.min/,
+  "Repeated unqualified add-to-cart messages must not inflate an existing line quantity.");
