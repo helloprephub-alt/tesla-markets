@@ -11,6 +11,11 @@ assert.match(admin,/TESLA_PRIVATE_LLM_ENDPOINT/);assert.doesNotMatch(admin,/CLOU
 assert.match(adminUi,/verified_official.*verified_independent.*management_approved/);
 const base=100000,pct=35,saved=base*pct/100;assert.equal(saved,35000);assert.equal(base-saved,65000);
 console.log("Tesla Markets AI intelligence checks passed.");
+assert.match(responder,/explicitQuantityMatch = customerMessage\.body\.match\(\/\\\\b\(\?:add\|put\|include\)/, "Vehicle quantity must require an explicit add/put/include instruction.");
+assert.doesNotMatch(responder,/customerMessage\.body\.match\(\/\\\\b\(\\\\d\{1,2\}\)\\\\b\//, "Unqualified message numbers must never be interpreted as cart quantity.");
+assert.match(chat,/const selected=selectedVariant===String\(variant\.name\|\|''\)/, "Selected vehicle trim highlighting must use the live local selection.");
+assert.match(chat,/save_vehicle_variant_selection/, "Vehicle version selection must persist without sending a chat message.");
+
 assert.match(responder, /isBareVehicleConfirmation/, "Affirmative vehicle selection must not be captured as a customer name.");
 assert.match(responder, /if\(bareVehicleConfirmation\) delete mergedDetails\.full_name/, "A stale conversational pseudo-name must be cleared.");
 assert.match(chat, /Choose your preferred version[\s\S]*setSelectedVariant\(String\(variant\.name\)\)/, "Version selection must update locally without sending another chat message.");
