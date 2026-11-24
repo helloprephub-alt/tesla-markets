@@ -1378,7 +1378,7 @@ Deno.serve(async (req: Request) => {
         image_url: vehicleImage,
         vehicle_slug: slug,
         gallery_urls: vehicleGallery,
-        purchase_variants: variants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.price,80)})).filter((variant:any)=>variant.name),
+        purchase_variants: variants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.original_price||variant?.price,80),discount_percent:Number(variant?.discount_percent??variant?.discountPercent??0),promo_active:variant?.promo_active===true})).filter((variant:any)=>variant.name),
         metrics,
         sections: [
           { title: "Pricing and Christmas offers", rows: [
