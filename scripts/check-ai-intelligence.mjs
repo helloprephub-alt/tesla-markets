@@ -52,3 +52,6 @@ assert.match(chat,/const fallbackImage=type==='cart_summary'\?'':/,
 
 assert.match(responder,/if \(explicitQuantityMatch \|\| addAnother\) \{[\s\S]*existing\.quantity = Math\.min/,
   "Repeated unqualified add-to-cart messages must not inflate an existing line quantity.");
+
+assert.match(responder,/wasGenericModelLine[\s\S]*existing\.quantity = 1/,
+  "A legacy generic line inflated by repeated unqualified retries must be repaired to one selected vehicle.");
