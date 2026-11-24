@@ -75,14 +75,19 @@ function detectDiscountRequest(text: string) {
   return { mentionsDiscount, requestedPercent, aboveLimit: requestedPercent !== null && requestedPercent > 70 };
 }
 function canonicalVehicle(value: string) {
+  // Use the first vehicle name in the message. A trim such as "Model YL
+  // Premium" may appear after "Add Model Y to my cart"; it must not override
+  // the base vehicle named by the customer at the start of the request.
   const t = normalized(value).replace(/[^a-z0-9]+/g, " ").trim();
-  if (/\b(cube truck|cyber ?truck)\b/.test(t)) return "Cybertruck";
-  if (/\broadster\b/.test(t)) return "Roadster";
-  if (/\b(tesla )?semi\b/.test(t)) return "Tesla Semi";
-  if (/\bmodel ?yl\b/.test(t)) return "Model YL";
-  const model = t.match(/\bmodel ?([3ysx])\b/);
-  if (model) return "Model " + model[1].toUpperCase();
-  return "";
+  const first = t.match(/\b(cube truck|cyber ?truck|roadster|(?:tesla )?semi|model ?yl|model ?[3ysx])\b/);
+  if (!first) return "";
+  const name = first[1].replace(/\s+/g, " ");
+  if (/^(cube truck|cyber ?truck)$/.test(name)) return "Cybertruck";
+  if (name === "roadster") return "Roadster";
+  if (/^(tesla )?semi$/.test(name)) return "Tesla Semi";
+  if (name === "model yl") return "Model YL";
+  const model = name.match(/^model ([3ysx])$/);
+  return model ? "Model " + model[1].toUpperCase() : "";
 }
 function matchVehicle(text: string, conversationModel: string, catalogue: any[]) {
   const selected = canonicalVehicle(text) || canonicalVehicle(conversationModel);
