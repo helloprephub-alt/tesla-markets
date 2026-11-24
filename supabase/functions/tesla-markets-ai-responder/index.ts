@@ -75,14 +75,19 @@ function detectDiscountRequest(text: string) {
   return { mentionsDiscount, requestedPercent, aboveLimit: requestedPercent !== null && requestedPercent > 70 };
 }
 function canonicalVehicle(value: string) {
+  // Use the first vehicle name in the message. A trim such as "Model YL
+  // Premium" may appear after "Add Model Y to my cart"; it must not override
+  // the base vehicle named by the customer at the start of the request.
   const t = normalized(value).replace(/[^a-z0-9]+/g, " ").trim();
-  if (/\b(cube truck|cyber ?truck)\b/.test(t)) return "Cybertruck";
-  if (/\broadster\b/.test(t)) return "Roadster";
-  if (/\b(tesla )?semi\b/.test(t)) return "Tesla Semi";
-  if (/\bmodel ?yl\b/.test(t)) return "Model YL";
-  const model = t.match(/\bmodel ?([3ysx])\b/);
-  if (model) return "Model " + model[1].toUpperCase();
-  return "";
+  const first = t.match(/\b(cube truck|cyber ?truck|roadster|(?:tesla )?semi|model ?yl|model ?[3ysx])\b/);
+  if (!first) return "";
+  const name = first[1].replace(/\s+/g, " ");
+  if (/^(cube truck|cyber ?truck)$/.test(name)) return "Cybertruck";
+  if (name === "roadster") return "Roadster";
+  if (/^(tesla )?semi$/.test(name)) return "Tesla Semi";
+  if (name === "model yl") return "Model YL";
+  const model = name.match(/^model ([3ysx])$/);
+  return model ? "Model " + model[1].toUpperCase() : "";
 }
 function matchVehicle(text: string, conversationModel: string, catalogue: any[]) {
   const selected = canonicalVehicle(text) || canonicalVehicle(conversationModel);
@@ -711,8 +716,11 @@ Deno.serve(async (req: Request) => {
     const currentText = normalized(customerMessage.body);
     const isSmallTalk = isSmallTalkMessage(customerMessage.body) || isGreetingMessage(customerMessage.body);
     const isVehicleFollowUp = isVehicleFollowUpMessage(customerMessage.body);
+    const persistedDetails = conversation.delivery_details && typeof conversation.delivery_details === "object" ? conversation.delivery_details : {};
     const contextualVehicle = canonicalVehicle(customerMessage.body) ||
-      (!isSmallTalk && isVehicleFollowUp ? canonicalVehicle(cleanString(conversation.vehicle_model || aiMemory.selected_vehicle || priorCustomerVehicle?.body || "", 100)) : "");
+      (!isSmallTalk && (isVehicleFollowUp || /\b(cart|basket|add|put|include|buy|purchase|order|payment)\b/i.test(customerMessage.body))
+        ? canonicalVehicle(cleanString(persistedDetails.selected_vehicle_model || aiMemory.selected_vehicle || conversation.vehicle_model || priorCustomerVehicle?.body || "", 140))
+        : "");
     const vehicle = matchVehicle(customerMessage.body, contextualVehicle, catalogue || []);
     let reply = "";
     let intent = "general";
@@ -773,7 +781,7 @@ Deno.serve(async (req: Request) => {
     if (mergedDetails.country && !isKnownCountry(String(mergedDetails.country))) delete mergedDetails.country;
     if (mergedDetails.city && !looksLikeCity(String(mergedDetails.city))) delete mergedDetails.city;
     if (mergedDetails.address && !looksLikeAddress(String(mergedDetails.address))) delete mergedDetails.address;
-    const selectedVehicle = investmentFlowMessage ? null : vehicle;
+    const selectedVehicle = investmentFlowMessage ? null : (vehicle || matchVehicle("", canonicalVehicle(cleanString(priorDetails.selected_vehicle_model || aiMemory.selected_vehicle || conversation.vehicle_model || "",140)), catalogue || []));
     const previousSelectedVehicle = canonicalVehicle(cleanString(aiMemory.selected_vehicle || conversation.vehicle_model,100));
     const currentSelectedVehicle = canonicalVehicle(cleanString(selectedVehicle?.name || "",100));
     const requestedVehicleChanged = !!currentSelectedVehicle && !!previousSelectedVehicle && currentSelectedVehicle !== previousSelectedVehicle;
@@ -833,7 +841,7 @@ Deno.serve(async (req: Request) => {
         : "Thank you. I have selected that vehicle version. To complete your enquiry, please provide: " + missing.join(", ") + ". You can send the remaining details together in one message.";
     }
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
-    const cartIntent = /(?:\b(add|put|include)\b.*\b(to (?:my )?(?:cart|basket)|another|one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2}\s+(?:cybertruck|model|roadster|semi|vehicles?|cars?|units?))\b|\b(view|show)\b.*\b(cart|basket)\b)/i.test(customerMessage.body);
+    const cartIntent = /\b(?:add|put|include)\b[\s\S]{0,100}\b(?:to\s+(?:my\s+)?(?:cart|basket)|cart|basket)\b/i.test(customerMessage.body) || /\b(?:view|show|open)\b[\s\S]{0,40}\b(?:cart|basket)\b/i.test(customerMessage.body);
     const cartSummary = cartIntent && selectedVehicle ? (() => {
       // Only an explicit add/put/include quantity directly before a vehicle or
       // quantity noun counts. Address numbers, postcodes and phone numbers do not.
@@ -843,19 +851,26 @@ Deno.serve(async (req: Request) => {
       const quantity = Math.max(1, Math.min(20, requestedQuantity));
       const current = priorCart.map((item:any)=>({...item}));
       const chosenName=cleanString(mergedDetails.selected_variant,100);
+      const chosen=variants.find((v:any)=>normalized(cleanString(v?.name,100))===normalized(chosenName))||null;
+      if (variants.length > 1 && !chosen) return null;
+      const base=parseUsd(chosen?.original_price||chosen?.price)||Number(selectedVehicle.price_usd||0);
+      const promoEnd=Date.parse(String(chosen?.promo_ends_at||chosen?.promo_expires_at||""));
+      const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
+      const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
+      const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
       const existing = current.find((item:any)=>item.slug===selectedVehicle.slug&&normalized(cleanString(item.variant,100))===normalized(chosenName));
-      if (existing) existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
-      else {
-        const chosen=variants.find((v:any)=>normalized(cleanString(v?.name,100))===normalized(chosenName))||null;
-        const base=parseUsd(chosen?.original_price||chosen?.price)||Number(selectedVehicle.price_usd||0);
-        const promoEnd=Date.parse(String(chosen?.promo_ends_at||chosen?.promo_expires_at||""));
-        const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
-        const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
-        const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
+      if (existing) {
+        existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
+        existing.model = selectedVehicle.name;
+        existing.variant = chosen?.name||chosenName||null;
+        existing.unit_price_usd = sale;
+        existing.original_unit_price_usd = base;
+        existing.discount_percent = pct||null;
+      } else {
         current.push({
           slug:selectedVehicle.slug,
           model:selectedVehicle.name,
-          variant:chosen?.name||cleanString(mergedDetails.selected_variant,100)||null,
+          variant:chosen?.name||chosenName||null,
           quantity,
           unit_price_usd:sale,
           original_unit_price_usd:base,
@@ -942,6 +957,10 @@ Deno.serve(async (req: Request) => {
       const totalItems = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0);
       const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
       reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";
+    } else if (cartIntent && selectedVehicle && variants.length > 1 && !cleanString(mergedDetails.selected_variant,100)) {
+      intent = "vehicle_variant_required";
+      requiresManagement = false;
+      reply = "I have identified the " + cleanString(selectedVehicle.name,100) + ". Please select the exact vehicle version below before I add it to your cart. I will use that version's current catalogue price and discount.";
     } else if (investmentFlow) {
       requiresManagement = false;
       if (hasPaymentIntent || paymentChoice) {
@@ -1271,7 +1290,7 @@ Deno.serve(async (req: Request) => {
         ]}],
         note:"You can add more vehicles to this cart during the same conversation. Your saved customer details are retained."
       };
-    } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && !proformaInvoice) {
+    } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase","vehicle_variant_required"].includes(intent) && !proformaInvoice) {
       const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
       const purchaseVariants = Array.isArray(purchaseSpecs.variants) ? purchaseSpecs.variants : [];
       const purchaseImages = Array.isArray(selectedVehicle.images) ? selectedVehicle.images : [];
@@ -1283,7 +1302,8 @@ Deno.serve(async (req: Request) => {
       const chosenVariant = purchaseVariants.find((variant:any) => normalized(cleanString(variant?.name,100)) === normalized(cleanString(mergedDetails.selected_variant,100)));
       messageType = "vehicle_purchase_prompt";
       structuredData = {
-        title: "Continue with " + cleanString(selectedVehicle.name,100),
+        title: "Continue with " + cleanString(selectedVehicle.name,100) + (cleanString(mergedDetails.selected_variant,100) ? " · " + cleanString(mergedDetails.selected_variant,100) : ""),
+        vehicle_model: cleanString(selectedVehicle.name,100),
         subtitle: "VEHICLE ENQUIRY · DETAILS REQUIRED",
         image_url: purchaseImage,
         vehicle_slug: purchaseSlug,
@@ -1304,6 +1324,7 @@ Deno.serve(async (req: Request) => {
         sections: [
           { title:"Vehicle and version", rows:[
             { label:"Vehicle", value:cleanString(selectedVehicle.name,100) },
+            { label:"Selected vehicle version", value:cleanString(mergedDetails.selected_variant,100) || "Not selected" },
             { label:"Preferred version", value:cleanString(mergedDetails.selected_variant,100) || (purchaseVariants.length ? "Please choose a version" : "Standard configuration") },
             ...purchaseVariants.map((variant:any)=>{
               const promo=SHOP_VEHICLE_PROMOS[purchaseSlug]?.variants.find((v:any)=>normalized(v.name)===normalized(cleanString(variant?.name,100)));
@@ -1333,7 +1354,7 @@ Deno.serve(async (req: Request) => {
           {label:"Country",value:cleanString(mergedDetails.country,80)||"Not provided"},
           {label:"City",value:cleanString(mergedDetails.city,80)||"Not provided"},
           {label:"Delivery address",value:cleanString(mergedDetails.address,240)||"Not provided"},
-          {label:"Vehicle",value:cleanString(selectedVehicle?.name||conversation.vehicle_model,100)||"Not selected"}
+          {label:"Vehicle",value:[cleanString(selectedVehicle?.name||conversation.vehicle_model,100),cleanString(mergedDetails.selected_variant,100)].filter(Boolean).join(" · ")||"Not selected"}
         ],
         note:"These details are saved with this conversation. The customer does not need to submit the same information again unless something changes."
       };
@@ -1361,7 +1382,7 @@ Deno.serve(async (req: Request) => {
         image_url: vehicleImage,
         vehicle_slug: slug,
         gallery_urls: vehicleGallery,
-        purchase_variants: variants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.price,80)})).filter((variant:any)=>variant.name),
+        purchase_variants: variants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.original_price||variant?.price,80),discount_percent:Number(variant?.discount_percent??variant?.discountPercent??0),promo_active:variant?.promo_active===true})).filter((variant:any)=>variant.name),
         metrics,
         sections: [
           { title: "Pricing and Christmas offers", rows: [
