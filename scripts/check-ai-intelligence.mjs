@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 const responder=readFileSync("supabase/functions/tesla-markets-ai-responder/index.ts","utf8");
 const admin=readFileSync("supabase/functions/tesla-markets-ai-admin/index.ts","utf8");
 const adminUi=readFileSync("src/AdminConsole.tsx","utf8");
+const chat=readFileSync("src/ChatWorkspace.tsx","utf8");
 assert.match(responder,/vehicle_catalogue_list/);assert.match(responder,/vehicle_comparison/);assert.match(responder,/vehicle_recommendation/);
 assert.match(responder,/TESLA_PRIVATE_LLM_ENDPOINT/);assert.match(responder,/management_approved/);
 assert.doesNotMatch(responder,/discountPercent:28|discountPercent:35|CLOUDFLARE_AI_TOKEN/);
