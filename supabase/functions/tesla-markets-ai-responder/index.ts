@@ -847,14 +847,14 @@ Deno.serve(async (req: Request) => {
         : "Thank you. I have selected that vehicle version. To complete your enquiry, please provide: " + missing.join(", ") + ". You can send the remaining details together in one message.";
     }
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
-    const cartRemovalMatch = customerMessage.body.match(/^REMOVE_CART_ITEM\\|([^|]+)\\|([\\s\\S]*)$/);
+    const cartRemovalMatch = customerMessage.body.match(/^REMOVE_CART_ITEM\|([^|]+)\|([\s\S]*)$/);
     const cartRemovalRequested = !!cartRemovalMatch;
     const cartRemovalIndex = cartRemovalMatch ? priorCart.findIndex((item:any)=>
       cleanString(item?.slug,100)===cleanString(cartRemovalMatch[1],100) &&
       normalized(cleanString(item?.variant||"",100))===normalized(cleanString(cartRemovalMatch[2]||"",100))
     ) : -1;
     const cartRemovalFound = cartRemovalRequested && cartRemovalIndex >= 0;
-    const cartIntent = cartRemovalRequested || /\\b(?:add|put|include)\\b[\\s\\S]{0,100}\\b(?:to\\s+(?:my\\s+)?(?:cart|basket)|cart|basket)\\b/i.test(customerMessage.body) || /\\b(?:view|show|open)\\b[\\s\\S]{0,40}\\b(?:cart|basket)\\b/i.test(customerMessage.body);
+    const cartIntent = cartRemovalRequested || /\b(?:add|put|include)\b[\s\S]{0,100}\b(?:to\s+(?:my\s+)?(?:cart|basket)|cart|basket)\b/i.test(customerMessage.body) || /\b(?:view|show|open)\b[\s\S]{0,40}\b(?:cart|basket)\b/i.test(customerMessage.body);
     const cartSummary = cartRemovalRequested
       ? priorCart.filter((_item:any,index:number)=>index!==cartRemovalIndex)
       : cartIntent && selectedVehicle ? (() => {
@@ -867,7 +867,7 @@ Deno.serve(async (req: Request) => {
       // A repeated natural-language "add this to my cart" message is usually
       // a retry or correction, not a request for another unit. Increment an
       // existing line only when the customer states a quantity or says "another".
-      const addAnother = /\\b(?:another|one more|additional)\\b/i.test(customerMessage.body);
+      const addAnother = /\b(?:another|one more|additional)\b/i.test(customerMessage.body);
       const current = priorCart.map((item:any)=>({...item}));
       const chosenName=cleanString(mergedDetails.selected_variant,100);
       const chosen=variants.find((v:any)=>normalized(cleanString(v?.name,100))===normalized(chosenName))||null;
@@ -877,7 +877,7 @@ Deno.serve(async (req: Request) => {
       const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
       const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
       const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
-      // Upgrade a previously mis-saved generic model line to the exact trim
+      // Upgrade a previously mis-saved generic cart line to the exact trim
       // instead of leaving a stale generic line beside the corrected version.
       const existing = current.find((item:any)=>item.slug===selectedVehicle.slug&&normalized(cleanString(item.variant,100))===normalized(chosenName))
         || current.find((item:any)=>item.slug===selectedVehicle.slug
@@ -888,8 +888,7 @@ Deno.serve(async (req: Request) => {
         if (explicitQuantityMatch || addAnother) {
           existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
         } else if (wasGenericModelLine && chosenName) {
-          // Repair a legacy generic line that was inflated by repeated retries.
-          // The customer selected one exact vehicle, not a bulk quantity.
+          // Repair a legacy generic line inflated by repeated unqualified retries.
           existing.quantity = 1;
         }
         existing.model = selectedVehicle.name;
