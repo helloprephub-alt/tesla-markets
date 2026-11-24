@@ -51,13 +51,13 @@ assert.match(cacheMigration, /enable row level security/i, 'Translation storage 
 assert.match(translateSource, /protectTokens/, 'Protected token validation is missing.');
 assert.match(translateSource, /restoreTokens/, 'Protected token restoration is missing.');
 assert.match(translateSource, /untranslated_response/, 'Untranslated English responses must not be cached as another language.');
-assert.match(aiSource, /preferred_language: cloudflareReply\.language/, 'AI language preference is not saved.');
-assert.match(aiSource, /chat_template_kwargs: \{ enable_thinking: false \}/, 'Cloudflare model should disable reasoning for response generation.');
+assert.match(aiSource, /preferred_language: privateModelReply\.language/, 'AI language preference is not saved.');
+assert.match(aiSource, /TESLA_PRIVATE_LLM_ENDPOINT/, 'Customer replies must use the configured Tesla-controlled private inference endpoint.');
 assert.doesNotMatch(aiSource, /responder_paused: true/, 'A model formatting failure must not permanently pause an otherwise active customer conversation.');
 assert.match(aiSource, /status: "failed"/, 'Unexpected responder execution failures must still be recorded as failed runs.');
 assert.match(aiSource, /AI used safe fallback response/, 'Model formatting failures must notify management when a safe fallback is sent.');
-assert.match(aiSource, /Some model responses are valid plain text/, 'The responder must accept valid plain-text model responses as well as JSON.');
-assert.match(aiSource, /I don't have enough verified information to answer that accurately yet/, 'Unknown questions must receive a contextual, honest fallback rather than silence.');
+assert.match(aiSource, /Private model response format invalid/, 'Private model output must be validated before being used.');
+assert.match(aiSource, /That specific specification is not in the verified vehicle record/, 'Unknown vehicle details must receive a specific, honest fallback.');
 assert.match(adminSource, /giftCardEnabled/, 'Administrators must control whether optional gift-card fallback is enabled.');
 assert.match(aiSource, /paymentAccountSettings\.giftCardEnabled === true/, 'Gift-card fallback must require explicit administrator enablement.');
 assert.match(aiSource, /gift_card_disabled|payment_method_unavailable/, 'Disabled payment methods must not create a payment lock.');
