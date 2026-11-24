@@ -1,0 +1,12 @@
+import {readFileSync} from "node:fs";
+import assert from "node:assert/strict";
+const responder=readFileSync("supabase/functions/tesla-markets-ai-responder/index.ts","utf8");
+const admin=readFileSync("supabase/functions/tesla-markets-ai-admin/index.ts","utf8");
+const adminUi=readFileSync("src/AdminConsole.tsx","utf8");
+assert.match(responder,/vehicle_catalogue_list/);assert.match(responder,/vehicle_comparison/);assert.match(responder,/vehicle_recommendation/);
+assert.match(responder,/TESLA_PRIVATE_LLM_ENDPOINT/);assert.match(responder,/management_approved/);
+assert.doesNotMatch(responder,/discountPercent:28|discountPercent:35|CLOUDFLARE_AI_TOKEN/);
+assert.match(admin,/TESLA_PRIVATE_LLM_ENDPOINT/);assert.doesNotMatch(admin,/CLOUDFLARE_AI_TOKEN|api\.cloudflare\.com\/client\/v4\/accounts/);
+assert.match(adminUi,/verified_official.*verified_independent.*management_approved/);
+const base=100000,pct=35,saved=base*pct/100;assert.equal(saved,35000);assert.equal(base-saved,65000);
+console.log("Tesla Markets AI intelligence checks passed.");

@@ -567,10 +567,11 @@ export function AdminConsole() {
     const currentVehicle=vehicleCatalog.find(item=>item.id===vehicleId);
     if(!currentVehicle)return;
     const nextStatus=patch.verification_status??currentVehicle.verification_status;
-    if(patch.is_published===true&&nextStatus!=='verified'){setError('A vehicle cannot be published until its price, source and specification are verified.');return;}
+    const publishableStatuses=['verified','verified_official','verified_independent','management_approved'];
+    if(patch.is_published===true&&!publishableStatuses.includes(nextStatus)){setError('A vehicle cannot be published until its price, source and specification are approved.');return;}
     const safePatch:{verification_status?:string;is_published?:boolean;availability?:string;last_verified_at?:string}={...patch};
     if(patch.verification_status==='verified')safePatch.last_verified_at=new Date().toISOString();
-    if(patch.verification_status&&patch.verification_status!=='verified')safePatch.is_published=false;
+    if(patch.verification_status&&!publishableStatuses.includes(patch.verification_status))safePatch.is_published=false;
     setUpdatingVehicleCatalog(vehicleId);
     try{
       const {user:currentUser,isAdmin}=await isCurrentUserAdmin();

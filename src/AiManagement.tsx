@@ -184,8 +184,8 @@ export function AiManagement() {
     try {
       const result = await adminAction('test_ai', { prompt: testPrompt });
       setTestResult(result);
-      setNotice('Cloudflare Workers AI returned a test response. This is a connectivity test, not a full end-to-end customer-chat test.');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Cloudflare AI test failed.'); }
+      setNotice('The configured Tesla-controlled private model returned a test response. This is a connectivity test, not a full end-to-end customer-chat test.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Private model test failed.'); }
     finally { setBusy(false); }
   };
 
@@ -231,8 +231,8 @@ export function AiManagement() {
     </div>}
 
     {tab === 'test' && <article style={panelStyle}>
-      <h3 style={{marginTop:0}}>Cloudflare model test</h3>
-      <p style={{fontSize:13,opacity:.72}}>Run an isolated test against the configured Workers AI model. This does not create a customer conversation or send a customer message. Each test uses your Cloudflare AI allowance.</p>
+      <h3 style={{marginTop:0}}>Private model test</h3>
+      <p style={{fontSize:13,opacity:.72}}>Run an isolated test against the configured Tesla-controlled private open-weight model. This does not create a customer conversation or send a customer message. It uses the private inference server configured through server-side secrets.</p>
       <label style={{display:'grid',gap:6,fontSize:13,fontWeight:600}}>Test prompt<textarea style={{...inputStyle,minHeight:110}} maxLength={700} value={testPrompt} onChange={e=>setTestPrompt(e.target.value)}/></label>
       <button style={{...buttonStyle,marginTop:12,background:'#17191d',color:'#fff'}} disabled={busy||!testPrompt.trim()} onClick={()=>void runTest()}>Run model test</button>
       {testResult && <div style={{marginTop:14,padding:14,borderRadius:10,background:'var(--admin-input,#f8fafc)',border:'1px solid var(--admin-border,#e5e7eb)'}}>
@@ -313,7 +313,7 @@ export function AiManagement() {
         <button style={{...buttonStyle,marginTop:12,background:'#17191d',color:'#fff'}} disabled={busy||!billingConfirmed} onClick={()=>void toggleResearch()}>{webResearchEnabled?'Disable live research':'Enable live research'}</button>
         <p style={{fontSize:12,opacity:.7,marginBottom:0}}>Do not enable until the Cloudflare token has AI Gateway Read permission and a provider key or credits are available. Web Search provider usage is separately billed; it is not included in Workers AI's free daily neuron allowance.</p>
       </article>
-      <article style={panelStyle}><h3 style={{marginTop:0}}>Active model</h3><b>GLM-4.7-Flash</b><p style={{fontSize:12,opacity:.72,marginBottom:0}}>Cloudflare Workers AI · model identifier @cf/zai-org/glm-4.7-flash. Model changes require a tested backend deployment.</p></article>
+      <article style={panelStyle}><h3 style={{marginTop:0}}>Private model</h3><b>Open-weight model on private infrastructure</b><p style={{fontSize:12,opacity:.72,marginBottom:0}}>The exact model name is read from the server-side TESLA_PRIVATE_LLM_MODEL setting. Credentials and endpoint details are never exposed in the browser.</p></article>
     </div>}
   </section>;
 }
