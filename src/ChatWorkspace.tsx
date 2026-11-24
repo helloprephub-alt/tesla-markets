@@ -97,7 +97,7 @@ async function uploadAttachment(file:File,userId:string,conversationId:string) {
 }
 
 
-function RichMessageCard({type,data,onAddToCart,onBuyNow,onSelectVariant,onChoosePaymentMethod,onProceedToPayment}:{type?:string;data?:any;onAddToCart?:(data:any)=>void;onBuyNow?:(data:any)=>void;onSelectVariant?:(variant:string,data:any)=>void;onChoosePaymentMethod?:(method:string)=>void;onProceedToPayment?:()=>void;onRemoveCartItem?:(item:any)=>void;onPayNow?:()=>void}) {
+function RichMessageCard({type,data,onAddToCart,onBuyNow,onSelectVariant,onChoosePaymentMethod,onProceedToPayment,onRemoveCartItem,onPayNow}:{type?:string;data?:any;onAddToCart?:(data:any)=>void;onBuyNow?:(data:any)=>void;onSelectVariant?:(variant:string,data:any)=>void;onChoosePaymentMethod?:(method:string)=>void;onProceedToPayment?:()=>void;onRemoveCartItem?:(item:any)=>void;onPayNow?:()=>void}) {
   const [selectedColor,setSelectedColor]=useState(String(data?.selected_color||""));
   const [selectedVariant,setSelectedVariant]=useState(String(data?.selected_variant||""));
   useEffect(()=>{setSelectedVariant(String(data?.selected_variant||""));},[data?.selected_variant]);
