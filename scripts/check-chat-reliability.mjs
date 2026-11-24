@@ -87,6 +87,7 @@ assert.match(chat, /HUMAN TAKEOVER · Resume AI/, "The admin inbox must show an 
 assert.match(chat, /Persist human takeover before sending the first management reply/, "Management takeover must be persisted before a human reply is sent.");
 assert.match(chat, /const {error:pauseError}=await supabase\.from\('support_conversations'\).*?responder_paused:true/s, "Manual management actions must pause the AI.");
 assert.match(takeoverMigration, /SECURITY INVOKER/, "The takeover trigger must respect the caller RLS context.");
+assert.doesNotMatch(takeoverMigration, /message_type[\s\S]{0,100}payment_receipt[\s\S]{0,100}payment_pending/, "Human takeover must block every automated AI message type, including payment reminders.");
 assert.match(orderMigration, /business_orders_active_vehicle_selection_uidx/, "Active vehicle draft orders must be unique per customer, conversation and selection.");
 assert.match(orderMigration, /create_or_update_vehicle_draft_order/, "The database must provide the atomic vehicle-order workflow.");
 assert.match(orderMigration, /REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon, authenticated/, "Only the service role may execute the privileged order RPC.");
