@@ -830,13 +830,15 @@ Deno.serve(async (req: Request) => {
       const requestedQuantity = quantityMatch ? Number(quantityMatch[1]) : quantityWord ? quantityWords[quantityWord] : 1;
       const quantity = Math.max(1, Math.min(20, requestedQuantity));
       const current = priorCart.map((item:any)=>({...item}));
-      const existing = current.find((item:any)=>item.slug===selectedVehicle.slug);
+      const chosenName=cleanString(mergedDetails.selected_variant,100);
+      const existing = current.find((item:any)=>item.slug===selectedVehicle.slug&&normalized(cleanString(item.variant,100))===normalized(chosenName));
       if (existing) existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
       else {
-        const promo=SHOP_VEHICLE_PROMOS[String(selectedVehicle.slug||"").toLowerCase()];
-        const chosen=promo?.variants.find((v:any)=>normalized(v.name)===normalized(cleanString(mergedDetails.selected_variant,100)))||promo?.variants[0];
-        const base=parseUsd(chosen?.price)||Number(selectedVehicle.price_usd||0);
-        const pct=Number(chosen?.discountPercent||0);
+        const chosen=variants.find((v:any)=>normalized(cleanString(v?.name,100))===normalized(chosenName))||null;
+        const base=parseUsd(chosen?.original_price||chosen?.price)||Number(selectedVehicle.price_usd||0);
+        const promoEnd=Date.parse(String(chosen?.promo_ends_at||chosen?.promo_expires_at||""));
+        const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
+        const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
         const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
         current.push({
           slug:selectedVehicle.slug,
@@ -1061,7 +1063,7 @@ Deno.serve(async (req: Request) => {
       }).eq("id", user.id);
     }
 
-    let proformaInvoice: { reference: string; amount: number; variant: string; payment_url?: string | null } | null = null;
+    let proformaInvoice: { reference: string; amount: number; original_amount:number; discount_percent:number; variant: string; payment_url?: string | null } | null = null;
     const purchaseStepSubmitted = Object.keys(extractedDelivery).length > 0 || !!variantMatch;
     const shouldCreateProforma = purchaseFlowActive && (["purchase_ready","vehicle_purchase"].includes(intent) || (intent === "customer_details_progress" && (purchaseStepSubmitted || explicitVehiclePurchase)));
     if (shouldCreateProforma && deliveryComplete && selectedVehicle && (hasVariant || variants.length <= 1)) {
@@ -1069,8 +1071,9 @@ Deno.serve(async (req: Request) => {
       const variantPriceText = cleanString(selectedVariant?.price,80);
       const parsedVariantPrice = Number(variantPriceText.replace(/[^0-9.]/g,""));
       const baseAmount = variantPriceText ? (Number.isFinite(parsedVariantPrice) && parsedVariantPrice > 0 ? parsedVariantPrice : NaN) : Number(selectedVehicle.price_usd);
-      const orderPromo = SHOP_VEHICLE_PROMOS[String(selectedVehicle.slug||"").toLowerCase()]?.variants.find((v:any)=>normalized(v.name)===normalized(cleanString(selectedVariant?.name,100))) || null;
-      const orderDiscount = Number(orderPromo?.discountPercent||0);
+      const promoEnd=Date.parse(String(selectedVariant?.promo_ends_at||selectedVariant?.promo_expires_at||""));
+      const promoActive=selectedVariant?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
+      const orderDiscount=promoActive?Number(selectedVariant?.discount_percent??selectedVariant?.discountPercent??0):0;
       const finalAmount = Number.isFinite(baseAmount)&&baseAmount>0&&orderDiscount>=25&&orderDiscount<=70 ? discountedUsd(baseAmount,orderDiscount) : baseAmount;
       if (Number.isFinite(finalAmount) && finalAmount > 0) {
         const variantName = cleanString(selectedVariant?.name, 100) || "Standard configuration";
@@ -1091,6 +1094,8 @@ Deno.serve(async (req: Request) => {
         proformaInvoice = {
           reference: String(orderResult.order_reference),
           amount: Number(orderResult.agreed_amount),
+          original_amount:baseAmount,
+          discount_percent:orderDiscount,
           variant: String(orderResult.item_description),
           payment_url: typeof orderResult.payment_url === "string" ? orderResult.payment_url : null
         };
@@ -1130,6 +1135,9 @@ Deno.serve(async (req: Request) => {
         "Vehicle: " + proformaInvoice.variant,
         "Delivery: " + [mergedDetails.address,mergedDetails.city,mergedDetails.country].filter(Boolean).join(", "),
         "Contact: " + [mergedDetails.email || user.email,mergedDetails.phone].filter(Boolean).join(" · "),
+        "Original selected price: " + formatUsd(proformaInvoice.original_amount) + " USD",
+        ...(proformaInvoice.discount_percent>0?["Approved discount: "+proformaInvoice.discount_percent+"%","You save: "+formatUsd(proformaInvoice.original_amount-proformaInvoice.amount)+" USD"]:[]),
+        "Exact selected configuration: " + proformaInvoice.variant,
         "Vehicle subtotal: " + amount + " USD",
         "Taxes, delivery and other charges: To be confirmed by management.",
         "PAYMENT STATUS: PENDING",
@@ -1170,6 +1178,12 @@ Deno.serve(async (req: Request) => {
             {label:"Address",value:cleanString(mergedDetails.address,240)},
             {label:"City",value:cleanString(mergedDetails.city,80)},
             {label:"Country",value:cleanString(mergedDetails.country,80)}
+          ]},
+          {title:"Price breakdown",rows:[
+            {label:"Original selected price",value:formatUsd(proformaInvoice.original_amount)},
+            ...(proformaInvoice.discount_percent>0?[{label:"Approved promotional discount",value:proformaInvoice.discount_percent+"% OFF"},{label:"You save",value:formatUsd(proformaInvoice.original_amount-proformaInvoice.amount)}]:[]),
+            {label:"Exact selected configuration",value:proformaInvoice.variant},
+            {label:"Pro forma vehicle price",value:formatUsd(proformaInvoice.amount)}
           ]},
           {title:"Payment",rows:[
             {label:"Payment status",value:"Awaiting management approval — no payment requested"},
@@ -1216,7 +1230,7 @@ Deno.serve(async (req: Request) => {
         vehicle_slug: purchaseSlug,
         selected_variant:cleanString(mergedDetails.selected_variant,100)||null,
         gallery_urls: purchaseGalleryUrls,
-        purchase_variants: purchaseVariants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.price,80)})).filter((variant:any)=>variant.name),
+        purchase_variants: purchaseVariants.map((variant:any)=>({name:cleanString(variant?.name,100),price:cleanString(variant?.original_price||variant?.price,80),discount_percent:Number(variant?.discount_percent??variant?.discountPercent??0),promo_active:variant?.promo_active===true})).filter((variant:any)=>variant.name),
         amount_label: (()=>{const p=SHOP_VEHICLE_PROMOS[purchaseSlug]?.variants.find((v:any)=>normalized(v.name)===normalized(cleanString(chosenVariant?.name,100)));return p?.discountPercent?"CHRISTMAS PROMOTIONAL PRICE":"SELECTED VEHICLE PRICE";})(),
         amount: (()=>{const p=SHOP_VEHICLE_PROMOS[purchaseSlug]?.variants.find((v:any)=>normalized(v.name)===normalized(cleanString(chosenVariant?.name,100)));const base=parseUsd(chosenVariant?.price||selectedVehicle.price_usd);const pct=Number(p?.discountPercent||0);return base&&pct>=25&&pct<=70?formatUsd(discountedUsd(base,pct)):(chosenVariant?cleanString(chosenVariant.price,80):(selectedVehicle.price_usd?"$"+Number(selectedVehicle.price_usd).toLocaleString("en-US")+" USD":"Management quotation required"));})(),
         fields_title: "Customer information already saved",

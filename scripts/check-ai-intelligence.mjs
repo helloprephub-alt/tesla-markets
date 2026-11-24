@@ -13,4 +13,8 @@ const base=100000,pct=35,saved=base*pct/100;assert.equal(saved,35000);assert.equ
 console.log("Tesla Markets AI intelligence checks passed.");
 assert.match(responder, /isBareVehicleConfirmation/, "Affirmative vehicle selection must not be captured as a customer name.");
 assert.match(responder, /if\(bareVehicleConfirmation\) delete mergedDetails\.full_name/, "A stale conversational pseudo-name must be cleared.");
-assert.match(chat, /Choose your preferred version[\s\S]*aria-pressed=\{selected\}/, "Customers must be able to select and change a specific vehicle configuration.");
+assert.match(chat, /Choose your preferred version[\s\S]*setSelectedVariant\(String\(variant\.name\)\)/, "Version selection must update locally without sending another chat message.");
+assert.doesNotMatch(chat, /onSelectVariant=\{\(variant,data\)=>void sendQuickMessage/, "A trim selection must not generate another AI purchase card.");
+assert.match(chat, /selected_variant:selectedVariant\|\|null/, "The exact selected trim must flow into checkout.");
+assert.match(ai, /promo_active===true[\s\S]*discount_percent/, "Vehicle promotions must be calculated from the selected live catalogue variant.");
+assert.match(ai, /Exact selected configuration/, "The pro forma invoice must name the exact selected vehicle configuration.");
