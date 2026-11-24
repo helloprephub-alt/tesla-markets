@@ -875,8 +875,13 @@ Deno.serve(async (req: Request) => {
           && normalized(cleanString(item.variant,100))===normalized(cleanString(item.model,100))
           && normalized(chosenName).startsWith(normalized(cleanString(item.variant,100))+" "));
       if (existing) {
+        const wasGenericModelLine = normalized(cleanString(existing.variant,100))===normalized(cleanString(existing.model,100));
         if (explicitQuantityMatch || addAnother) {
           existing.quantity = Math.min(20, Number(existing.quantity||0)+quantity);
+        } else if (wasGenericModelLine && chosenName) {
+          // Repair a legacy generic line that was inflated by repeated retries.
+          // The customer selected one exact vehicle, not a bulk quantity.
+          existing.quantity = 1;
         }
         existing.model = selectedVehicle.name;
         existing.variant = chosen?.name||chosenName||null;
