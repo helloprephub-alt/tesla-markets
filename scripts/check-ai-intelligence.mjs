@@ -40,3 +40,4 @@ assert.match(responder,/Continue with " \+ cleanString\(selectedVehicle\.name,10
 assert.match(responder,/Selected vehicle version/, "Customer details must show the selected vehicle version separately.");
 assert.match(chat,/discount_percent:Number\(item\.discount_percent\|\|0\),promo_active:item\.promo_active===true/, "Checkout must retain selected variant promotion metadata.");
 assert.match(chat,/const sale=base>0&&pct\?Math\.round\(base\*\(1-pct\/100\)\*100\)\/100:base/, "Checkout selector must display the exact discounted version price.");
+assert.match(responder,/intent = "vehicle_variant_required"[\s\S]*select the exact vehicle version below/, "A cart request without a selected version must ask for the exact version instead of saving a generic vehicle.");
