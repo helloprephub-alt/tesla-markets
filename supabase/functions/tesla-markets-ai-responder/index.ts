@@ -341,7 +341,7 @@ function independentReply(text: string, history: any[], catalogue: any[], vehicl
     } else {
       reply=description ? "Thank you for your interest in the "+name+". "+description+" Would you like the available versions and prices, performance details, or delivery information?" : "";
     }
-    if(!reply){intent="unverified_vehicle_information";requiresManagement=true;reply="Thank you for your question. I do not have a verified specification for that detail yet. Please hold while our management team confirms it for you."; }
+    if(!reply){intent="unverified_vehicle_information";requiresManagement=false;reply="That specific specification is not in the verified vehicle record. I can still help with the listed configurations, prices, range and other published features."; }
   } else if(has(/\b(buy|purchase|order|reserve|book|acheter|comprar|pedido|kaufen|bestellen)\b/) || acceptsPurchase){
     intent="purchase_ready";
     reply=lang==="fr"?"Pour préparer votre demande, veuillez indiquer votre nom complet, votre e-mail, votre téléphone, le modèle et la configuration souhaités, ainsi que le pays, la ville et l'adresse de livraison.":
