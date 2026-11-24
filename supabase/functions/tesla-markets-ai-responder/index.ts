@@ -98,6 +98,10 @@ function matchVehicle(text: string, conversationModel: string, catalogue: any[])
 function normalized(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
+function isBareVehicleConfirmation(text:string){
+ const t=normalized(text).replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+ return /^(?:yes|yeah|yep|sure|okay|ok|alright|right|correct)\s+(?:the\s+)?(?:model\s*[3ysx]|model yl|cybertruck|roadster|tesla semi|semi)$/i.test(t);
+}
 function languageOf(text: string): "en"|"fr"|"es"|"de" {
   const t=normalized(text);
   const scores=[
@@ -114,7 +118,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   if(email)out.email=email[0].slice(0,200);
   if(phone?.[1] && isValidPhoneNumber(phone[1]))out.phone=phone[1].trim().slice(0,60);
   const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
-  if(nameMatch?.[1] && isLikelyCustomerName(nameMatch[1]))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
+  if(!isBareVehicleConfirmation(text) && nameMatch?.[1] && isLikelyCustomerName(nameMatch[1]))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+?)(?=(?:[,;\n]\s*)?(?:e-?mail|phone|telephone|country|delivery country|city|delivery city|preferred version|vehicle version|full name|name)\s*[:=-]|[\n]|$)/i);
   if(addressMatch?.[1] && looksLikeAddress(addressMatch[1]))out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
   const labelled:Record<string,RegExp>={country:/\b(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,80})/i,city:/\b(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,80})/i,preferred_delivery_date:/\b(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,instructions:/\b(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i};
@@ -775,7 +779,15 @@ Deno.serve(async (req: Request) => {
     if (requestedVehicleChanged) delete mergedDetails.selected_variant;
     const selectedSpecs = selectedVehicle?.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
     const variants = Array.isArray(selectedSpecs.variants) ? selectedSpecs.variants : [];
-    const variantMatch = variants.find((variant: any) => { const variantName=cleanString(variant?.name,100); return variantName && normalized(customerMessage.body).includes(normalized(variantName)); });
+    const bareVehicleConfirmation=isBareVehicleConfirmation(customerMessage.body);
+    if(bareVehicleConfirmation) delete mergedDetails.full_name;
+    const variantMatch = variants.find((variant: any) => {
+      const variantName=cleanString(variant?.name,100);
+      if(!variantName || !normalized(customerMessage.body).includes(normalized(variantName))) return false;
+      const genericVehicleName=normalized(variantName)===normalized(cleanString(selectedVehicle?.name||"",100));
+      if(bareVehicleConfirmation && genericVehicleName) return false;
+      return true;
+    });
     if (variantMatch) mergedDetails.selected_variant = cleanString(variantMatch.name,100);
     const storedVariant = cleanString(mergedDetails.selected_variant,100);
     if (storedVariant && (!variants.length || !variants.some((variant:any) => normalized(cleanString(variant?.name,100)) === normalized(storedVariant)))) {
