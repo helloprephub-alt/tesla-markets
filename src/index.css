@@ -4207,3 +4207,31 @@ html,body{margin:0!important;padding:0!important;overflow-x:hidden!important}
     padding:10px 9px 14px!important;
   }
 }
+
+
+/* Customer chat: reserve the bottom row for the composer.
+   The composer is a sibling of the scrollable message list in ChatWorkspace. */
+.customer-chat-screen.chat-fullscreen>.chat-full-body{
+  flex:1 1 auto!important;
+  height:calc(100dvh - 58px)!important;
+  min-height:0!important;
+}
+.customer-chat-screen.chat-fullscreen>.chat-full-body>.chat-conversation-shell{
+  flex:1 1 auto!important;
+  height:100%!important;
+  min-height:0!important;
+  margin:0!important;
+}
+.customer-chat-screen.chat-fullscreen .live-chat-panel{
+  flex:1 1 auto!important;
+  height:100%!important;
+  min-height:0!important;
+}
+.customer-chat-screen.chat-fullscreen .live-chat-messages{
+  flex:1 1 auto!important;
+  min-height:0!important;
+}
+.customer-chat-screen.chat-fullscreen .live-chat-compose{
+  flex:0 0 auto!important;
+  min-height:70px!important;
+}
