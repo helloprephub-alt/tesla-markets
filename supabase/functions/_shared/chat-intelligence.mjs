@@ -77,3 +77,8 @@ export function isVehicleFollowUpMessage(value) {
   if (isConversationalReply(value) || isGreetingMessage(value)) return false;
   return /\b(price|prices|pricing|cost|how much|colou?rs?|colors?|range|performance|specifications?|features|wheels?|versions?|availability|available|delivery|charging|battery|that one|this one)\b/i.test(normalize(value));
 }
+
+export function isInvestmentTopic(value) {
+  const text = normalize(value).trim();
+  return /\\b(invest(?:ment|ing)?|shares?|stock\\s+(?:market|price|ticker)|ticker|portfolio|brokerage|dividend|tsla(?:\\s+(?:shares?|stock|price))?)\\b/i.test(text);
+}
