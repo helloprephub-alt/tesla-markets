@@ -13,7 +13,7 @@ BEGIN
   IF NEW.sender_role <> 'management'
      OR NEW.automated_type IS NULL
      OR NEW.automated_type NOT IN ('ai_response', 'automated_reply')
-     OR COALESCE(NEW.message_type, 'text') IN ('payment_receipt', 'payment_pending') THEN
+  THEN
     RETURN NEW;
   END IF;
 
