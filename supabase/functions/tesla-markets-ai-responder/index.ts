@@ -872,6 +872,7 @@ Deno.serve(async (req: Request) => {
       const promoActive=chosen?.promo_active===true&&(!Number.isFinite(promoEnd)||promoEnd>Date.now());
       const pct=promoActive?Number(chosen?.discount_percent??chosen?.discountPercent??0):0;
       const sale=base>0&&pct>=25&&pct<=70?discountedUsd(base,pct):base;
+      // Upgrade a previously mis-saved generic cart line to the exact trim instead of duplicating it.
       const existing = current.find((item:any)=>item.slug===selectedVehicle.slug&&normalized(cleanString(item.variant,100))===normalized(chosenName))
         || current.find((item:any)=>item.slug===selectedVehicle.slug
           && normalized(cleanString(item.variant,100))===normalized(cleanString(item.model,100))
