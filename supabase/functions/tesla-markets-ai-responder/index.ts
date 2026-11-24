@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { isConversationalReply, looksLikePersonName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage, isKnownCountry, looksLikeCity, looksLikeAddress, isValidPhoneNumber, isInvestmentTopic } from "../_shared/chat-intelligence.mjs";
+import { isConversationalReply, looksLikePersonName, isLikelyCustomerName, isSmallTalkMessage, isGreetingMessage, isVehicleFollowUpMessage, isKnownCountry, looksLikeCity, looksLikeAddress, isValidPhoneNumber, isInvestmentTopic } from "../_shared/chat-intelligence.mjs";
 
 const corsHeaders = (origin: string | null) => {
   const allowed = origin === "https://teslamarketsofficial.com" ||
@@ -114,7 +114,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   if(email)out.email=email[0].slice(0,200);
   if(phone?.[1] && isValidPhoneNumber(phone[1]))out.phone=phone[1].trim().slice(0,60);
   const nameMatch=text.match(/\b(?:my full name is|my name is|name is|full name|name|i am|i\x27m|nom est|me llamo|mein name ist)\s*[:,-]?\s+([\p{L}][\p{L} .’'-]{1,98}?)(?=\s+(?:and\s+)?(?:email|e-mail|phone|telephone|country|from|based in|located in|my email|my phone)\b|[,;\n]|$)/iu);
-  if(nameMatch?.[1] && looksLikePersonName(nameMatch[1],true))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
+  if(nameMatch?.[1] && isLikelyCustomerName(nameMatch[1]))out.full_name=nameMatch[1].trim().replace(/[.!?]+$/,"").slice(0,100);
   const addressMatch=text.match(/(?<!email )\b(?:my delivery address|delivery address|my address|address|adresse|direccion|anschrift)\s*(?:is|:|=)?\s*(.+?)(?=(?:[,;\n]\s*)?(?:e-?mail|phone|telephone|country|delivery country|city|delivery city|preferred version|vehicle version|full name|name)\s*[:=-]|[\n]|$)/i);
   if(addressMatch?.[1] && looksLikeAddress(addressMatch[1]))out.address=addressMatch[1].trim().replace(/[.!?]+$/,"").slice(0,240);
   const labelled:Record<string,RegExp>={country:/\b(?:country|pays|pais|land)\s*[:=-]\s*([^,.;\n]{2,80})/i,city:/\b(?:city|ville|ciudad|stadt)\s*[:=-]\s*([^,.;\n]{2,80})/i,preferred_delivery_date:/\b(?:delivery date|preferred date|date de livraison|fecha de entrega|lieferdatum)\s*[:=-]\s*([^,.;\n]{2,60})/i,instructions:/\b(?:instructions|notes|instrucciones)\s*[:=-]\s*([^.;\n]{3,160})/i};
@@ -122,7 +122,7 @@ function extractDelivery(text: string, pendingSlot = "") {
   // If the assistant previously asked for one specific field, accept a natural,
   // unlabelled answer instead of asking the customer to repeat the label.
   const plain=text.trim().replace(/[.!?]+$/,"");
-  if(pendingSlot==="full_name" && !out.full_name && looksLikePersonName(plain,true)) out.full_name=plain;
+  if(pendingSlot==="full_name" && !out.full_name && isLikelyCustomerName(plain)) out.full_name=plain;
   if(pendingSlot==="country" && !out.country && isKnownCountry(plain)) out.country=plain;
   if(pendingSlot==="city" && !out.city && looksLikeCity(plain)) out.city=plain;
   if(pendingSlot==="address" && !out.address && looksLikeAddress(plain)) out.address=plain.slice(0,240);
@@ -764,7 +764,7 @@ Deno.serve(async (req: Request) => {
     else delete mergedDetails.email;
     if (candidatePhone && isValidPhoneNumber(candidatePhone)) mergedDetails.phone = candidatePhone;
     else delete mergedDetails.phone;
-    if (mergedDetails.full_name && !looksLikePersonName(String(mergedDetails.full_name), true)) delete mergedDetails.full_name;
+    if (mergedDetails.full_name && !isLikelyCustomerName(String(mergedDetails.full_name))) delete mergedDetails.full_name;
     if (mergedDetails.country && !isKnownCountry(String(mergedDetails.country))) delete mergedDetails.country;
     if (mergedDetails.city && !looksLikeCity(String(mergedDetails.city))) delete mergedDetails.city;
     if (mergedDetails.address && !looksLikeAddress(String(mergedDetails.address))) delete mergedDetails.address;

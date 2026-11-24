@@ -82,3 +82,17 @@ export function isInvestmentTopic(value) {
   const text = normalize(value).trim();
   return /\b(invest(?:ment|ing)?|shares?|stock\s+(?:market|price|ticker)|tesla\s+stock|ticker|portfolio|brokerage|dividend|tsla(?:\s+(?:shares?|stock|price))?)\b/i.test(text);
 }
+
+export function isLikelyCustomerName(value) {
+  const candidate = String(value ?? "").trim().replace(/[.!?]+$/g, "");
+  if (!looksLikePersonName(candidate, true) || isConversationalReply(candidate)) return false;
+  const words = normalize(candidate).replace(/[^a-z\s'’-]/g, " ").split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 5) return false;
+  const nonNameWords = new Set([
+    "yes","yeah","yep","sure","okay","ok","alright","right","correct","thanks","thank","please",
+    "model","tesla","cybertruck","roadster","semi","performance","premium","standard","long","range",
+    "version","variant","interested","want","would","like","buy","purchase","continue","proceed",
+    "choose","selected","vehicle","car","enquiry","customer"
+  ]);
+  return words.every((word) => !nonNameWords.has(word));
+}

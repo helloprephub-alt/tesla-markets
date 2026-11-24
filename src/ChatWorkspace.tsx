@@ -8,6 +8,14 @@ type Thread = { id: string; visitorName: string; visitorEmail: string; enquiryTy
 type VehicleCheckoutDraft = { title:string; slug:string; mode:'cart'|'purchase'; variants:{name:string;price:string}[]; colors:string[]; wheels:string[] };
 type VehicleCheckoutForm = { fullName:string; email:string; phone:string; country:string; city:string; address:string; variant:string; color:string; wheels:string; instructions:string };
 const emptyVehicleCheckoutForm:VehicleCheckoutForm={fullName:'',email:'',phone:'',country:'',city:'',address:'',variant:'',color:'',wheels:'',instructions:''};
+
+const isLikelyCustomerName=(value:string)=>{
+ const candidate=String(value||'').trim().replace(/[.!?]+$/g,'');
+ const words=candidate.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().split(/\s+/).filter(Boolean);
+ const blocked=new Set(['yes','yeah','yep','sure','okay','ok','alright','right','correct','thanks','thank','please','model','tesla','cybertruck','roadster','semi','performance','premium','standard','long','range','version','variant','interested','want','would','like','buy','purchase','continue','proceed','choose','selected','vehicle','car','enquiry','customer']);
+ return words.length>=2&&words.length<=5&&words.every(word=>/^[a-z][a-z'’-]*$/i.test(word)&&!blocked.has(word));
+};
+
 const errorText = (e: unknown) => e instanceof Error ? e.message : 'Something went wrong. Please try again.';
 const timeLabel = (stamp:number) => new Date(stamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 const ADMIN_EMAIL = 'oyejideoluwatobi7@gmail.com';
@@ -116,7 +124,7 @@ function RichMessageCard({type,data,onAddToCart,onBuyNow,onSelectVariant,onChoos
     {metrics.length>0&&<div className="tm-rich-card-metrics">{metrics.map((item:any,i:number)=><div className="tm-rich-card-metric" key={i}><strong>{String(item.value)}</strong><span>{String(item.label)}</span></div>)}</div>}
     {fields.length>0&&<section className="tm-rich-card-section"><h4>{String(data.fields_title||'Customer information')}</h4><dl>{fields.map((item:any,i:number)=><div key={i}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>}
     {sections.map((section:any,i:number)=><section className="tm-rich-card-section" key={i}><h4>{section.title}</h4><dl>{rows(section.rows).map((item:any,j:number)=><div key={j}><dt>{String(item.label)}</dt><dd>{String(item.value)}</dd></div>)}</dl></section>)}
-    {(type==='vehicle_purchase_prompt'||type==='vehicle_card')&&Array.isArray(data.purchase_variants)&&data.purchase_variants.length>1&&!data.selected_variant&&<section className="tm-rich-card-section"><h4>Choose your preferred version</h4><div className="tm-variant-choice-list">{data.purchase_variants.map((variant:any,i:number)=><button type="button" className="tm-variant-choice" key={variant.name||i} onClick={()=>onSelectVariant?.(String(variant.name),data)}><span><b>{String(variant.name)}</b><small>{String(variant.price||'Price to be confirmed')}</small></span><strong>Select</strong></button>)}</div></section>}{(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onBuyNow&&<button type="button" className="tm-buy-now-button" onClick={()=>onBuyNow(configuredData)}>{type==='vehicle_purchase_prompt'?'Continue purchase':'Start purchase'}</button>}{(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onAddToCart&&<button type="button" className="tm-add-cart-button" onClick={()=>onAddToCart(configuredData)}>Add to cart</button>}
+    {(type==='vehicle_purchase_prompt'||type==='vehicle_card')&&Array.isArray(data.purchase_variants)&&data.purchase_variants.length>1&&!data.selected_variant&&<section className="tm-rich-card-section"><h4>Choose your preferred version</h4><div className="tm-variant-choice-list">{data.purchase_variants.map((variant:any,i:number)=><button type="button" className="tm-variant-choice" key={variant.name||i} onClick={()=>onSelectVariant?.(String(variant.name),data)}><span><b>{String(variant.name)}</b><small>{String(variant.price||'Price to be confirmed')}</small></span><strong>Select</strong></button>)}</div></section>}{(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onBuyNow&&<button type="button" className="tm-buy-now-button" onClick={()=>onBuyNow(configuredData)}>{type==='vehicle_purchase_prompt'?'Enter or edit details':'Start purchase'}</button>}{(type==='vehicle_card'||type==='vehicle_purchase_prompt')&&onAddToCart&&<button type="button" className="tm-add-cart-button" onClick={()=>onAddToCart(configuredData)}>Add to cart</button>}
     {Array.isArray(data.payment_methods)&&data.payment_methods.length>0&&<section className="tm-payment-method-grid" aria-label="Payment methods">{data.payment_methods.filter((method:any)=>['Apple Pay','Chime','Zelle','PayPal','Gift Card'].includes(String(method))).map((method:string)=><button type="button" key={method} onClick={()=>onChoosePaymentMethod?.(method)}><img className="tm-payment-method-logo" src={'https://cdn.simpleicons.org/'+method.toLowerCase().replace(/\s+/g,'')} alt={method+' logo'} loading="lazy" style={{width:34,height:34,objectFit:'contain'}} onError={event=>{event.currentTarget.style.display='none';const fallback=event.currentTarget.nextElementSibling as HTMLElement|null;if(fallback)fallback.style.display='grid';}}/><span className="tm-payment-method-fallback" style={{display:'none'}}>{method==='Apple Pay'?'':method==='Chime'?'C':method==='Zelle'?'Z':method==='Gift Card'?'G':'P'}</span><b>{method}</b><span className="tm-payment-method-arrow">›</span></button>)}</section>}{data.note&&<p className="tm-rich-card-note">{String(data.note)}</p>}
     {type==='payment_card'&&typeof data.payment_url==='string'&&/^https:\/\//i.test(data.payment_url)&&<a className="tm-buy-now-button" href={data.payment_url} target="_blank" rel="noopener noreferrer">Pay securely</a>}
   </article>;
@@ -274,7 +282,7 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     const field=(label:string)=>String(data?.fields?.find((item:any)=>String(item?.label||'').toLowerCase()===label.toLowerCase())?.value||'').replace(/^Still needed$/i,'').trim();
     const savedVariant=field('Vehicle version')||String(data?.selected_variant||'');
     setVehicleCheckoutForm({
-      fullName:customerDetails.name||field('Full name'),
+      fullName:isLikelyCustomerName(customerDetails.name)?customerDetails.name:(isLikelyCustomerName(field('Full name'))?field('Full name'):''),
       email:customerDetails.email||field('Email address'),
       phone:customerDetails.phone||field('Phone number'),
       country:field('Delivery country'),
@@ -293,7 +301,8 @@ export function ChatWorkspace({ onBack, language = 'en' }: { onBack: () => void;
     event.preventDefault();
     if(!vehicleCheckout||checkoutSubmitLock.current||checkoutSubmitting||busy)return;
     const form=vehicleCheckoutForm;
-    if(!form.fullName.trim()||!form.email.trim()||!form.phone.trim()||!form.country.trim()||!form.city.trim()||!form.address.trim()){
+    if(!isLikelyCustomerName(form.fullName)){setProblem('Please enter your real full name (first and last name).');return;}
+     if(!form.email.trim()||!form.phone.trim()||!form.country.trim()||!form.city.trim()||!form.address.trim()){
       setProblem('Please complete all required contact and delivery details.');
       return;
     }

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import {
   isConversationalReply,
   looksLikePersonName,
+  isLikelyCustomerName,
   isSmallTalkMessage,
   isGreetingMessage,
   isVehicleFollowUpMessage,
@@ -26,6 +27,10 @@ assert.equal(looksLikePersonName("I'm doing well", true), false);
 assert.equal(looksLikePersonName("Good morning", true), false);
 assert.equal(looksLikePersonName("John Smith", true), true);
 assert.equal(looksLikePersonName("john smith", true), true);
+assert.equal(isLikelyCustomerName("John Smith"), true);
+assert.equal(isLikelyCustomerName("Yes Model Y"), false, "A vehicle-selection acknowledgement must never be saved as a customer name.");
+assert.equal(isLikelyCustomerName("Model Y Performance"), false);
+assert.equal(isLikelyCustomerName("Sure Model 3"), false);
 assert.equal(isSmallTalkMessage("How are you doing?"), true);
 assert.equal(isGreetingMessage("Hi"), true);
 assert.equal(isVehicleFollowUpMessage("What is the price?"), true);
@@ -53,7 +58,9 @@ assert.match(chat, /await invokeCustomerResponder\(id,initialMessageId\)/, "A pr
 assert.match(chat, /initializedIntentRef\.current/, "Re-renders must not create duplicate enquiry conversations.");
 assert.match(chat, /await invokeCustomerResponder\(threadId,messageId\)/, "Typed customer messages must use the same responder invocation helper.");
 assert.match(responder, /looksLikePersonName\(nameMatch\[1\],true\)/, "Explicit name candidates must pass name validation.");
-assert.match(responder, /looksLikePersonName\(plain,true\)/, "Unlabelled names must pass strict pending-slot validation.");
+assert.match(responder, /isLikelyCustomerName\(plain\)/, "Unlabelled name answers must pass strict customer-name validation.");
+assert.match(chat, /isLikelyCustomerName\(customerDetails\.name\)/, "Invalid stored names must never prefill the customer checkout form.");
+assert.match(chat, /Please enter your real full name/, "The checkout form must validate a real customer name before submission.");
 assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : vehicle;/, "Unrelated and investment messages must not inherit a previous vehicle.");
 assert.match(responder, /\.eq\("is_published",true\)[\s\S]*?\.in\("verification_status",\["verified","verified_official","verified_independent","management_approved"\]\)/, "The AI must only use published and approved vehicle records.");
 assert.match(chat, /\.eq\('is_published',true\)\.in\('verification_status',\['verified','verified_official','verified_independent','management_approved'\]\)/, "Management chat cards must only show published and approved vehicles.");
