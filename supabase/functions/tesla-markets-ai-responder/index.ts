@@ -832,12 +832,13 @@ Deno.serve(async (req: Request) => {
         : "Thank you. I have selected that vehicle version. To complete your enquiry, please provide: " + missing.join(", ") + ". You can send the remaining details together in one message.";
     }
     const priorCart = Array.isArray(priorDetails.cart_items) ? priorDetails.cart_items : [];
-    const cartIntent = /(?:\b(add|put|include)\b.*\b(to (?:my )?(?:cart|basket)|\d{1,2}\s+(?:cybertruck|model|roadster|semi)|another|one|two|three)\b|\b(view|show)\b.*\b(cart|basket)\b)/i.test(customerMessage.body);
+    const cartIntent = /(?:\b(add|put|include)\b.*\b(to (?:my )?(?:cart|basket)|another|one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2}\s+(?:cybertruck|model|roadster|semi|vehicles?|cars?|units?))\b|\b(view|show)\b.*\b(cart|basket)\b)/i.test(customerMessage.body);
     const cartSummary = cartIntent && selectedVehicle ? (() => {
-      const quantityMatch = customerMessage.body.match(/\b(\d{1,2})\b/);
-      const quantityWord = customerMessage.body.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/i)?.[1]?.toLowerCase();
+      // Only an explicit add/put/include quantity directly before a vehicle or
+      // quantity noun counts. Address numbers, postcodes and phone numbers do not.
+      const explicitQuantityMatch = customerMessage.body.match(/\b(?:add|put|include)\s+(?:(\d{1,2})|(one|two|three|four|five|six|seven|eight|nine|ten))\s+(?:(?:of\s+)?(?:a\s+)?)?(?:cybertruck|model\s*[3ysx]|roadster|tesla\s+semi|vehicles?|cars?|units?)\b/i);
       const quantityWords:Record<string,number>={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
-      const requestedQuantity = quantityMatch ? Number(quantityMatch[1]) : quantityWord ? quantityWords[quantityWord] : 1;
+      const requestedQuantity = explicitQuantityMatch ? (explicitQuantityMatch[1] ? Number(explicitQuantityMatch[1]) : quantityWords[String(explicitQuantityMatch[2]).toLowerCase()] || 1) : 1;
       const quantity = Math.max(1, Math.min(20, requestedQuantity));
       const current = priorCart.map((item:any)=>({...item}));
       const chosenName=cleanString(mergedDetails.selected_variant,100);
