@@ -23,7 +23,7 @@ assert.match(aiSource, /The language field must be an ISO 639-1 code/);
 assert.match(aiSource, /max_tokens:1200/, 'Private model generation must use the configured bounded response size.');
 assert.match(aiSource, /temperature:0\.2/, 'Private model generation must use the deterministic response temperature.');
 assert.match(aiSource, /TESLA_PRIVATE_LLM_ENDPOINT/, 'Customer inference must route through the Tesla-controlled private model endpoint.');
-assert.match(aiSource, /temperature: 0\.2/, 'Private model generation must use its deterministic response temperature.');
+assert.match(aiSource, /temperature:0\.2/, 'Private model generation must use its deterministic response temperature.');
 assert.match(translateSource, /max_completion_tokens: 3000/);
 assert.match(translateSource, /chat_template_kwargs: \{ enable_thinking: false, clear_thinking: true \}/);
 assert.match(translateSource, /protected_token_mismatch/);
