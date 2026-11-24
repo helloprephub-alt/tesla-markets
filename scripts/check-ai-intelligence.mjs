@@ -30,3 +30,13 @@ assert.match(responder, /selected_variant,100\) \|\| selectedVehicle\.name/, "Th
 assert.match(responder,/wantsPaymentStage/, "A customer must be able to request the payment stage from the pro forma invoice.");
 assert.match(responder,/paymentMethodPrompt/, "Only an approved vehicle order may produce the payment-method selection card.");
 assert.match(chat,/PROCEED TO PAYMENT/, "The vehicle pro forma invoice must expose a proceed-to-payment action.");
+
+assert.match(responder,/Use the first vehicle name in the message/, "A trim mentioned later must never override the base vehicle named first.");
+assert.match(responder,/const contextualVehicle = canonicalVehicle\(customerMessage\.body\)[\s\S]*persistedDetails\.selected_vehicle_model/, "Vehicle context must fall back to the saved selected model.");
+assert.match(responder,/const cartIntent = \/\\\\b\(\?:add\|put\|include\)/, "Cart requests must be recognized even when customer details follow on later lines.");
+assert.match(responder,/if \(variants\.length > 1 && !chosen\) return null/, "A cart line must never be created without its exact selected version.");
+assert.match(responder,/existing\.unit_price_usd = sale[\s\S]*existing\.original_unit_price_usd = base[\s\S]*existing\.discount_percent = pct/, "Updating an existing cart line must refresh its authoritative variant price and discount.");
+assert.match(responder,/Continue with " \+ cleanString\(selectedVehicle\.name,100\) \+ \(cleanString\(mergedDetails\.selected_variant,100\)/, "The purchase card title must include the selected version.");
+assert.match(responder,/Selected vehicle version/, "Customer details must show the selected vehicle version separately.");
+assert.match(chat,/discount_percent:Number\(item\.discount_percent\|\|0\),promo_active:item\.promo_active===true/, "Checkout must retain selected variant promotion metadata.");
+assert.match(chat,/const sale=base>0&&pct\?Math\.round\(base\*\(1-pct\/100\)\*100\)\/100:base/, "Checkout selector must display the exact discounted version price.");
