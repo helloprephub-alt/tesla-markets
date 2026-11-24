@@ -957,6 +957,10 @@ Deno.serve(async (req: Request) => {
       const totalItems = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0),0);
       const total = cartSummary.reduce((sum:number,item:any)=>sum+Number(item.quantity||0)*Number(item.unit_price_usd||0),0);
       reply = "Added " + (cartSummary.find((item:any)=>item.slug===selectedVehicle.slug)?.quantity||1) + " " + selectedVehicle.name + " to your cart. You can add another vehicle or change quantities. Your saved contact details remain with this conversation, so you do not need to send them again.";
+    } else if (cartIntent && selectedVehicle && variants.length > 1 && !cleanString(mergedDetails.selected_variant,100)) {
+      intent = "vehicle_variant_required";
+      requiresManagement = false;
+      reply = "I have identified the " + cleanString(selectedVehicle.name,100) + ". Please select the exact vehicle version below before I add it to your cart. I will use that version's current catalogue price and discount.";
     } else if (investmentFlow) {
       requiresManagement = false;
       if (hasPaymentIntent || paymentChoice) {
@@ -1286,7 +1290,7 @@ Deno.serve(async (req: Request) => {
         ]}],
         note:"You can add more vehicles to this cart during the same conversation. Your saved customer details are retained."
       };
-    } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase"].includes(intent) && !proformaInvoice) {
+    } else if (selectedVehicle && ["purchase_ready","customer_details_progress","vehicle_purchase","vehicle_variant_required"].includes(intent) && !proformaInvoice) {
       const purchaseSpecs = selectedVehicle.specifications && typeof selectedVehicle.specifications === "object" ? selectedVehicle.specifications : {};
       const purchaseVariants = Array.isArray(purchaseSpecs.variants) ? purchaseSpecs.variants : [];
       const purchaseImages = Array.isArray(selectedVehicle.images) ? selectedVehicle.images : [];
