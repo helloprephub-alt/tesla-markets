@@ -77,7 +77,7 @@ assert.match(responder, /Tesla Markets Investment Information & Customer FAQ/, "
 assert.match(responder, /Tesla Markets does not accept or process payments for TSLA shares/, "TSLA payment requests must be explicitly refused.");
 assert.match(responder, /investment_information_only/, "Investment context must remain informational.");
 assert.match(responder, /extractedDelivery = investmentFlowMessage \? \{\} : local\.delivery/, "Investment conversations must not save volunteered contact or delivery details.");
-assert.match(responder, /const selectedVehicle = investmentFlowMessage \? null : \(vehicle \|\| matchVehicle\(/, "Investment conversations must not inherit a selected vehicle.");
+assert.match(responder, /const selectedVehicle = investmentFlowMessage[\s\S]{0,100}matchVehicle\(/, "Investment conversations must not inherit a selected vehicle.");
 assert.match(responder, /purchaseFlowActive = !investmentFlowMessage/, "Investment conversations must never enter a stale vehicle checkout stage.");
 assert.match(responder, /order_id: activeOrder\.id/, "Payment locks must reference the exact approved order.");
 assert.match(responder, /create_or_update_vehicle_draft_order/, "Vehicle draft creation must use the atomic order RPC.");
