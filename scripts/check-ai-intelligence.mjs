@@ -26,3 +26,7 @@ assert.match(responder, /Exact selected configuration/, "The pro forma invoice m
 assert.match(responder, /if \(explicitVehiclePurchase && selectedVehicle\) \{[\s\S]*intent = "customer_details_progress"/, "An explicit vehicle purchase must override a generic intent classification.");
 assert.match(responder, /Object\.keys\(extractedDelivery\)\.length > 0 && !purchaseFlowActive/, "Purchase details must not fall through to the generic customer-enquiry card.");
 assert.match(responder, /selected_variant,100\) \|\| selectedVehicle\.name/, "The purchase response must retain the exact selected vehicle configuration.");
+
+assert.match(responder,/wantsPaymentStage/, "A customer must be able to request the payment stage from the pro forma invoice.");
+assert.match(responder,/paymentMethodPrompt/, "Only an approved vehicle order may produce the payment-method selection card.");
+assert.match(chat,/PROCEED TO PAYMENT/, "The vehicle pro forma invoice must expose a proceed-to-payment action.");
