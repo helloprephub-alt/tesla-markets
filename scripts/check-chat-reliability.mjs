@@ -57,7 +57,7 @@ assert.match(chat, /\.eq\('body',initialBody\)/, "Opening messages must be dedup
 assert.match(chat, /await invokeCustomerResponder\(id,initialMessageId\)/, "A pre-filled opening message must trigger the AI responder.");
 assert.match(chat, /initializedIntentRef\.current/, "Re-renders must not create duplicate enquiry conversations.");
 assert.match(chat, /await invokeCustomerResponder\(threadId,messageId\)/, "Typed customer messages must use the same responder invocation helper.");
-assert.match(responder, /looksLikePersonName\(nameMatch\[1\],true\)/, "Explicit name candidates must pass name validation.");
+assert.match(responder, /isLikelyCustomerName\(nameMatch\[1\]\)/, "Explicit name candidates must pass strict customer-name validation.");
 assert.match(responder, /isLikelyCustomerName\(plain\)/, "Unlabelled name answers must pass strict customer-name validation.");
 assert.match(chat, /isLikelyCustomerName\(customerDetails\.name\)/, "Invalid stored names must never prefill the customer checkout form.");
 assert.match(chat, /Please enter your real full name/, "The checkout form must validate a real customer name before submission.");
