@@ -107,12 +107,16 @@ function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; v
   const [imageFailed, setImageFailed] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageRetryCount, setImageRetryCount] = useState(0);
+  const [directImageFallback, setDirectImageFallback] = useState(false);
   const retryableImage = imageSrc.includes('/api/tesla-image?');
-  const imageRequestSrc = retryableImage ? imageSrc + '&retry=' + imageRetryCount : imageSrc;
+  const imageRequestSrc = retryableImage
+    ? directImageFallback ? (product.image || '') : imageSrc + '&retry=' + imageRetryCount
+    : imageSrc;
   useEffect(() => {
     setImageFailed(false);
     setImageLoaded(false);
     setImageRetryCount(0);
+    setDirectImageFallback(false);
   }, [imageSrc]);
 
   useEffect(() => {
@@ -121,16 +125,24 @@ function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; v
       if (retryableImage && imageRetryCount < 2) {
         setImageLoaded(false);
         setImageRetryCount(attempt => attempt + 1);
+      } else if (retryableImage && !directImageFallback) {
+        setImageLoaded(false);
+        setDirectImageFallback(true);
       } else {
         setImageFailed(true);
       }
     }, 12000);
     return () => window.clearTimeout(timer);
-  }, [imageSrc, imageRequestSrc, imageLoaded, imageFailed, imageRetryCount, retryableImage]);
+  }, [imageSrc, imageRequestSrc, imageLoaded, imageFailed, imageRetryCount, retryableImage, directImageFallback]);
   const handleImageError = () => {
     if (retryableImage && imageRetryCount < 2) {
       setImageLoaded(false);
       setImageRetryCount(attempt => attempt + 1);
+      return;
+    }
+    if (retryableImage && !directImageFallback) {
+      setImageLoaded(false);
+      setDirectImageFallback(true);
       return;
     }
     setImageFailed(true);
@@ -235,6 +247,37 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState('');
   const [cartNotice, setCartNotice] = useState('');
+
+  const closeDetail = () => {
+    setSelected(null);
+    setSelectedGalleryImage('');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('product');
+    url.searchParams.set('page', 'shop');
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  useEffect(() => {
+    const syncProductFromUrl = () => {
+      const slug = new URLSearchParams(window.location.search).get('product');
+      const product = slug ? storeProducts.find(item => item.id === slug) || null : null;
+      setSelected(product);
+      setSelectedGalleryImage(product?.image || '');
+      setSelectedSize(product?.sizes?.[0] || '');
+      setDetailQuantity(1);
+    };
+    syncProductFromUrl();
+    window.addEventListener('popstate', syncProductFromUrl);
+    return () => window.removeEventListener('popstate', syncProductFromUrl);
+  }, []);
+
+  useEffect(() => {
+    document.title = selected ? selected.name + ' | Tesla Markets Shop' : 'Tesla Markets | Shop';
+    const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (description) description.content = selected
+      ? selected.name + ' product details, current listed price and availability at Tesla Markets.'
+      : 'Browse Tesla Markets apparel, lifestyle products, accessories and energy products.';
+  }, [selected]);
 
   useEffect(() => {
     let active = true;
@@ -600,7 +643,6 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const visibleProducts = useMemo(() => {
     // Keep the public catalogue image-complete: entries without a verified primary Tesla asset stay out of the storefront until management adds one.
     let items = storeProducts.filter(product =>
-      Boolean(product.image) &&
       (department === 'All products' || product.department === department) &&
       (department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter)) &&
       (categoryFilter === 'All categories' || product.category === categoryFilter) &&
@@ -658,6 +700,10 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   };
 
   const openDetail = (product: StoreProduct) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', 'shop');
+    url.searchParams.set('product', product.id);
+    window.history.pushState({ product: product.id }, '', url.toString());
     setSelected(product);
     setSelectedGalleryImage(product.image || '');
     setSelectedSize(product.sizes?.[0] || '');
@@ -756,10 +802,10 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
 
 
       {selected && (
-        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) { setSelected(null); setSelectedGalleryImage(''); } }}>
+        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) closeDetail(); }}>
           <section className="tm-store-detail" role="dialog" aria-modal="true" aria-labelledby="tm-store-detail-title">
-            <button className="tm-store-detail-back" onClick={() => { setSelected(null); setSelectedGalleryImage(''); }}><ArrowLeft size={15}/> Continue shopping</button>
-            <button className="tm-store-close" onClick={() => { setSelected(null); setSelectedGalleryImage(''); }} aria-label="Close product details"><X size={19}/></button>
+            <button className="tm-store-detail-back" onClick={closeDetail}><ArrowLeft size={15}/> Continue shopping</button>
+            <button className="tm-store-close" onClick={closeDetail} aria-label="Close product details"><X size={19}/></button>
             <div className="tm-store-detail-layout">
               <div className="tm-store-detail-gallery">
                 <div className="tm-store-detail-image"><ProductVisual product={{ ...selected, image: selectedGalleryImage || selected.image }} variant="large" /></div>
