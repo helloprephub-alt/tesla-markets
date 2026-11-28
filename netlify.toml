@@ -4,9 +4,9 @@
 [build]
   command = "npm ci && npm run build"
   publish = "dist"
-  functions = "netlify/functions"
 
 [functions]
+  directory = "netlify/functions"
   node_bundler = "esbuild"
 
 # Keep API rewrites before the SPA fallback. Rewrites preserve query strings
