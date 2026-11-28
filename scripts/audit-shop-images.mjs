@@ -8,9 +8,12 @@ const allowed = src =>
   src.startsWith('https://www.eco-worthy.com/cdn/shop/files/');
 
 const imageOwners = new Map();
+const productsWithoutPrimaryImage = [];
 for (const line of catalog.split(/\r?\n/).filter(value => /^\s*\{id:/.test(value))) {
   const id = line.match(/^\s*\{id:'([^']+)'/)?.[1] || 'unknown-product';
-  const image = line.match(/\bimage:'([^']+)'/)?.[1];
+  const name = line.match(/\\bname:'([^']+)'/)?.[1] || id;
+  const image = line.match(/\\bimage:'([^']+)'/)?.[1];
+  if (!image) productsWithoutPrimaryImage.push({ id, name });
   const gallery = line.match(/\bgallery:\[([^\]]*)\]/)?.[1] || '';
   const sources = [image, ...[...gallery.matchAll(/'([^']+)'/g)].map(match => match[1])]
     .filter(value => typeof value === 'string' && Boolean(value) && allowed(value));
@@ -64,6 +67,8 @@ console.log(JSON.stringify({
   checked: results.length,
   passed: results.length - failed.length,
   failed: failed.length,
+  productsWithoutPrimaryImage,
+  productsWithoutPrimaryImageCount: productsWithoutPrimaryImage.length,
   failures: failed
 }, null, 2));
 if (failed.length) process.exitCode = 1;
