@@ -102,6 +102,14 @@ function discountValue(product: StoreProduct) {
   return price === null ? 0 : Math.max(0, product.originalPrice - price);
 }
 
+function productIdFromPath(): string | null {
+  const match = window.location.pathname.match(/^\/shop\/product\/([^/]+)\/?$/);
+  if (!match) return null;
+  try { return decodeURIComponent(match[1]); } catch { return match[1]; }
+}
+
+const productPagePath = (id: string) => '/shop/product/' + encodeURIComponent(id) + '/';
+
 function ProductVisual({ product, variant = 'card' }: { product: StoreProduct; variant?: 'card' | 'large' | 'thumb' }) {
   const imageSrc = productAssetUrl(product.image);
   const [imageFailed, setImageFailed] = useState(false);
@@ -205,9 +213,11 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
-  const [selected, setSelected] = useState<StoreProduct | null>(null);
-  const [selectedGalleryImage, setSelectedGalleryImage] = useState('');
-  const [selectedSize, setSelectedSize] = useState('');
+  const initialProduct = storeProducts.find(product => product.id === productIdFromPath()) || null;
+  const [selected, setSelected] = useState<StoreProduct | null>(initialProduct);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState(initialProduct?.image || '');
+  const [selectedSize, setSelectedSize] = useState(initialProduct?.sizes?.[0] || '');
+  const [productLinkFeedback, setProductLinkFeedback] = useState('');
   const [detailQuantity, setDetailQuantity] = useState(1);
   const [cart, setCart] = useState<CartLine[]>(() => { const intent = readCheckoutIntent(); return intent?.cart?.length ? intent.cart : readSavedCart(); });
   const [cartHydrated, setCartHydrated] = useState(false);
@@ -657,11 +667,59 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
     ));
   };
 
+  useEffect(() => {
+    const syncProductRoute = () => {
+      const id = productIdFromPath();
+      if (!id) {
+        setSelected(null);
+        setSelectedGalleryImage('');
+        setSelectedSize('');
+        setProductLinkFeedback('');
+        return;
+      }
+      const product = storeProducts.find(item => item.id === id);
+      if (!product) {
+        setSelected(null);
+        setSelectedGalleryImage('');
+        setSelectedSize('');
+        return;
+      }
+      setSelected(product);
+      setSelectedGalleryImage(product.image || '');
+      setSelectedSize(product.sizes?.[0] || '');
+      setDetailQuantity(1);
+    };
+    window.addEventListener('popstate', syncProductRoute);
+    return () => window.removeEventListener('popstate', syncProductRoute);
+  }, []);
+
   const openDetail = (product: StoreProduct) => {
+    window.history.pushState({ marketplaceProductId: product.id }, '', productPagePath(product.id));
     setSelected(product);
     setSelectedGalleryImage(product.image || '');
     setSelectedSize(product.sizes?.[0] || '');
     setDetailQuantity(1);
+    setProductLinkFeedback('');
+  };
+
+  const closeDetail = () => {
+    setSelected(null);
+    setSelectedGalleryImage('');
+    setSelectedSize('');
+    setProductLinkFeedback('');
+    if (/^\/shop\/product\//.test(window.location.pathname)) {
+      window.history.replaceState(window.history.state, '', '/shop/');
+    }
+  };
+
+  const copyProductLink = async (product: StoreProduct) => {
+    const url = window.location.origin + productPagePath(product.id);
+    try {
+      await navigator.clipboard.writeText(url);
+      setProductLinkFeedback('Product link copied.');
+    } catch {
+      setProductLinkFeedback('Copy this product URL from your browser address bar.');
+    }
   };
 
   const switchDepartment = (next: Department) => {
@@ -756,10 +814,10 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
 
 
       {selected && (
-        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) { setSelected(null); setSelectedGalleryImage(''); } }}>
+        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) closeDetail(); }}>
           <section className="tm-store-detail" role="dialog" aria-modal="true" aria-labelledby="tm-store-detail-title">
-            <button className="tm-store-detail-back" onClick={() => { setSelected(null); setSelectedGalleryImage(''); }}><ArrowLeft size={15}/> Continue shopping</button>
-            <button className="tm-store-close" onClick={() => { setSelected(null); setSelectedGalleryImage(''); }} aria-label="Close product details"><X size={19}/></button>
+            <button className="tm-store-detail-back" onClick={closeDetail}><ArrowLeft size={15}/> Continue shopping</button>
+            <button className="tm-store-close" onClick={closeDetail} aria-label="Close product details"><X size={19}/></button>
             <div className="tm-store-detail-layout">
               <div className="tm-store-detail-gallery">
                 <div className="tm-store-detail-image"><ProductVisual product={{ ...selected, image: selectedGalleryImage || selected.image }} variant="large" /></div>
@@ -785,6 +843,8 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
                 </div>
                 <small className="tm-store-stock">{selected.availability}</small>
                 {selected.sizes && <label className="tm-store-size">Choose size<select value={selectedSize} onChange={event => setSelectedSize(event.target.value)}>{selected.sizes.map(size => <option key={size}>{size}</option>)}</select></label>}
+                <button type="button" className="tm-store-detail-back tm-store-copy-product-link" onClick={() => void copyProductLink(selected)}>Copy product link</button>
+                {productLinkFeedback && <small className="tm-store-stock" role="status">{productLinkFeedback}</small>}
                 {selected.purchaseEnabled === false ? (
                   <button className="tm-store-add-large" onClick={() => onEnquire('Please confirm current supplier stock, delivery options, warranty and the final price for ' + selected.name + '. The ${appliedDiscountPercent(selected)}% displayed offer is a preview promotion pending supplier confirmation.')}>Check supplier availability <ArrowRight size={17}/></button>
                 ) : <>
