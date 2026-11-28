@@ -58,6 +58,17 @@ const generatedIds = fs.readdirSync(productRoot, { withFileTypes: true })
 const expectedIds = published.map(item => item.id).sort();
 assert.deepEqual(generatedIds, expectedIds, 'Every image-verified, priced shop product must have exactly one static URL page.');
 
+const sitemapPath = path.join(outputDir, 'sitemap.xml');
+const robotsPath = path.join(outputDir, 'robots.txt');
+assert.ok(fs.existsSync(sitemapPath), 'The product sitemap must be generated.');
+assert.ok(fs.existsSync(robotsPath), 'The crawler policy file must be generated.');
+const sitemap = fs.readFileSync(sitemapPath, 'utf8');
+const robots = fs.readFileSync(robotsPath, 'utf8');
+for (const product of published) {
+  assert.ok(sitemap.includes('/shop/product/' + product.id + '/'), 'Missing sitemap URL for ' + product.id);
+}
+assert.ok(robots.includes('Sitemap: https://teslamarketsofficial.com/sitemap.xml'), 'robots.txt must advertise the sitemap.');
+
 for (const product of published) {
   const html = fs.readFileSync(path.join(productRoot, product.id, 'index.html'), 'utf8');
   assert.ok(html.includes('/shop/product/' + product.id + '/'), 'Missing canonical URL for ' + product.id);
