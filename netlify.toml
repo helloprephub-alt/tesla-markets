@@ -1,0 +1,48 @@
+# Netlify fallback configuration.
+# This is a staging/failover configuration only; it does not switch production.
+
+[build]
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Keep API rewrites before the SPA fallback. Rewrites preserve query strings
+# and methods so the existing endpoints can receive GET/POST requests.
+[[redirects]]
+  from = "/api/tesla-image"
+  to = "/.netlify/functions/tesla-image"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/process-email-outbox"
+  to = "/.netlify/functions/process-email-outbox"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/push-config"
+  to = "/.netlify/functions/push-config"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/push-notify"
+  to = "/.netlify/functions/push-notify"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/welcome-email"
+  to = "/.netlify/functions/welcome-email"
+  status = 200
+  force = true
+
+# Vite SPA fallback. Direct product URLs use query parameters and remain on /.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
