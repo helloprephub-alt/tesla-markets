@@ -39,15 +39,13 @@ The frontend is Vite + React and can build to `dist`. Cloudflare Pages can host 
 
 However, a static deployment alone does not run the current Vercel API handlers. Before Cloudflare Pages can be production-ready, port and test all required API endpoints into Pages Functions/Workers with equivalent security, response behavior, and secret storage. Keep the existing Cloudflare AI responder Worker separate unless a migration is explicitly needed.
 
-### 3. Existing AppDeploy deployment — preserve, but do not treat as equivalent yet
+### 3. Cloudflare Workers / other compatible serverless runtimes — evaluate only if needed
 
-An existing Tesla Markets AppDeploy site is already deployed and reports `ready`:
+If Netlify staging cannot be completed within its current free allowance or does not pass compatibility tests, evaluate a provider-native serverless runtime that can host the required API routes. Cloudflare Pages Functions/Workers are the next candidate, subject to testing the Vite frontend, all API endpoints, secrets, Supabase Auth/CORS, and payment callbacks.
 
-https://tesla-invest-8jwn28.v2.appdeploy.ai/
+Do not select a provider solely because it can host static files. The full application needs the existing server-side endpoints and secure secret handling.
 
-Its stored source snapshot is an older implementation. The source inventory does not include the current Vercel repository's dedicated `src/Marketplace.tsx` catalog implementation, and its app status reports an old Supabase auth refresh error (`invalid_grant`). It is therefore a useful existing live fallback/reference, but it is **not verified as feature-equivalent to the current marketplace** and must not be promoted as the completed release without updating and testing it.
-
-Preserve its existing resources and customer records. Do not overwrite this app with the current repo or change its backend/data model without a separate migration and explicit owner approval.
+AppDeploy is explicitly excluded from all hosting, migration, failover, and production-release alternatives by the project owner. Do not propose or use it for this project.
 
 ## Current Vercel API inventory
 
