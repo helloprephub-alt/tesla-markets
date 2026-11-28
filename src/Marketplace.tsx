@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, BatteryCharging, Check, ChevronRight,
+  ArrowLeft, ArrowRight, ArrowUpRight, BatteryCharging, Check, ChevronRight, Copy,
   CreditCard, Heart, Menu, PackageCheck, PlugZap, Search, ShieldCheck,
   ShoppingBag, SlidersHorizontal, Sun, Truck, X
 } from 'lucide-react';
@@ -217,7 +217,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
-  const [selected, setSelected] = useState<StoreProduct | null>(null);
+  const [selected, setSelected] = useState<StoreProduct | null>(null);\n  const [copiedProductId, setCopiedProductId] = useState('');
   const [selectedGalleryImage, setSelectedGalleryImage] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [detailQuantity, setDetailQuantity] = useState(1);
@@ -247,6 +247,29 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState('');
   const [cartNotice, setCartNotice] = useState('');
+
+  const copyProductLink = async (product: StoreProduct) => {
+    const shareUrl = 'https://teslamarketsofficial.com/product/' + encodeURIComponent(product.id);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = shareUrl;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (!copied) {
+        setCartNotice('Copy was blocked by your browser. Copy this link manually: ' + shareUrl);
+        return;
+      }
+    }
+    setCopiedProductId(product.id);
+    window.setTimeout(() => setCopiedProductId(current => current === product.id ? '' : current), 2200);
+  };
 
   const closeDetail = () => {
     setSelected(null);
@@ -837,6 +860,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
                   <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
                   <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
                 </>}
+                <button type="button" className="tm-store-share-link" onClick={() => void copyProductLink(selected)}><Copy size={15}/>{copiedProductId === selected.id ? 'Link copied' : 'Copy product link'}</button>
 
               </div>
             </div>
@@ -853,7 +877,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
               <div className="tm-store-cart-lines">
                 {cartLines.map(line => <div className="tm-store-cart-line" key={line.id + (line.selectedSize || '')}>
                   <div className="tm-store-cart-line-image"><ProductVisual product={line.product} variant="thumb" /></div>
-                  <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.unitPrice < line.product.originalPrice ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
+                  <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.unitPrice < line.product.originalPrice ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => void copyProductLink(line.product)}><Copy size={13}/> {copiedProductId === line.product.id ? 'Link copied' : 'Copy link'}</button><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
                   <div className="tm-store-cart-qty"><button onClick={() => changeQty(line.id,-1,line.selectedSize)}>−</button><b>{line.quantity}</b><button onClick={() => changeQty(line.id,1,line.selectedSize)}>+</button></div>
                 </div>)}
               </div>
