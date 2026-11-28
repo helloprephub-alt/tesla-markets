@@ -669,9 +669,8 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   }, [department, vehicleModelFilter]);
 
   const visibleProducts = useMemo(() => {
-    // Keep the public catalogue image-complete: entries without a verified primary Tesla asset stay out of the storefront until management adds one.
+    // Keep every catalog item visible, even when a primary image is missing, so it can be reviewed and repaired.
     let items = storeProducts.filter(product =>
-      Boolean(product.image) &&
       (department === 'All products' || product.department === department) &&
       (department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter)) &&
       (categoryFilter === 'All categories' || product.category === categoryFilter) &&
