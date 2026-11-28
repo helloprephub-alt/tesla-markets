@@ -6,7 +6,7 @@
 - Products with a primary image field: 116
 - Products missing a primary image field: 145
 - Missing-primary entries that still have a gallery field: 0
-- Missing-primary entries with a sourceUrl field: 3
+- Missing-primary entries with a sourceUrl field: 5
 - Product IDs are unique URL-safe slugs: yes
 
 **Scope:** Source-catalog field audit only. Two additional apparel images were added after verification against official Tesla Shop product listings and their Tesla-hosted image assets. This does not claim that every assigned image has been visually checked or loads in a browser. The three Kids Tees shown in the user screenshot have primary image URLs; their image proxy endpoint was verified to return `200 image/jpeg` in both the current production deployment and the new preview.
