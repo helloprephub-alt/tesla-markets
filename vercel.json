@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api/|resources/|assets/|icons/|favicon).*)",
+      "source": "/((?!api/|resources/|assets/|icons/|favicon|shop/product/).*)",
       "destination": "/index.html"
     }
   ]
