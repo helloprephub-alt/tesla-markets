@@ -276,14 +276,17 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
     setSelected(null);
     setSelectedGalleryImage('');
     const url = new URL(window.location.href);
-    url.searchParams.delete('product');
+    url.pathname = '/';
     url.searchParams.set('page', 'shop');
+    url.searchParams.delete('product');
     window.history.replaceState({}, '', url.toString());
   };
 
   useEffect(() => {
     const syncProductFromUrl = () => {
-      const slug = new URLSearchParams(window.location.search).get('product');
+      const url = new URL(window.location.href);
+      const pathMatch = url.pathname.match(/^\/product\/([^/]+)\/?$/);
+      const slug = pathMatch ? decodeURIComponent(pathMatch[1]) : url.searchParams.get('product');
       const product = slug ? storeProducts.find(item => item.id === slug) || null : null;
       setSelected(product);
       setSelectedGalleryImage(product?.image || '');
@@ -294,6 +297,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
     window.addEventListener('popstate', syncProductFromUrl);
     return () => window.removeEventListener('popstate', syncProductFromUrl);
   }, []);
+
 
   useEffect(() => {
     document.title = selected ? selected.name + ' | Tesla Markets Shop' : 'Tesla Markets | Shop';
@@ -667,6 +671,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const visibleProducts = useMemo(() => {
     // Keep the public catalogue image-complete: entries without a verified primary Tesla asset stay out of the storefront until management adds one.
     let items = storeProducts.filter(product =>
+      Boolean(product.image) &&
       (department === 'All products' || product.department === department) &&
       (department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter)) &&
       (categoryFilter === 'All categories' || product.category === categoryFilter) &&
@@ -712,7 +717,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
         ? current.map(line => line.id === product.id && (line.selectedSize || '') === keySize ? { ...line, quantity: Math.min(99, line.quantity + quantity) } : line)
         : [...current, { id: product.id, quantity: Math.min(99, quantity), selectedSize: keySize || undefined }];
     });
-    setSelected(null);
+    closeDetail();
     setCartOpen(true);
   };
 
@@ -725,8 +730,9 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
 
   const openDetail = (product: StoreProduct) => {
     const url = new URL(window.location.href);
+    url.pathname = '/product/' + encodeURIComponent(product.id);
     url.searchParams.set('page', 'shop');
-    url.searchParams.set('product', product.id);
+    url.searchParams.delete('product');
     window.history.pushState({ product: product.id }, '', url.toString());
     setSelected(product);
     setSelectedGalleryImage(product.image || '');
