@@ -1,5 +1,5 @@
-import handler from '../../api/process-email-outbox';
+import vercelHandler from '../../api/process-email-outbox';
 import { bridgeVercelHandler } from '../lib/bridge';
 
-export const handlerNetlify = bridgeVercelHandler(handler as never);
-export default handlerNetlify;
+export const handler = bridgeVercelHandler(vercelHandler as never);
+export default handler;
