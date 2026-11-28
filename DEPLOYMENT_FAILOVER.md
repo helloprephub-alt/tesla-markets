@@ -4,110 +4,88 @@ Last reviewed: 2026-11-28
 
 ## Goal
 
-Keep the existing production site online and make a tested release available even if the current Vercel project reaches a build/deployment quota or becomes unavailable.
+Keep Tesla Markets available and complete a verified release even if Vercel reaches its current plan's deployment/build limits or becomes unavailable. Use a compatible alternative rather than treating one provider as a permanent blocker.
 
-This is a fallback plan, not authorization to spend money, change billing, or redirect the production domain without the project owner's approval.
+This is a failover plan. It is not authorization to spend money, upgrade a plan, change billing, or redirect production DNS without the project owner's explicit approval.
 
-## Current primary
+## Current hosting status
 
-- Hosting: existing Vercel project `tesla-markets`
-- Production: preserve the currently assigned production domain and deployment.
-- Preview: use the Vercel preview generated from the current development pull request.
-- Backend: keep the existing Supabase project and existing Cloudflare Worker/AI responder unless a separately tested migration is required.
+- Primary: existing Vercel project `tesla-markets`, on the current Hobby plan.
+- Last known production deployment: READY, `final-translation-hardening-20261120`, commit `cf1ebfe4d679713ba85325a9034b80e1e477522d`.
+- Latest development preview: READY at https://tesla-markets-hx30ttt9m-tesla-5c9c.vercel.app, commit `ce35c613e63f515c33058b04ff58b14c5d34e7fe`.
+- The exact remaining Vercel quota is not exposed by the deployment status tool; do not assume a numeric quota from the plan name.
+- No production promotion or DNS change has been made.
+
+## Failover order
+
+### 1. Netlify — first alternative to validate
+
+Netlify is the first alternative because it supports Node-based serverless functions, which are closer to the current Vercel API handlers than a static-only host.
+
+The current branch now includes:
+
+- `netlify.toml` build, function-directory, API rewrite, and SPA routing configuration.
+- `netlify/lib/bridge.ts` to adapt the existing Vercel-style request/response handlers to Netlify function events.
+- Function wrappers for the five current `api/*` endpoints.
+- `NETLIFY_FAILOVER_SETUP.md` with staging setup, environment variables, security requirements, and validation checklist.
+
+**This is prepared code, not a deployed/verified Netlify site.** Netlify account authorization and a staging deployment are still required. Run the full test list in `NETLIFY_FAILOVER_SETUP.md` before relying on it.
+
+Netlify currently advertises a $0 Free plan with 300 credits/month and a hard limit/no automatic recharge. Check the live terms and actual account usage before choosing it for production: https://www.netlify.com/pricing/ and https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/
+
+### 2. Cloudflare Pages — second alternative
+
+The frontend is Vite + React and can build to `dist`. Cloudflare Pages can host the static frontend and supports provider-native Pages Functions.
+
+However, a static deployment alone does not run the current Vercel API handlers. Before Cloudflare Pages can be production-ready, port and test all required API endpoints into Pages Functions/Workers with equivalent security, response behavior, and secret storage. Keep the existing Cloudflare AI responder Worker separate unless a migration is explicitly needed.
+
+### 3. Existing AppDeploy — evaluate if usable without extra credits
+
+Use the existing AppDeploy account only if it can build/publish the project and support the required backend/API functionality within the currently available account allowance. Do not purchase credits or upgrade. Do not assume it can run every current serverless endpoint until tested.
+
+## Current Vercel API inventory
+
+The branch contains these server-side endpoints; every required endpoint must work on an alternate host:
+
+- `api/tesla-image.ts` — image proxy with HTTPS host/path allowlist and image content-type validation.
+- `api/process-email-outbox.ts` — protected email outbox worker; uses Supabase service-role access and Brevo secrets.
+- `api/push-config.ts` — public VAPID key configuration endpoint.
+- `api/push-notify.ts` — protected web-push sender; uses VAPID private key and webhook secret.
+- `api/welcome-email.ts` — authenticated welcome email endpoint; uses Brevo and Supabase auth.
+
+Do not expose the email outbox, push sender, service-role key, Brevo key, VAPID private key, worker secrets, or webhook secret to the browser.
 
 ## Safe release sequence
 
-1. Finish the changes on the current development branch.
-2. Run `npm ci` and `npm run build`.
-3. Verify the preview, including direct product URLs, image fallbacks, cart, checkout, authentication, admin access, chat, and translation.
-4. Confirm the Vercel deployment quota and project state.
-5. If Vercel can deploy within the current plan, use the normal preview -> review -> owner-approved production promotion flow.
-6. If Vercel cannot deploy, do not repeatedly trigger builds or upgrade a paid plan. Use the free static-hosting fallback below to create a separate staging deployment.
-7. Test that staging with the existing Supabase and Cloudflare backends, using only the required public client configuration in frontend environment variables.
-8. Only after staging passes and the owner explicitly approves, change the domain/DNS or promote the fallback to production.
-9. Keep the previous production deployment and DNS values documented so rollback is possible.
+1. Finish changes on the existing development branch and keep PR #13 open for review.
+2. Run `npm ci` and `npm run build`; run all existing project checks.
+3. Verify the Vercel preview and all customer/admin flows.
+4. If Vercel's current plan and quota permit, use preview -> review -> owner-approved production promotion.
+5. If Vercel blocks deployment, use the prepared Netlify configuration for a separate staging deployment; configure secrets securely and test all five API routes.
+6. If Netlify is unavailable or the account's free allowance is insufficient, port the API endpoints to Cloudflare Pages Functions/Workers or evaluate AppDeploy within its current free allowance.
+7. Test every alternative hostname end-to-end: product URLs, image proxy/fallback, Supabase Auth, CORS, customer accounts, admin authorization, chat, translation, cart, checkout, payment verification, orders, email, push notifications, and service worker.
+8. Only after staging passes and the owner explicitly approves, change production DNS/domain or promote the fallback.
+9. Keep the last known-good production deployment and DNS values recorded for rollback.
 
-## Static-hosting fallback A: Cloudflare Pages
+## Required environment and domain checks
 
-The repository is a Vite + React application. For a static build, configure a Pages project from the GitHub repository:
+- Configure only public Supabase URL and anon/publishable key in frontend build variables.
+- Put service-role keys, payment secrets, Brevo keys, VAPID private key, and webhook/worker secrets in the provider's server-side secret store.
+- Add the staging hostname to Supabase Auth redirect allowlists and required Edge Function/Worker CORS origins.
+- Verify payment provider callbacks/webhooks and provider-side payment verification.
+- Verify push subscriptions and email delivery using controlled test accounts.
+- Check the selected provider's current free allowance and usage; do not assume free hosting is unlimited.
 
-- Repository: `helloprephub-alt/tesla-markets`
-- Branch: `fix/product-permalinks-image-fallback-20261128` for staging; use the approved release branch for production.
-- Build command: `npm ci && npm run build`
-- Build output directory: `dist`
-- Root directory: repository root
-- Framework preset: Vite, if offered
-- SPA fallback: ensure unknown paths serve `index.html`; preserve query-string product URLs such as `/?page=shop&product=<slug>`.
-- Environment: configure only the public Supabase URL and anon/publishable key required by the client. Never place Supabase service-role keys, payment secrets, or AI-provider secrets in a frontend build variable.
-
-Use the existing Supabase database/auth/Edge Functions and Cloudflare AI Worker as the backend. Do not duplicate or migrate data just to change static hosting.
-
-## Serverless compatibility requirement (must be solved before cutover)
-
-The current repository includes a Vercel serverless image endpoint at `api/tesla-image.ts`. A static-only deployment to Cloudflare Pages, Netlify, or GitHub Pages will not automatically run this Vercel function.
-
-Before declaring any alternate host production-capable:
-
-1. Inventory every `api/*` endpoint and every frontend request that depends on a Vercel runtime function.
-2. For each required endpoint, implement and test the equivalent provider-native function (for example, a Cloudflare Pages Function or Netlify Function) using the provider's supported runtime.
-3. Preserve the image proxy's HTTPS host/path allowlist, content-type validation, method restrictions, and safe error handling. Do not create an unrestricted URL fetch proxy.
-4. Confirm product images still load if the proxy is unavailable; use direct verified image URLs only where the source permits browser image loading.
-5. Verify Supabase Auth, Edge Functions, AI Worker, order/payment callbacks, and admin flows on the alternate hostname.
-6. If any required endpoint has not been ported or verified, keep the alternate deployment as staging only and do not cut over production.
-
-The repository-wide API inventory on the current branch includes these Vercel functions:
-
-- `api/tesla-image.ts` — image proxy (host/path allowlist and image content-type checks).
-- `api/process-email-outbox.ts` — protected email outbox worker; uses Supabase service-role access and Brevo secrets.
-- `api/push-config.ts` — public VAPID key configuration endpoint.
-- `api/push-notify.ts` — protected web-push notification sender; uses VAPID private key and webhook secret.
-- `api/welcome-email.ts` — authenticated welcome email endpoint; uses Brevo and Supabase auth.
-
-These endpoints are not interchangeable with static files. Port each required endpoint to the alternate provider's server-side function runtime, preserve its authentication/authorization and secret handling, and test it before the alternate host can be considered a complete release. The outbox and notification functions must not be exposed without their existing secret checks. If any server-side endpoint remains unported, keep the alternate deployment as staging and continue using the last known-good production host.
-
-## Static-hosting fallback B: Netlify
-
-If Cloudflare Pages is unavailable or its free limits are insufficient, create a separate Netlify staging site from the same GitHub branch:
-
-- Build command: `npm ci && npm run build`
-- Publish directory: `dist`
-- Configure SPA fallback to `/index.html` with status 200.
-- Add only the required public frontend environment variables.
-- Keep secrets in server-side functions/worker secrets, never in Vite's `VITE_*` variables.
-
-Use this only if its current free plan and build limits are adequate; check before relying on it.
-
-## Existing AppDeploy fallback
-
-AppDeploy may be used as another staging or temporary hosting path only if the existing connected account can publish the project without purchasing credits or upgrading. First confirm it can import/build the repository, preserve environment variables securely, support SPA routing, and connect to the existing backend. Do not assume it can host all server-side functions.
-
-## Not a suitable emergency production fallback by itself
-
-GitHub Pages can host a static demo, but it is not the preferred production fallback for this app because environment handling, SPA routing, and server-side functionality require additional configuration. Use only for a non-sensitive static preview if needed.
-
-## Cutover and rollback checklist
-
-Before any live domain cutover:
-
-- Confirm the alternate deployment is HTTPS and stable.
-- Test every critical customer flow on the alternate hostname.
-- Verify Supabase Auth redirect URLs and allowed origins include the new hostname.
-- Verify CORS policies for Supabase Edge Functions and the AI Worker.
-- Verify checkout/payment provider callback URLs and webhook configuration; never claim payment works until provider-side verification passes.
-- Verify admin authentication and authorization.
-- Confirm the custom domain/DNS change is reversible and record current DNS values.
-- Get explicit owner approval before changing production DNS, promoting a deployment, or changing payment settings.
-
-Rollback:
+## Rollback
 
 1. Restore the recorded previous DNS/domain assignment or return traffic to the last known-good production deployment.
-2. Verify homepage, product links, authentication, checkout status, and admin access.
-3. Preserve logs and investigate the failed release before retrying.
+2. Verify homepage, product links, authentication, checkout/payment status, and admin access.
+3. Preserve logs and diagnose the failed release before retrying.
 
 ## Hard limits
 
-- No plan upgrades, purchases, billing changes, or paid services without explicit approval.
+- No paid upgrades, purchases, billing changes, or paid services without explicit approval.
 - No bypassing provider quotas, account restrictions, authentication, or security controls.
-- No production cutover without owner approval.
+- No production cutover without explicit approval.
 - A successful build or preview is not proof that production is live.
 - Report the actual deployed URL, provider, commit, status, and smoke-test results after each release.
