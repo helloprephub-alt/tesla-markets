@@ -81,13 +81,13 @@ function generateShopProductPages(): Plugin {
       const sitemapEntries = storeProducts.map(product =>
         '  <url><loc>' + siteOrigin + '/shop/product/' + encodeURIComponent(product.id) + '/</loc><changefreq>weekly</changefreq></url>'
       ).join('\\n');
-      const sitemap = '<?xml version="1.0" encoding="UTF-8"?>\\n' +
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\\n' +
-        sitemapEntries + '\\n</urlset>\\n';
+      const sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+        sitemapEntries + '\n</urlset>\n';
       await writeFile(resolve(outputDir, 'sitemap.xml'), sitemap, 'utf8');
       await writeFile(
         resolve(outputDir, 'robots.txt'),
-        'User-agent: *\\nAllow: /\\nSitemap: ' + siteOrigin + '/sitemap.xml\\n',
+        'User-agent: *\nAllow: /\nSitemap: ' + siteOrigin + '/sitemap.xml\n',
         'utf8'
       );
     }
