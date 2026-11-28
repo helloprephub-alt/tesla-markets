@@ -8,7 +8,7 @@ const getSite = (req: Request) => {
   const rawHost = req.headers?.['x-forwarded-host'] || req.headers?.host || '';
   const host = (Array.isArray(rawHost) ? rawHost[0] || '' : rawHost).split(',')[0].trim().toLowerCase();
   if (host === 'teslamarketsofficial.com' || host === 'www.teslamarketsofficial.com') return PRODUCTION_SITE;
-  if (/^[a-z0-9.-]+\\.vercel\\.app$/.test(host)) return 'https://' + host;
+  if (/^[a-z0-9.-]+\.vercel\.app$/.test(host)) return 'https://' + host;
   return PRODUCTION_SITE;
 };
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char);
