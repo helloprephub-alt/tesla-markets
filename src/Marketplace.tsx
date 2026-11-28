@@ -670,6 +670,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
 
   const visibleProducts = useMemo(() => {
     // Keep every catalog item visible, even when a primary image is missing, so it can be reviewed and repaired.
+    // Keep every catalog item visible, even when a primary image is missing, so it can be reviewed and repaired.
     let items = storeProducts.filter(product =>
       (department === 'All products' || product.department === department) &&
       (department !== 'Vehicle Accessories' || productMatchesModel(product, vehicleModelFilter)) &&
