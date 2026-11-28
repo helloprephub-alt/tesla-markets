@@ -1,5 +1,5 @@
-import handler from '../../api/tesla-image';
+import vercelHandler from '../../api/tesla-image';
 import { bridgeVercelHandler } from '../lib/bridge';
 
-export const handlerNetlify = bridgeVercelHandler(handler as never);
-export default handlerNetlify;
+export const handler = bridgeVercelHandler(vercelHandler as never);
+export default handler;
