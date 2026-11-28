@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, BatteryCharging, Check, ChevronRight,
+  ArrowLeft, ArrowRight, ArrowUpRight, BatteryCharging, Check, ChevronRight, Copy,
   CreditCard, Heart, Menu, PackageCheck, PlugZap, Search, ShieldCheck,
   ShoppingBag, SlidersHorizontal, Sun, Truck, X
 } from 'lucide-react';
@@ -206,6 +206,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
   const [selected, setSelected] = useState<StoreProduct | null>(null);
+  const [copiedProductId, setCopiedProductId] = useState('');
   const [selectedGalleryImage, setSelectedGalleryImage] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [detailQuantity, setDetailQuantity] = useState(1);
@@ -235,6 +236,56 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState('');
   const [cartNotice, setCartNotice] = useState('');
+
+  const copyProductLink = async (product: StoreProduct) => {
+    const shareUrl = 'https://teslamarketsofficial.com/product/' + encodeURIComponent(product.id);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = shareUrl;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (!copied) {
+        setCartNotice('Copy was blocked by your browser. Copy this link manually: ' + shareUrl);
+        return;
+      }
+    }
+    setCopiedProductId(product.id);
+    window.setTimeout(() => setCopiedProductId(current => current === product.id ? '' : current), 2200);
+  };
+
+  const closeDetail = () => {
+    setSelected(null);
+    setSelectedGalleryImage('');
+    const url = new URL(window.location.href);
+    url.pathname = '/';
+    url.searchParams.set('page', 'shop');
+    url.searchParams.delete('product');
+    window.history.replaceState({}, '', url.toString());
+  };
+
+  useEffect(() => {
+    const syncProductFromUrl = () => {
+      const url = new URL(window.location.href);
+      const pathMatch = url.pathname.match(/^\/product\/([^/]+)\/?$/);
+      const slug = pathMatch ? decodeURIComponent(pathMatch[1]) : url.searchParams.get('product');
+      const product = slug ? storeProducts.find(item => item.id === slug) || null : null;
+      setSelected(product);
+      setSelectedGalleryImage(product?.image || '');
+      setSelectedSize(product?.sizes?.[0] || '');
+      setDetailQuantity(1);
+    };
+    syncProductFromUrl();
+    window.addEventListener('popstate', syncProductFromUrl);
+    return () => window.removeEventListener('popstate', syncProductFromUrl);
+  }, []);
+
 
   useEffect(() => {
     let active = true;
@@ -646,7 +697,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
         ? current.map(line => line.id === product.id && (line.selectedSize || '') === keySize ? { ...line, quantity: Math.min(99, line.quantity + quantity) } : line)
         : [...current, { id: product.id, quantity: Math.min(99, quantity), selectedSize: keySize || undefined }];
     });
-    setSelected(null);
+    closeDetail();
     setCartOpen(true);
   };
 
@@ -658,6 +709,11 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   };
 
   const openDetail = (product: StoreProduct) => {
+    const url = new URL(window.location.href);
+    url.pathname = '/product/' + encodeURIComponent(product.id);
+    url.searchParams.set('page', 'shop');
+    url.searchParams.delete('product');
+    window.history.pushState({ product: product.id }, '', url.toString());
     setSelected(product);
     setSelectedGalleryImage(product.image || '');
     setSelectedSize(product.sizes?.[0] || '');
@@ -756,10 +812,10 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
 
 
       {selected && (
-        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) { setSelected(null); setSelectedGalleryImage(''); } }}>
+        <div className="tm-store-overlay" onMouseDown={event => { if (event.target === event.currentTarget) closeDetail(); }}>
           <section className="tm-store-detail" role="dialog" aria-modal="true" aria-labelledby="tm-store-detail-title">
-            <button className="tm-store-detail-back" onClick={() => { setSelected(null); setSelectedGalleryImage(''); }}><ArrowLeft size={15}/> Continue shopping</button>
-            <button className="tm-store-close" onClick={() => { setSelected(null); setSelectedGalleryImage(''); }} aria-label="Close product details"><X size={19}/></button>
+            <button className="tm-store-detail-back" onClick={closeDetail}><ArrowLeft size={15}/> Continue shopping</button>
+            <button className="tm-store-close" onClick={closeDetail} aria-label="Close product details"><X size={19}/></button>
             <div className="tm-store-detail-layout">
               <div className="tm-store-detail-gallery">
                 <div className="tm-store-detail-image"><ProductVisual product={{ ...selected, image: selectedGalleryImage || selected.image }} variant="large" /></div>
@@ -791,6 +847,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
                   <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
                   <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
                 </>}
+                <button type="button" className="tm-store-share-link" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,width:'100%',marginTop:10,padding:'12px 16px',background:'transparent',border:'1px solid #999',borderRadius:6,color:'inherit',fontWeight:600,cursor:'pointer'}} onClick={() => void copyProductLink(selected)}><Copy size={15}/>{copiedProductId === selected.id ? 'Link copied' : 'Copy product link'}</button>
 
               </div>
             </div>
@@ -807,7 +864,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
               <div className="tm-store-cart-lines">
                 {cartLines.map(line => <div className="tm-store-cart-line" key={line.id + (line.selectedSize || '')}>
                   <div className="tm-store-cart-line-image"><ProductVisual product={line.product} variant="thumb" /></div>
-                  <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.unitPrice < line.product.originalPrice ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
+                  <div className="tm-store-cart-line-copy"><b>{line.product.name}</b>{line.selectedSize && <small>Size: {line.selectedSize}</small>}<span>{line.unitPrice < line.product.originalPrice ? <><s>{money(line.product.originalPrice)}</s> {money(line.unitPrice)}</> : money(line.unitPrice)} each</span><button onClick={() => void copyProductLink(line.product)}><Copy size={13}/> {copiedProductId === line.product.id ? 'Link copied' : 'Copy link'}</button><button onClick={() => setCart(current => current.filter(item => item.id !== line.id || item.selectedSize !== line.selectedSize))}>Remove</button></div>
                   <div className="tm-store-cart-qty"><button onClick={() => changeQty(line.id,-1,line.selectedSize)}>−</button><b>{line.quantity}</b><button onClick={() => changeQty(line.id,1,line.selectedSize)}>+</button></div>
                 </div>)}
               </div>
