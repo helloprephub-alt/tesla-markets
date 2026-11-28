@@ -13,7 +13,7 @@ for (const line of catalog.split(/\r?\n/).filter(value => /^\s*\{id:/.test(value
   const image = line.match(/\bimage:'([^']+)'/)?.[1];
   const gallery = line.match(/\bgallery:\[([^\]]*)\]/)?.[1] || '';
   const sources = [image, ...[...gallery.matchAll(/'([^']+)'/g)].map(match => match[1])]
-    .filter((value): value is string => Boolean(value) && allowed(value));
+    .filter(value => typeof value === 'string' && Boolean(value) && allowed(value));
   for (const source of sources) {
     const owners = imageOwners.get(source) || [];
     owners.push(id);
