@@ -43,7 +43,7 @@ assert.ok(published.length > 0, 'At least one image-verified product must have a
 assert.match(vite, /generateShopProductPages/, 'Vite must generate static product landing pages.');
 assert.match(vite, /application\/ld\+json/, 'Generated product pages must include Product structured data.');
 assert.match(vite, /og:image/, 'Generated product pages must include a social preview image.');
-assert.match(app, /shop\\\/product\\\//, 'The app must recognize direct product URLs.');
+assert.match(app, /shop\\/product\\//, 'The app must recognize direct product URLs.');
 assert.match(marketplace, /pushState\(\{ marketplaceProductId:/, 'Opening a product must update the browser URL.');
 assert.match(marketplace, /copyProductLink/, 'Product details must expose a shareable product link.');
 assert.match(vercel, /shop\/product\//, 'The SPA catch-all must not swallow static product pages.');
