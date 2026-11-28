@@ -217,7 +217,8 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
   const [department, setDepartment] = useState<Department>('All products');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('Featured');
-  const [selected, setSelected] = useState<StoreProduct | null>(null);\n  const [copiedProductId, setCopiedProductId] = useState('');
+  const [selected, setSelected] = useState<StoreProduct | null>(null);
+  const [copiedProductId, setCopiedProductId] = useState('');
   const [selectedGalleryImage, setSelectedGalleryImage] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [detailQuantity, setDetailQuantity] = useState(1);
@@ -860,7 +861,7 @@ export function Marketplace({ onOrders, onRequireAuth, onEnquire }: Props) {
                   <div className="tm-store-quantity"><button onClick={() => setDetailQuantity(q => Math.max(1,q-1))}>−</button><b>{detailQuantity}</b><button onClick={() => setDetailQuantity(q => q+1)}>+</button></div>
                   <button className="tm-store-add-large" disabled={productPrice(selected) === null || Boolean(selected.sizes?.length && !selectedSize)} onClick={() => addToCart(selected,detailQuantity,selectedSize)}>Add to cart <ShoppingBag size={17}/></button>
                 </>}
-                <button type="button" className="tm-store-share-link" onClick={() => void copyProductLink(selected)}><Copy size={15}/>{copiedProductId === selected.id ? 'Link copied' : 'Copy product link'}</button>
+                <button type="button" className="tm-store-share-link" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,width:'100%',marginTop:10,padding:'12px 16px',background:'transparent',border:'1px solid #999',borderRadius:6,color:'inherit',fontWeight:600,cursor:'pointer'}} onClick={() => void copyProductLink(selected)}><Copy size={15}/>{copiedProductId === selected.id ? 'Link copied' : 'Copy product link'}</button>
 
               </div>
             </div>
