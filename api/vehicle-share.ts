@@ -1,7 +1,14 @@
-type Request = { method?: string; query?: Record<string, string | string[] | undefined> };
+type Request = { method?: string; query?: Record<string, string | string[] | undefined>; headers?: Record<string, string | string[] | undefined> };
 type Response = { setHeader(name: string, value: string): void; status(code: number): Response; send(body: string): void };
 
-const SITE = 'https://teslamarketsofficial.com';
+const PRODUCTION_SITE = 'https://teslamarketsofficial.com';
+const getSite = (req: Request) => {
+  const rawHost = req.headers?.['x-forwarded-host'] || req.headers?.host || '';
+  const host = (Array.isArray(rawHost) ? rawHost[0] || '' : rawHost).split(',')[0].trim().toLowerCase();
+  if (host === 'teslamarketsofficial.com' || host === 'www.teslamarketsofficial.com') return PRODUCTION_SITE;
+  if (/^[a-z0-9.-]+\\.vercel\\.app$/.test(host)) return 'https://' + host;
+  return PRODUCTION_SITE;
+};
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char);
 const getOne = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] || '' : value || '';
 const vehicles: Record<string, { name: string; subtitle: string; price: string; image: string; description: string }> = {
@@ -18,6 +25,7 @@ export default function handler(req: Request, res: Response): void {
     res.status(405).send('Method not allowed');
     return;
   }
+  const SITE = getSite(req);
   const id = getOne(req.query?.modelId);
   const vehicle = vehicles[id];
   if (!vehicle) {
