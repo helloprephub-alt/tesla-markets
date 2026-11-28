@@ -55,7 +55,15 @@ Before declaring any alternate host production-capable:
 5. Verify Supabase Auth, Edge Functions, AI Worker, order/payment callbacks, and admin flows on the alternate hostname.
 6. If any required endpoint has not been ported or verified, keep the alternate deployment as staging only and do not cut over production.
 
-The Vercel API endpoint is a confirmed dependency; the complete API inventory still needs a repository-wide check.
+The repository-wide API inventory on the current branch includes these Vercel functions:
+
+- `api/tesla-image.ts` — image proxy (host/path allowlist and image content-type checks).
+- `api/process-email-outbox.ts` — protected email outbox worker; uses Supabase service-role access and Brevo secrets.
+- `api/push-config.ts` — public VAPID key configuration endpoint.
+- `api/push-notify.ts` — protected web-push notification sender; uses VAPID private key and webhook secret.
+- `api/welcome-email.ts` — authenticated welcome email endpoint; uses Brevo and Supabase auth.
+
+These endpoints are not interchangeable with static files. Port each required endpoint to the alternate provider's server-side function runtime, preserve its authentication/authorization and secret handling, and test it before the alternate host can be considered a complete release. The outbox and notification functions must not be exposed without their existing secret checks. If any server-side endpoint remains unported, keep the alternate deployment as staging and continue using the last known-good production host.
 
 ## Static-hosting fallback B: Netlify
 
