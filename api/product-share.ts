@@ -1,4 +1,4 @@
-import { storeProducts, getDiscountedPrice } from '../src/marketplace-catalog';
+import { storeProducts, getDiscountedPrice } from '../src/marketplace-catalog.js';
 
 type Request = { method?: string; query?: Record<string, string | string[] | undefined>; headers?: Record<string, string | string[] | undefined> };
 type Response = { setHeader(name: string, value: string): void; status(code: number): Response; send(body: string): void };
