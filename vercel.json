@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/product/:productId",
+      "destination": "/api/product-share?productId=:productId"
+    },
+    {
+      "source": "/vehicle/:modelId",
+      "destination": "/api/vehicle-share?modelId=:modelId"
+    },
+    {
       "source": "/((?!api/|resources/|assets/|icons/|favicon).*)",
       "destination": "/index.html"
     }

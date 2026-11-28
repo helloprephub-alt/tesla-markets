@@ -1,6 +1,6 @@
 import { publicText, type PublicLanguage } from './public-i18n';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronLeft, ChevronRight, Maximize2, Palette, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, ChevronLeft, ChevronRight, Copy, Maximize2, Palette, SlidersHorizontal, X } from 'lucide-react';
 
 type Variant = { name: string; price: string; discountPercent?: number; inviteOnly?: boolean };
 const discountedVehiclePrice = (price: string, discountPercent = 0) => {
@@ -55,10 +55,32 @@ export function VehicleExperience({ modelId, onBack, onEnquire, onSelectModel, l
   const [viewerOpen, setViewerOpen] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [variantName, setVariantName] = useState('');
+  const [shareCopied, setShareCopied] = useState(false);
   const selected = models.find(model => model.id === modelId);
   const gallery = useMemo(() => selected?.gallery ?? [], [selected]);
   const activeSlide = gallery.length ? ((slide % gallery.length) + gallery.length) % gallery.length : 0;
   const variant = selected?.variants.find(item => item.name === variantName) || selected?.variants[0];
+  const copyVehicleLink = async () => {
+    if (!selected) return;
+    const shareUrl = 'https://teslamarketsofficial.com/vehicle/' + encodeURIComponent(selected.id);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = shareUrl;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (!copied) return;
+    }
+    setShareCopied(true);
+    window.setTimeout(() => setShareCopied(false), 2200);
+  };
+
   const enquire = () => onEnquire([
     selected?.name || 'Vehicle enquiry', 'Selected version: ' + (variant?.name || 'Standard'),
     'Original catalogue price: ' + (variant?.price || 'Request a quote'), 'Promotional discount: ' + (variant?.discountPercent ? variant.discountPercent+'%' : 'No published discount'), 'Discount amount: ' + (variant?.discountPercent && variant?.price ? vehicleMoney(Number(variant.price.replace(/[^0-9.]/g,'')) - (discountedVehiclePrice(variant.price,variant.discountPercent) || 0)) : 'Not applicable'), 'Discounted offer price: ' + (variant?.discountPercent && variant?.price ? vehicleMoney(discountedVehiclePrice(variant.price,variant.discountPercent) || 0) : (variant?.price || 'Request a quote')), 'Displayed offer is subject to final written quotation and availability confirmation.', 'Lease: ' + (selected?.lease || 'Not listed'),
@@ -110,6 +132,7 @@ export function VehicleExperience({ modelId, onBack, onEnquire, onSelectModel, l
         <div className="config-block"><div className="config-label">{tr('Vehicle information')}</div><div className="config-specs"><div><small>{tr('Range')}</small><b>{tr(selected.range)}</b></div><div><small>{tr('Performance')}</small><b>{tr(selected.performance)}</b></div><div><small>{tr('Drivetrain')}</small><b>{tr(selected.drivetrain)}</b></div></div><ul className="config-features">{selected.features.map(feature => <li key={tr(feature)}><Check size={15} />{tr(feature)}</li>)}</ul></div>
         <div className="config-block"><div className="config-label">{tr('Checkout preference')}</div><div className="config-choice-list"><button className={payment === 'Cash purchase enquiry' ? 'chosen' : ''} onClick={() => setPayment('Cash purchase enquiry')}>{tr('Cash')}</button><button className={payment === 'Lease enquiry' ? 'chosen' : ''} onClick={() => setPayment('Lease enquiry')}>{tr('Lease')}</button><button className={payment === 'Finance enquiry' ? 'chosen' : ''} onClick={() => setPayment('Finance enquiry')}>{tr('Finance')}</button></div></div>
         <div className="config-checkout-summary"><span>{tr('Selected vehicle')}</span><b>{selected.name} · {variant?.name}</b><span>Original catalogue price</span><del className="config-summary-original">{variant?.price}</del>{variant?.discountPercent ? <><span>Christmas promotional discount</span><b className="config-summary-discount">{variant.discountPercent}% OFF</b><span>Discounted offer price</span><strong className="config-summary-offer">{discountedVehiclePrice(variant.price,variant.discountPercent)!==null?vehicleMoney(discountedVehiclePrice(variant.price,variant.discountPercent)!):variant.price}</strong><small>You save {vehicleMoney(Number(variant.price.replace(/[^0-9.]/g,''))-(discountedVehiclePrice(variant.price,variant.discountPercent)||0))}</small></> : <><span>Offer price</span><strong>{variant?.price}</strong></>}{selected.lease && <small>{tr(selected.lease)}</small>}</div>
+        <button type="button" className="btn config-share-link" onClick={() => void copyVehicleLink()} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,width:'100%',marginTop:10,padding:'12px 16px',background:'transparent',border:'1px solid #999',borderRadius:6,color:'inherit',fontWeight:600,cursor:'pointer'}}><Copy size={15}/>{shareCopied ? 'Link copied' : 'Copy vehicle link'}</button>
         <button className="btn btn-dark config-submit" onClick={enquire}>{tr('Order now / Enquire')} <ArrowUpRight size={17} /></button>
       </div>
     </section>
