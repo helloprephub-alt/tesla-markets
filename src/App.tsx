@@ -342,7 +342,9 @@ function App() {
       const route = new URLSearchParams(location.search).get('page');
       const hash = location.hash.replace(/^#\/?/, '');
       const savedPage = (() => { try { return localStorage.getItem('tesla-markets-last-page') || ''; } catch { return ''; } })();
-      const requested = route || hash || (location.pathname.replace(/^\/+|\/+$/g, '') === 'admin' ? 'admin' : savedPage);
+      const currentPath = location.pathname.replace(/^\/+|\/+$/g, '');
+      const isProductPath = /^shop\/product\/[^/]+$/.test(currentPath);
+      const requested = route || hash || (currentPath === 'admin' ? 'admin' : (currentPath === 'shop' || isProductPath) ? 'shop' : savedPage);
       const allowed: Page[] = ['home','how','markets','ai','shop','vehicles','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       return allowed.includes(requested as Page) ? requested as Page : 'home';
     }
@@ -366,7 +368,9 @@ function App() {
   useEffect(() => {
     const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
     if (manifest) manifest.href = page === 'admin' ? '/admin-manifest.webmanifest' : '/manifest.webmanifest';
-    document.title = page === 'admin' ? 'Tesla Markets Admin | Private Management' : page === 'shop' ? 'Tesla Markets | Shop' : 'Tesla Markets';
+    const currentPath = location.pathname.replace(/^\/+|\/+$/g, '');
+    const isProductPath = /^shop\/product\/[^/]+$/.test(currentPath);
+    if (!isProductPath) document.title = page === 'admin' ? 'Tesla Markets Admin | Private Management' : page === 'shop' ? 'Tesla Markets | Shop' : 'Tesla Markets';
     const theme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (theme) theme.content = page === 'admin' ? '#101820' : '#e82127';
   }, [page]);
@@ -376,7 +380,8 @@ function App() {
       const route = new URLSearchParams(location.search).get('page');
       const hash = location.hash.replace(/^#\/?/, '');
       const path = location.pathname.replace(/^\/+|\/+$/g, '');
-      const requested = route || hash || (path === 'admin' ? 'admin' : 'home');
+      const isProductPath = /^shop\/product\/[^/]+$/.test(path);
+      const requested = route || hash || (path === 'admin' ? 'admin' : (path === 'shop' || isProductPath) ? 'shop' : 'home');
       const allowed: Page[] = ['home','how','markets','ai','shop','about','contact','faq','login','signup','dashboard','portfolio','history','profile','orders','admin','chat','model-y','model-3','cybertruck','roadster','semi'];
       if (allowed.includes(requested as Page)) setPage(requested as Page);
     };
@@ -530,6 +535,7 @@ function App() {
   });
 
   const go = (next: Page) => {
+    if (/^\/shop\/product\//.test(location.pathname)) window.history.replaceState(window.history.state, '', '/');
     if (next !== page) setPageHistory(history => [...history, page]);
     setPage(next);
     location.hash = next;
@@ -546,6 +552,7 @@ function App() {
     go('chat');
   };
   const goParent = (next: Page) => {
+    if (/^\/shop\/product\//.test(location.pathname)) window.history.replaceState(window.history.state, '', '/');
     // Parent navigation (vehicle detail -> collection -> home) must not
     // retain stale checkout or gallery entries in the in-app back stack.
     setPageHistory([]);
