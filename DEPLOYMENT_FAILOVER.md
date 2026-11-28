@@ -39,9 +39,15 @@ The frontend is Vite + React and can build to `dist`. Cloudflare Pages can host 
 
 However, a static deployment alone does not run the current Vercel API handlers. Before Cloudflare Pages can be production-ready, port and test all required API endpoints into Pages Functions/Workers with equivalent security, response behavior, and secret storage. Keep the existing Cloudflare AI responder Worker separate unless a migration is explicitly needed.
 
-### 3. Existing AppDeploy — evaluate if usable without extra credits
+### 3. Existing AppDeploy deployment — preserve, but do not treat as equivalent yet
 
-Use the existing AppDeploy account only if it can build/publish the project and support the required backend/API functionality within the currently available account allowance. Do not purchase credits or upgrade. Do not assume it can run every current serverless endpoint until tested.
+An existing Tesla Markets AppDeploy site is already deployed and reports `ready`:
+
+https://tesla-invest-8jwn28.v2.appdeploy.ai/
+
+Its stored source snapshot is an older implementation. The source inventory does not include the current Vercel repository's dedicated `src/Marketplace.tsx` catalog implementation, and its app status reports an old Supabase auth refresh error (`invalid_grant`). It is therefore a useful existing live fallback/reference, but it is **not verified as feature-equivalent to the current marketplace** and must not be promoted as the completed release without updating and testing it.
+
+Preserve its existing resources and customer records. Do not overwrite this app with the current repo or change its backend/data model without a separate migration and explicit owner approval.
 
 ## Current Vercel API inventory
 
