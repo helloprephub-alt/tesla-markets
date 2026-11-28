@@ -5,6 +5,7 @@ const read = (path) => fs.readFileSync(new URL('../' + path, import.meta.url), '
 const giftCardMigration = read('supabase/migrations/20261120121625_restrict_promo_gift_cards_to_approved_methods.sql');
 const discountMigration = read('supabase/migrations/20261120121809_restrict_store_discount_range.sql');
 const marketplaceSource = read('src/Marketplace.tsx');
+const catalogSource = read('src/marketplace-catalog.ts');
 const aiSource = read('supabase/functions/tesla-markets-ai-responder/index.ts');
 
 const approvedGiftCards = ['amazon_gift_card','apple_gift_card','google_play_gift_card','razor_gold_gift_card'];
@@ -19,6 +20,10 @@ assert.match(marketplaceSource, /searchParams\.set\('product', product\.id\)/, '
 assert.match(marketplaceSource, /get\('product'\)/, 'The shop must restore product details from a direct product URL.');
 assert.match(marketplaceSource, /directImageFallback/, 'Tesla image proxy failures must attempt the original approved image URL before showing an unavailable state.');
 assert.doesNotMatch(marketplaceSource, /Boolean\(product\.image\)\s*&&/, 'Products without a primary image field must remain visible in the catalogue.');
+const productIds = [...catalogSource.matchAll(/\{id:'([^']+)'/g)].map((match) => match[1]);
+assert.ok(productIds.length >= 250, 'The full product catalogue must remain included in the marketplace.');
+assert.equal(new Set(productIds).size, productIds.length, 'Every product must have a unique ID for its stable product URL.');
+assert.ok(productIds.every((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)), 'Product IDs must be URL-safe slugs.');
 
 console.log(JSON.stringify({
   status: 'passed',
