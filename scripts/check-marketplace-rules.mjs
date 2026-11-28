@@ -22,10 +22,10 @@ for (const method of approvedGiftCards) assert.ok(marketplaceSource.includes(met
 assert.match(aiSource, /pct>=25&&pct<=70/, 'AI vehicle promotions must enforce the approved discount range.');
 assert.match(marketplaceSource, /searchParams\.set\('product', product\.id\)/, 'Opening a product must write its stable product ID into the shareable URL.');
 assert.match(marketplaceSource, /get\('product'\)/, 'The shop must restore product details from a direct product URL.');
-assert.match(marketplaceSource, /teslamarketsofficial\\.com\\/product\\//, 'Copied shop links must use the production domain and permanent product path.');
+assert.ok(marketplaceSource.includes('https://teslamarketsofficial.com/product/'), 'Copied shop links must use the production domain and permanent product path.');
 assert.match(marketplaceSource, /Copy product link/, 'Product detail must expose a copy-link action.');
 assert.match(marketplaceSource, /Copy link/, 'Cart items must expose a copy-link action.');
-assert.match(vehicleSource, /teslamarketsofficial\\.com\\/vehicle\\//, 'Copied vehicle links must use the production domain and permanent vehicle path.');
+assert.ok(vehicleSource.includes('https://teslamarketsofficial.com/vehicle/'), 'Copied vehicle links must use the production domain and permanent vehicle path.');
 assert.match(vehicleSource, /Copy vehicle link/, 'Vehicle detail must expose a copy-link action.');
 assert.match(productShareSource, /og:title/, 'Product share responses must include crawler-readable Open Graph titles.');
 assert.match(productShareSource, /og:description/, 'Product share responses must include crawler-readable Open Graph descriptions.');
@@ -34,8 +34,8 @@ assert.match(productShareSource, /twitter:card/, 'Product share responses must i
 assert.match(vehicleShareSource, /og:title/, 'Vehicle share responses must include crawler-readable Open Graph titles.');
 assert.match(vehicleShareSource, /og:image/, 'Vehicle share responses must include crawler-readable Open Graph images.');
 assert.match(vehicleShareSource, /twitter:card/, 'Vehicle share responses must include large social preview metadata.');
-assert.match(vercelSource, /\\/product\\/:productId/, 'Production must route permanent product links to the metadata handler.');
-assert.match(vercelSource, /\\/vehicle\\/:modelId/, 'Production must route permanent vehicle links to the metadata handler.');
+assert.ok(vercelSource.includes('"source": "/product/:productId"'), 'Production must route permanent product links to the metadata handler.');
+assert.ok(vercelSource.includes('"source": "/vehicle/:modelId"'), 'Production must route permanent vehicle links to the metadata handler.');
 assert.match(marketplaceSource, /directImageFallback/, 'Tesla image proxy failures must attempt the original approved image URL before showing an unavailable state.');
 assert.doesNotMatch(marketplaceSource, /Boolean\(product\.image\)\s*&&/, 'Products without a primary image field must remain visible in the catalogue.');
 const productIds = [...catalogSource.matchAll(/\{id:'([^']+)'/g)].map((match) => match[1]);
