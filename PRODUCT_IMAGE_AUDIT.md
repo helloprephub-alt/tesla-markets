@@ -9,7 +9,7 @@
 - Missing-primary entries with a sourceUrl field: 5
 - Product IDs are unique URL-safe slugs: yes
 
-**Scope:** Source-catalog field audit only. Two additional apparel images were added after verification against official Tesla Shop product listings and their Tesla-hosted image assets. This does not claim that every assigned image has been visually checked or loads in a browser. The three Kids Tees shown in the user screenshot have primary image URLs; their image proxy endpoint was verified to return `200 image/jpeg` in both the current production deployment and the new preview.
+**Scope:** Source-catalog field audit only. Two additional apparel images were added after verification against official Tesla Shop product listings and their Tesla-hosted image assets. This does not claim that every assigned image has been visually checked or loads in a browser. The three Kids Tees shown in the user screenshot have primary image URLs; their image proxy endpoint returned `200 image/jpeg` in both the current production deployment and the latest preview. On the latest preview, proxy responses for those three products plus Kids CyberMonsterTruck Tee and Men's Tesla Optimus Essential Tee all returned `200 image/jpeg`. A disallowed external image host returned `403`, confirming the proxy allowlist rejection path.
 
 **Image sourcing rule:** Do not assign unrelated stock or category images as if they were the exact product. Fill missing entries only with a verified matching product image, preferably from the official product listing or an authorized supplier.
 
