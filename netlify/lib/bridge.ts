@@ -88,6 +88,7 @@ export function bridgeVercelHandler(handler: LegacyHandler) {
     };
 
     await handler(request, response);
+    statusCode = response.statusCode || statusCode;
     return {
       statusCode,
       headers: responseHeaders,
