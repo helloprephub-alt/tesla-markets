@@ -9,7 +9,7 @@ const getSite = (req: Request) => {
   if (/^[a-z0-9.-]+\.vercel\.app$/.test(host)) return 'https://' + host;
   return PRODUCTION_SITE;
 };
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char);
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
 const getOne = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] || '' : value || '';
 const vehicles: Record<string, { name: string; subtitle: string; price: string; image: string; description: string }> = {
   'model-3': { name: 'Tesla Model 3', subtitle: 'Electric sedan', price: '$36,990', image: '/resources/model-3-1.jpg', description: 'Explore Model 3 versions, features and vehicle enquiry details at Tesla Markets.' },
