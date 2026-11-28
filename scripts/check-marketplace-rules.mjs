@@ -15,6 +15,10 @@ assert.match(discountMigration, /discount_percent\s*=\s*0/i, 'A product must be 
 assert.match(discountMigration, /discount_percent\s+between\s+25\s+and\s+70/i, 'Applied discounts must remain between 25% and 70%.');
 for (const method of approvedGiftCards) assert.ok(marketplaceSource.includes(method), 'Shop checkout is missing approved gift-card choice: ' + method);
 assert.match(aiSource, /pct>=25&&pct<=70/, 'AI vehicle promotions must enforce the approved discount range.');
+assert.match(marketplaceSource, /searchParams\.set\('product', product\.id\)/, 'Opening a product must write its stable product ID into the shareable URL.');
+assert.match(marketplaceSource, /get\('product'\)/, 'The shop must restore product details from a direct product URL.');
+assert.match(marketplaceSource, /directImageFallback/, 'Tesla image proxy failures must attempt the original approved image URL before showing an unavailable state.');
+assert.doesNotMatch(marketplaceSource, /Boolean\(product\.image\)\s*&&/, 'Products without a primary image field must remain visible in the catalogue.');
 
 console.log(JSON.stringify({
   status: 'passed',
