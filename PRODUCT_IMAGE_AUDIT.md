@@ -3,30 +3,30 @@
 ## Summary
 
 - Catalog entries audited: 261
-- Products with a primary image field: 114
-- Products missing a primary image field: 147
+- Products with a primary image field: 116
+- Products missing a primary image field: 145
 - Missing-primary entries that still have a gallery field: 0
-- Missing-primary entries with a sourceUrl field: 5
+- Missing-primary entries with a sourceUrl field: 3
 - Product IDs are unique URL-safe slugs: yes
 
-**Scope:** Source-catalog field audit only. This does not claim that every assigned image has been visually checked or loads in a browser. The three Kids Tees shown in the user screenshot have primary image URLs; their image proxy endpoint was verified to return `200 image/jpeg` in both the current production deployment and the new preview.
+**Scope:** Source-catalog field audit only. Two additional apparel images were added after verification against official Tesla Shop product listings and their Tesla-hosted image assets. This does not claim that every assigned image has been visually checked or loads in a browser. The three Kids Tees shown in the user screenshot have primary image URLs; their image proxy endpoint was verified to return `200 image/jpeg` in both the current production deployment and the new preview.
 
 **Image sourcing rule:** Do not assign unrelated stock or category images as if they were the exact product. Fill missing entries only with a verified matching product image, preferably from the official product listing or an authorized supplier.
 
 ## Products missing a primary image
 
-### Apparel (13)
+### Apparel (11)
 
 - `winter-holiday-sweater` — Winter Holiday Sweater (sourceUrl field present)
 - `winter-holiday-scarf` — Winter Holiday Scarf (sourceUrl field present)
 - `winter-holiday-beanie` — Winter Holiday Beanie
 - `winter-holiday-tee` — Winter Holiday Tee (sourceUrl field present)
-- `optimus-essential-tee` — Men's Tesla Optimus Essential Tee
+
 - `model-3-performance-hoodie` — Model 3 Performance Hoodie
 - `model-sx-plaid-snapback` — Model S/X Plaid Snapback Hat
 - `cyberbeast-trucker` — Cyberbeast Trucker Hat
 - `relaxed-t-logo-hat` — Relaxed T Logo Hat
-- `kids-cybermonster-tee` — Kids CyberMonsterTruck Tee
+
 - `dog-mode-onesie` — Dog Mode Onesie
 - `holiday-cat-mode-box` — Holiday Cat Mode Baby Box Set
 - `holiday-dog-mode-box` — Holiday Dog Mode Baby Box Set
