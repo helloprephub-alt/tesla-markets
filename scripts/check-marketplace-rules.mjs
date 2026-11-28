@@ -34,8 +34,8 @@ assert.match(productShareSource, /twitter:card/, 'Product share responses must i
 assert.match(vehicleShareSource, /og:title/, 'Vehicle share responses must include crawler-readable Open Graph titles.');
 assert.match(vehicleShareSource, /og:image/, 'Vehicle share responses must include crawler-readable Open Graph images.');
 assert.match(vehicleShareSource, /twitter:card/, 'Vehicle share responses must include large social preview metadata.');
-assert.ok(vercelSource.includes('"source": "/product/:productId"'), 'Production must route permanent product links to the metadata handler.');
-assert.ok(vercelSource.includes('"source": "/vehicle/:modelId"'), 'Production must route permanent vehicle links to the metadata handler.');
+assert.match(vercelSource, /"source"\s*:\s*"\/product\/:productId"/, 'Production must route permanent product links to the metadata handler.');
+assert.match(vercelSource, /"source"\s*:\s*"\/vehicle\/:modelId"/, 'Production must route permanent vehicle links to the metadata handler.');
 assert.match(marketplaceSource, /directImageFallback/, 'Tesla image proxy failures must attempt the original approved image URL before showing an unavailable state.');
 assert.doesNotMatch(marketplaceSource, /Boolean\(product\.image\)\s*&&/, 'Products without a primary image field must remain visible in the catalogue.');
 const productIds = [...catalogSource.matchAll(/\{id:'([^']+)'/g)].map((match) => match[1]);
