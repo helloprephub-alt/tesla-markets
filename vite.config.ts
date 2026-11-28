@@ -27,7 +27,7 @@ function generateShopProductPages(): Plugin {
         const title = product.name + ' | Tesla Markets';
         const description = product.description || product.name + ' from the Tesla Markets shop.';
         const imageUrl = siteOrigin + productAssetUrl(product.image);
-        const salePrice = getDiscountedPrice(product);
+        const salePrice = product.purchaseEnabled === false ? null : getDiscountedPrice(product);
         const productSchema = {
           '@context': 'https://schema.org',
           '@type': 'Product',
