@@ -66,7 +66,7 @@ Do not expose the email outbox, push sender, service-role key, Brevo key, VAPID 
 3. Verify the Vercel preview and all customer/admin flows.
 4. If Vercel's current plan and quota permit, use preview -> review -> owner-approved production promotion.
 5. If Vercel blocks deployment, use the prepared Netlify configuration for a separate staging deployment; configure secrets securely and test all five API routes.
-6. If Netlify is unavailable or the account's free allowance is insufficient, port the API endpoints to Cloudflare Pages Functions/Workers or evaluate AppDeploy within its current free allowance.
+6. If Netlify is unavailable or the account's free allowance is insufficient, port the API endpoints to Cloudflare Pages Functions/Workers or evaluate another compatible non-AppDeploy serverless runtime within its current free allowance.
 7. Test every alternative hostname end-to-end: product URLs, image proxy/fallback, Supabase Auth, CORS, customer accounts, admin authorization, chat, translation, cart, checkout, payment verification, orders, email, push notifications, and service worker.
 8. Only after staging passes and the owner explicitly approves, change production DNS/domain or promote the fallback.
 9. Keep the last known-good production deployment and DNS values recorded for rollback.
