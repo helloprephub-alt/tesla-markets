@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && npm run check:i18n && npm run check:edge-i18n && npm run check:marketplace && npm run check:chat-reliability && npm run check:ai-intelligence && vite build",
+    "build": "npm run typecheck && npm run check:i18n && npm run check:edge-i18n && npm run check:marketplace && npm run check:chat-reliability && npm run check:ai-intelligence && vite build && npm run check:shop-product-pages",
     "preview": "vite preview",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:edge-i18n": "node scripts/check-edge-i18n.mjs",
     "check:marketplace": "node scripts/check-marketplace-rules.mjs",
     "check:chat-reliability": "node scripts/check-chat-reliability.mjs",
-    "check:ai-intelligence": "node scripts/check-ai-intelligence.mjs"
+    "check:ai-intelligence": "node scripts/check-ai-intelligence.mjs",
+    "check:shop-product-pages": "node scripts/check-shop-product-pages.mjs",
+    "audit:shop-images": "node scripts/audit-shop-images.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.469.0",
