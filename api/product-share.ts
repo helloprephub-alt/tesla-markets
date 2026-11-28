@@ -11,7 +11,7 @@ const getSite = (req: Request) => {
   if (/^[a-z0-9.-]+\.vercel\.app$/.test(host)) return 'https://' + host;
   return PRODUCTION_SITE;
 };
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char);
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char] || char));
 const getOne = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] || '' : value || '';
 
 export default function handler(req: Request, res: Response): void {
