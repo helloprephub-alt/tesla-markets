@@ -42,6 +42,21 @@ The repository is a Vite + React application. For a static build, configure a Pa
 
 Use the existing Supabase database/auth/Edge Functions and Cloudflare AI Worker as the backend. Do not duplicate or migrate data just to change static hosting.
 
+## Serverless compatibility requirement (must be solved before cutover)
+
+The current repository includes a Vercel serverless image endpoint at `api/tesla-image.ts`. A static-only deployment to Cloudflare Pages, Netlify, or GitHub Pages will not automatically run this Vercel function.
+
+Before declaring any alternate host production-capable:
+
+1. Inventory every `api/*` endpoint and every frontend request that depends on a Vercel runtime function.
+2. For each required endpoint, implement and test the equivalent provider-native function (for example, a Cloudflare Pages Function or Netlify Function) using the provider's supported runtime.
+3. Preserve the image proxy's HTTPS host/path allowlist, content-type validation, method restrictions, and safe error handling. Do not create an unrestricted URL fetch proxy.
+4. Confirm product images still load if the proxy is unavailable; use direct verified image URLs only where the source permits browser image loading.
+5. Verify Supabase Auth, Edge Functions, AI Worker, order/payment callbacks, and admin flows on the alternate hostname.
+6. If any required endpoint has not been ported or verified, keep the alternate deployment as staging only and do not cut over production.
+
+The Vercel API endpoint is a confirmed dependency; the complete API inventory still needs a repository-wide check.
+
 ## Static-hosting fallback B: Netlify
 
 If Cloudflare Pages is unavailable or its free limits are insufficient, create a separate Netlify staging site from the same GitHub branch:
