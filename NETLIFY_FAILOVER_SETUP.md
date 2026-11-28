@@ -22,7 +22,7 @@ Set runtime secrets in Netlify's site environment settings. Do not commit values
 Required or conditionally required variables based on the existing Vercel API handlers:
 
 - `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY` (public client key; configure the exact current key name used by `src/lib/supabase.ts`)
+- `VITE_SUPABASE_ANON_KEY` (public client key; confirmed in `src/lib/supabase.ts`)
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only; email outbox worker)
 - `BREVO_API_KEY` (server-only; email functions)
 - `BREVO_SENDER_EMAIL`
